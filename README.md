@@ -6,7 +6,7 @@ A collection of reusable AI agent skills for our engineering team. Skills are co
 
 | Skill | Description |
 |---|---|
-| [skill-creator](./skills/skill-creator/) | Create, test, and iterate on new skills |
+| *(no skills yet — add your first one!)* | |
 
 ## Installation
 
