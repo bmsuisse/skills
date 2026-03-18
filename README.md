@@ -10,23 +10,39 @@ A collection of reusable AI agent skills for our engineering team. Skills are co
 
 ## Installation
 
-### Antigravity / Claude Code
+The `skills` CLI ([github.com/vercel-labs/skills](https://github.com/vercel-labs/skills)) reads directly from GitHub — no registration needed.
 
-Install a specific skill:
+### Install a specific skill
 
 ```bash
 npx skills add https://github.com/bmsuisse/skills --skill <skill-name>
 ```
 
-Install all skills:
+### Install all skills
 
 ```bash
 npx skills add https://github.com/bmsuisse/skills
 ```
 
-Browse skills online at: `https://skills.sh/bmsuisse/skills/<skill-name>`
+The CLI auto-detects your agent platform and installs into the right directory:
 
-### Verify Installation
+| Platform | Directory |
+|---|---|
+| Antigravity | `.agents/skills/` or `.agent/skills/` |
+| Claude Code | `.claude/skills/` |
+| Cursor | `.cursor/rules/` |
+| Codex CLI | `~/.codex/skills/` |
+| Gemini CLI | auto-detected |
+
+### Browse on skills.sh
+
+```
+https://skills.sh/bmsuisse/skills/<skill-name>
+```
+
+> **Note:** The URL works immediately after the first `npx skills add` is run. The skill appears on the [skills.sh leaderboard](https://skills.sh) automatically based on install telemetry — no manual registration required.
+
+### Verify installation
 
 Start a new session and ask your agent something that should trigger the skill. It should automatically invoke the relevant skill.
 
@@ -60,24 +76,24 @@ Instructions for the agent to follow...
 
 1. Create a branch: `git checkout -b skill/<skill-name>`
 2. Create `skills/<skill-name>/SKILL.md`
-3. Use the `skill-creator` skill to iterate and test
-4. Open a PR
+3. Open a PR — merging syncs to all runtime directories
 
 ## Repo Structure
 
 ```
 .
-├── skills/                   ← canonical skill sources (installed via npx skills add)
+├── skills/                   ← canonical skill sources (what npx skills add reads)
 │   └── <skill-name>/
-│       └── SKILL.md
-├── .agents/skills/           ← runtime: Antigravity picks up skills from here
-│   └── <skill-name>/
-├── .claude/skills/           ← runtime: Claude Code picks up skills from here (symlink)
-│   └── <skill-name>/
+│       ├── SKILL.md
+│       ├── scripts/
+│       └── references/
+├── .agents/skills/           ← runtime: Antigravity
+├── .agent/skills/            ← runtime: Antigravity (alternate)
+├── .claude/skills/           ← runtime: Claude Code
 └── skills-lock.json          ← tracks installed third-party skills
 ```
 
-> **Note:** When adding a new skill, add it to `skills/` (canonical), `.agents/skills/` (Antigravity runtime), and `.claude/skills/` (Claude Code runtime). The `add-skill` workflow script handles this automatically.
+> **Note:** When adding a skill, run `/add-skill` — it adds to `skills/` (canonical) and syncs to all runtime directories automatically.
 
 ## Updating Third-Party Skills
 

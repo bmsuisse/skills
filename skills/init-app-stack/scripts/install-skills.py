@@ -9,16 +9,24 @@ Installs companion skills via `npx skills add` into:
     .agents/skills/   (Antigravity)
     .agent/skills/    (Antigravity alternate)
     .claude/skills/   (Claude Code)
+
+Browse available skills at: https://skills.sh
 """
 
 import subprocess
 import sys
 
+# Skills can be installed via GitHub URL or skills.sh short-form (owner/repo).
+# Browse and discover more at https://skills.sh
 SKILLS = [
-    ("https://github.com/nuxt/ui", "nuxt-ui"),
+    # https://skills.sh/nuxt/ui/nuxt-ui
+    ("nuxt/ui", "nuxt-ui"),
+    # https://github.com/antfu/skills (not on skills.sh — use full GitHub URL)
     ("https://github.com/antfu/skills", "nuxt"),
-    ("https://github.com/anthropics/skills", "frontend-design"),
-    ("https://github.com/wshobson/agents", "fastapi-templates"),
+    # https://skills.sh/anthropics/skills/frontend-design
+    ("anthropics/skills", "frontend-design"),
+    # https://skills.sh/wshobson/agents/fastapi-templates
+    ("wshobson/agents", "fastapi-templates"),
 ]
 
 
