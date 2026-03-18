@@ -7,6 +7,8 @@ description: Analyzes all SQL files in the Fabricks.Runtime repository, builds a
 
 You are a Spark/Databricks SQL performance expert. Your job is to run the dependency analyzer script, interpret its output, produce a thorough Markdown report, and — when requested — apply the fixes directly to the SQL files on a dedicated branch.
 
+> **See also**: The `sql-optimization` skill (`bmsuisse/skills/sql-optimization`) provides the universal SQL optimization reference (patterns, anti-patterns, index design, pagination, etc.) that underpins the recommendations made here.
+
 ## Parsing user arguments
 
 The user may pass arguments after the skill name, e.g.:
@@ -181,6 +183,7 @@ Prefer:
 - Splitting `OR` join conditions into `UNION ALL`
 - Casting join keys in a upstream CTE instead of inside the ON clause
 - Replacing `array_contains` in JOIN ON with a lateral explode + equi-join
+- **Collations** instead of `LOWER(col) = LOWER('val')` or `ILIKE` for case/accent-insensitive comparisons — define the column with `COLLATE UTF8_LCASE` (English) or `COLLATE <LANG>_AI` (language-specific accent-insensitive) and write a plain equality filter; this enables Delta file-skipping and can yield up to 22× faster queries vs. wrapping in `LOWER()`. Run `ANALYZE TABLE … COMPUTE STATISTICS FOR COLUMNS …` after altering collation. Available since Databricks Runtime 13.3+ (GA in DBR 17.3).
 
 If an `EXPLAIN COST` plan is available, highlight the most expensive nodes (high `rowCount`, `dataSize`, or `numPartitions`) and suggest partition pruning or Z-ordering.
 
@@ -217,6 +220,8 @@ Ordered by expected impact (highest impact_score first):
 - Consider **Z-ORDER BY** on frequently filtered columns for the largest Delta tables.
 - Consider **Liquid Clustering** (Databricks Runtime 13.3+) on hot tables instead of static partitioning.
 - Use **ANALYZE TABLE … COMPUTE STATISTICS** on staging/raw tables to improve the Spark optimizer's cardinality estimates.
+- Consider **Collations** (`UTF8_LCASE` for English, language codes like `DE`/`FR`/`EL_AI` for others) on string columns that are filtered or joined with case/accent-insensitive comparisons. Eliminates `LOWER()` wrappers, enables Delta file-skipping, and can deliver up to **22× faster** queries (GA since Databricks Runtime 17.3). List available collations with `SELECT * FROM collations()`.
+- For general SQL optimization patterns (index design, pagination, JOIN tuning, batch ops), refer to the **`sql-optimization`** skill.
 ```
 
 ---
@@ -270,7 +275,8 @@ Apply **only** the fixes that correspond to warnings actually detected in that f
 | `SELECT *` on gold layer | Replace with an explicit column list drawn from columns actually produced by upstream sources — if the full column list cannot be determined statically, leave a `-- TODO: replace SELECT * with explicit columns` comment and skip the rewrite |
 | `UDF in WHERE/JOIN` | Replace with a built-in Spark SQL equivalent when the replacement is unambiguous (e.g., `udf_lower(x)` → `LOWER(x)`); otherwise leave a `-- TODO: replace UDF with built-in` comment |
 | `LIKE %val%` | Only rewrite if a clear prefix-only pattern is evident; leave other cases unchanged |
-| `ILIKE` | Rewrite as `LOWER(col) LIKE LOWER('pattern')` where safe |
+| `ILIKE` | Rewrite as `LOWER(col) LIKE LOWER('pattern')` where safe; or, if the column is a string column used repeatedly for case-insensitive comparison, recommend setting `COLLATE UTF8_LCASE` on the column (see Collation tip below) |
+| `LOWER() comparison` | Rewrite `LOWER(col) = LOWER('val')` (or `LOWER(col) = 'val'`) by setting `COLLATE UTF8_LCASE` on the column and using a plain equality: `col = 'val'`. This unlocks Delta file-skipping and Photon optimization, yielding up to 22× speedup. Requires `ALTER TABLE … ALTER COLUMN … TYPE STRING COLLATE UTF8_LCASE` followed by `ANALYZE TABLE … COMPUTE STATISTICS FOR COLUMNS …`. Use language-specific collations (e.g., `DE`, `FR`, `EL_AI`) when sorting/comparing non-English text. |
 | `CAST on JOIN key` | Move the CAST into an upstream CTE so the join key is a plain column reference |
 | `array_contains in JOIN` | Rewrite as a `LATERAL VIEW EXPLODE` + equi-join, or filter before the join using a semi-join |
 | `Implicit cross join` | Rewrite `FROM a, b WHERE a.k = b.k` as `FROM a JOIN b ON a.k = b.k` |
@@ -313,7 +319,7 @@ After committing, append a **## Applied Fixes** section to the report listing:
 ## Behavior guidelines
 
 - Be specific: quote the actual table names, file paths, and warning messages from the script output.
-- Severity mapping (for human reporting): `CROSS JOIN` = Critical; `Implicit cross join` = Critical; `NOT IN subquery` = High; `OR in JOIN` = High; `Subquery in SELECT` = High; `CAST on JOIN key` = High; `IN subquery` = Medium; `Unbounded window frame` = Medium; `SELECT *` = Medium; `Repeated scan` = Medium; `EXPLODE` = Medium; `UDF in WHERE/JOIN` = Medium; `array_contains in JOIN` = Medium; `SELECT DISTINCT` = Low; `LIKE %val%` = Low; `ILIKE` = Low.
+- Severity mapping (for human reporting): `CROSS JOIN` = Critical; `Implicit cross join` = Critical; `NOT IN subquery` = High; `OR in JOIN` = High; `Subquery in SELECT` = High; `CAST on JOIN key` = High; `IN subquery` = Medium; `Unbounded window frame` = Medium; `SELECT *` = Medium; `Repeated scan` = Medium; `EXPLODE` = Medium; `UDF in WHERE/JOIN` = Medium; `array_contains in JOIN` = Medium; `LOWER() comparison` = Medium; `SELECT DISTINCT` = Low; `LIKE %val%` = Low; `ILIKE` = Low.
 - If Databricks row counts are available, factor table size into severity (a `SELECT *` on a 1 B-row table is Critical).
 - Report tables sorted by `impact_score` descending — the JSON is already sorted.
 - Keep code examples in `spark` dialect (Spark SQL).

@@ -1,0 +1,4 @@
+# AI agent runtime directories (auto-synced from skills/)
+.agent/
+.agents/
+.claude/
