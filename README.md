@@ -15,16 +15,16 @@ A collection of reusable AI agent skills for our engineering team. Skills are co
 Install a specific skill:
 
 ```bash
-npx skills add https://github.com/<your-org>/<this-repo> --skill <skill-name>
+npx skills add https://github.com/bmsuisse/skills --skill <skill-name>
 ```
 
 Install all skills:
 
 ```bash
-npx skills add https://github.com/<your-org>/<this-repo>
+npx skills add https://github.com/bmsuisse/skills
 ```
 
-Browse skills online at: `https://skills.sh/<your-org>/<this-repo>/<skill-name>`
+Browse skills online at: `https://skills.sh/bmsuisse/skills/<skill-name>`
 
 ### Verify Installation
 
