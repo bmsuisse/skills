@@ -7,10 +7,10 @@ A collection of reusable AI agent skills for our engineering team. Skills are co
 <!-- SKILLS_TABLE_START -->
 | Skill | Description |
 |---|---|
-| [add-skill](./skills/add-skill/) | Use this skill whenever the user wants to add, create, publish, or contribute a new skill to the bmsuisse/skills repository.… |
-| [fabricks-sql-analyzer](./skills/fabricks-sql-analyzer/) | Use this skill when asked to analyze SQL performance, optimize Databricks/Spark SQL, identify bottleneck queries, or improve SQL within a Fab… |
-| [init-app-stack](./skills/init-app-stack/) | Use this skill whenever the user wants to bootstrap, scaffold, or initialize a new full-stack app with a Nuxt + Nuxt UI frontend and a FastAPI… |
-| [sql-optimization](./skills/sql-optimization/) | Use this skill whenever the user wants to optimize, rewrite, or review SQL queries for performance, readability, or correctness. Triggers on r… |
+| [add-skill](./skills/add-skill/) | Use this skill whenever the user wants to add, create, publish, or contribute a new skill to the bmsuisse/skills repo… |
+| [fabricks-sql-analyzer](./skills/fabricks-sql-analyzer/) | Analyzes all SQL files in the Fabricks.Runtime repository, builds a dependency DAG, runs performance heuristics, and… |
+| [init-app-stack](./skills/init-app-stack/) | Use this skill whenever the user wants to bootstrap, scaffold, or initialize a new full-stack app with a Nuxt + Nuxt… |
+| [sql-optimization](./skills/sql-optimization/) | 'Universal SQL performance optimization assistant for comprehensive query tuning, indexing strategies, and database p… |
 <!-- SKILLS_TABLE_END -->
 
 ## Installation
