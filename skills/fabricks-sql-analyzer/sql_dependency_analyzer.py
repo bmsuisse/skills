@@ -232,7 +232,7 @@ def get_execution_plan(sql: str, profile: str = "premium") -> str | None:
             statement=f"EXPLAIN COST\n{sql}",
             wait_timeout="30s",
         )
-        if resp.status and resp.status.state.name == "SUCCEEDED":
+        if resp.status and resp.status.state == StatementState.SUCCEEDED:
             if resp.result and resp.result.data_array:
                 return "\n".join(str(row) for row in resp.result.data_array[:80])
         elif resp.status:
@@ -398,6 +398,207 @@ def graph_stats(G: nx.DiGraph) -> dict[str, int]:
     }
 
 
+# ---------------------------------------------------------------------------
+# 9. Graph visualisation (NetworkX + Plotly — interactive HTML)
+# ---------------------------------------------------------------------------
+
+
+def render_graph(
+    G: nx.DiGraph,
+    top_tables: list[tuple[str, int]],
+    row_counts: dict[str, int | None] | None = None,
+    output_path: str | None = None,
+    depth: int = 1,
+) -> None:
+    """
+    Render an interactive Plotly network graph centred on the top-N tables.
+
+    Layout  : Kamada-Kawai (falls back to spring layout on error)
+    Node size : proportional to in-degree (dependency count)
+    Node colour:
+        - #e05252 red    → top-tercile in-degree (hottest)
+        - #f0a830 orange → mid-tercile
+        - #4a90d9 blue   → low in-degree
+    Hover tooltip : full table name, in-degree, row count (if available)
+    Output  : written as a self-contained HTML file to *output_path*;
+              if omitted, opens in the default browser via plotly.io.show().
+    Requires: plotly  (`uv add plotly`)
+    """
+    import importlib.util
+
+    if importlib.util.find_spec("plotly") is None:
+        print("[graph] plotly is not installed. Run `uv add plotly` and retry.")
+        return
+
+    import plotly.graph_objects as go
+
+    top_nodes = [t for t, _ in top_tables]
+
+    # --- build subgraph --------------------------------------------------
+    visible: set[str] = set(top_nodes)
+    for node in top_nodes:
+        for _ in range(depth):
+            visible.update(G.predecessors(node))
+            visible.update(G.successors(node))
+    sub = G.subgraph(visible).copy()
+
+    # --- layout ----------------------------------------------------------
+    try:
+        pos = nx.kamada_kawai_layout(sub)
+    except Exception:
+        pos = nx.spring_layout(sub, seed=42, k=2.5 / (len(sub.nodes()) ** 0.5 + 1))
+
+    # --- node attributes -------------------------------------------------
+    in_degrees = dict(sub.in_degree())
+    max_deg = max(in_degrees.values(), default=1) or 1
+
+    sorted_degs = sorted(in_degrees.values())
+    n = len(sorted_degs)
+    tier_hi  = sorted_degs[int(n * 0.66)] if n >= 3 else sorted_degs[-1]
+    tier_mid = sorted_degs[int(n * 0.33)] if n >= 3 else 0
+
+    COLOR_HOT  = "#e05252"
+    COLOR_WARM = "#f0a830"
+    COLOR_COOL = "#4a90d9"
+
+    node_list = list(sub.nodes())
+    node_x = [pos[nd][0] for nd in node_list]
+    node_y = [pos[nd][1] for nd in node_list]
+    node_colors: list[str] = []
+    node_sizes: list[float] = []
+    node_text: list[str] = []      # hover
+    node_labels: list[str] = []    # short label on the node
+
+    for nd in node_list:
+        deg = in_degrees.get(nd, 0)
+        rc = (row_counts or {}).get(nd)
+        rc_str = f"{rc:,}" if rc is not None else "n/a"
+
+        if deg >= tier_hi:
+            node_colors.append(COLOR_HOT)
+        elif deg >= tier_mid:
+            node_colors.append(COLOR_WARM)
+        else:
+            node_colors.append(COLOR_COOL)
+
+        # size: 18–60 px, linear in in-degree
+        node_sizes.append(18 + 42 * deg / max_deg)
+
+        node_text.append(
+            f"<b>{nd}</b><br>"
+            f"In-degree (dependents): {deg}<br>"
+            f"Row count: {rc_str}"
+        )
+        node_labels.append(".".join(nd.split(".")[-2:]) if "." in nd else nd)
+
+    # --- edge traces (one per edge so we can draw arrows) ----------------
+    edge_traces: list[go.Scatter] = []
+    annotations: list[dict] = []
+
+    for src, dst in sub.edges():
+        x0, y0 = pos[src]
+        x1, y1 = pos[dst]
+        # thin line
+        edge_traces.append(
+            go.Scatter(
+                x=[x0, x1, None],
+                y=[y0, y1, None],
+                mode="lines",
+                line={"width": 0.8, "color": "#8888aa"},
+                hoverinfo="none",
+                showlegend=False,
+            )
+        )
+        # arrowhead annotation
+        annotations.append(
+            dict(
+                ax=x0, ay=y0,
+                x=x1,  y=y1,
+                xref="x", yref="y",
+                axref="x", ayref="y",
+                showarrow=True,
+                arrowhead=3,
+                arrowsize=1.2,
+                arrowwidth=1.0,
+                arrowcolor="#8888aa",
+                opacity=0.6,
+            )
+        )
+
+    # --- node trace -------------------------------------------------------
+    node_trace = go.Scatter(
+        x=node_x,
+        y=node_y,
+        mode="markers+text",
+        hoverinfo="text",
+        hovertext=node_text,
+        text=node_labels,
+        textposition="top center",
+        textfont={"size": 9, "color": "#ffffff"},
+        marker=dict(
+            color=node_colors,
+            size=node_sizes,
+            line={"width": 1, "color": "#ffffff44"},
+            opacity=0.92,
+        ),
+        showlegend=False,
+    )
+
+    # --- legend as dummy scatter traces -----------------------------------
+    legend_traces = [
+        go.Scatter(
+            x=[None], y=[None], mode="markers",
+            marker={"color": COLOR_HOT,  "size": 12},
+            name="High in-degree (hot)",
+        ),
+        go.Scatter(
+            x=[None], y=[None], mode="markers",
+            marker={"color": COLOR_WARM, "size": 12},
+            name="Medium in-degree",
+        ),
+        go.Scatter(
+            x=[None], y=[None], mode="markers",
+            marker={"color": COLOR_COOL, "size": 12},
+            name="Low in-degree",
+        ),
+    ]
+
+    # --- assemble figure --------------------------------------------------
+    fig = go.Figure(
+        data=[*edge_traces, node_trace, *legend_traces],
+        layout=go.Layout(
+            title=dict(
+                text=(
+                    f"Fabricks SQL Dependency Graph — "
+                    f"Top {len(top_nodes)} tables + {depth}-hop neighbours"
+                ),
+                font={"size": 16, "color": "#e0e0ff"},
+            ),
+            paper_bgcolor="#1a1a2e",
+            plot_bgcolor="#1a1a2e",
+            font={"color": "#ccccee"},
+            showlegend=True,
+            legend=dict(
+                bgcolor="#22224a",
+                bordercolor="#444466",
+                borderwidth=1,
+                font={"size": 11},
+            ),
+            hovermode="closest",
+            xaxis={"showgrid": False, "zeroline": False, "showticklabels": False},
+            yaxis={"showgrid": False, "zeroline": False, "showticklabels": False},
+            annotations=annotations,
+            margin={"l": 20, "r": 20, "t": 50, "b": 20},
+        ),
+    )
+
+    if output_path:
+        fig.write_html(output_path, include_plotlyjs="cdn")
+        print(f"\n[graph] Saved → {output_path}")
+    else:
+        fig.show()
+
+
 def find_source_file(table: str, file_table_map: dict[Path, str | None]) -> Path | None:
     for path, tbl in file_table_map.items():
         if tbl and tbl.lower() == table.lower():
@@ -439,6 +640,24 @@ def main() -> None:
         "--ancestors",
         metavar="TABLE",
         help="Print all transitive dependencies of a given table and exit",
+    )
+    # Graph visualisation
+    parser.add_argument(
+        "--graph",
+        action="store_true",
+        help="Render a NetworkX dependency subgraph for the top-N tables",
+    )
+    parser.add_argument(
+        "--graph-output",
+        metavar="FILE",
+        default=None,
+        help="Save the graph to FILE (PNG/SVG/PDF). If omitted the graph is shown interactively.",
+    )
+    parser.add_argument(
+        "--graph-depth",
+        type=int,
+        default=1,
+        help="Number of hops beyond the top-N nodes to include in the graph (default: 1)",
     )
     args = parser.parse_args()
 
@@ -576,6 +795,16 @@ def main() -> None:
         out = Path(args.output_json)
         out.write_text(json.dumps(results, indent=2, ensure_ascii=False), encoding="utf-8")
         print(f"\nResults written to {out}")
+
+    if args.graph:
+        print(f"\n[graph] Rendering subgraph for top {len(candidate_tables)} tables ...")
+        render_graph(
+            G,
+            top_tables=candidate_tables,
+            row_counts=row_counts if args.row_counts else None,
+            output_path=args.graph_output,
+            depth=args.graph_depth,
+        )
 
     print(f"\n{SEP2}")
     print("Done.")

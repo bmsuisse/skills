@@ -34,6 +34,9 @@ Extract these from the invocation:
 | `--explain` | off | Fetch `EXPLAIN COST` plans from Databricks |
 | `--profile NAME` | `premium` | Databricks CLI profile |
 | `--ancestors TABLE` | off | Print transitive dependencies of a single table and stop |
+| `--graph` | off | Render a NetworkX dependency subgraph for the top-N tables |
+| `--graph-output FILE` | (interactive) | Save the graph to a file (PNG/SVG/PDF). Omit to display interactively |
+| `--graph-depth N` | 1 | Hops beyond the top-N nodes to include as context nodes in the graph |
 
 ---
 
@@ -223,6 +226,35 @@ Ordered by expected impact (highest impact_score first):
 - Consider **Collations** (`UTF8_LCASE` for English, language codes like `DE`/`FR`/`EL_AI` for others) on string columns that are filtered or joined with case/accent-insensitive comparisons. Eliminates `LOWER()` wrappers, enables Delta file-skipping, and can deliver up to **22× faster** queries (GA since Databricks Runtime 17.3). List available collations with `SELECT * FROM collations()`.
 - For general SQL optimization patterns (index design, pagination, JOIN tuning, batch ops), refer to the **`sql-optimization`** skill.
 ```
+
+---
+
+## Step 2b — Generate a dependency graph (optional)
+
+After (or instead of) the full Markdown report, you can produce an **interactive HTML network graph** with:
+
+```bash
+uv run python .agents/skills/fabricks-sql-analyzer/sql_dependency_analyzer.py \
+    --top 20 \
+    --graph \
+    --graph-output /tmp/fabricks_dependency_graph.html
+```
+
+What the graph shows:
+- **Nodes** — tables in the top-N set plus their immediate neighbours (`--graph-depth 1`, increase for wider context)
+- **Node size** — proportional to in-degree (more dependents = bigger node)
+- **Node colour**
+  - 🔴 Red  — top-tercile in-degree (hottest tables, most depended-upon)
+  - 🟠 Orange — mid-tercile
+  - 🔵 Steel-blue — low in-degree
+- **Edges** — directed arrows showing which table depends on which
+- **Hover tooltips** — full table name, in-degree count, and row count (if `--row-counts` was used)
+- **Labels** — shortened to `schema.table` for readability
+
+If `--graph-output` is omitted the graph opens in the default browser directly.
+The HTML file is self-contained (Plotly loaded from CDN) and can be shared.
+
+Requires `plotly` to be installed (`uv add plotly`).
 
 ---
 
