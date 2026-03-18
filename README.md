@@ -6,7 +6,7 @@ A collection of reusable AI agent skills for our engineering team. Skills are co
 
 | Skill | Description |
 |---|---|
-| *(no skills yet — add your first one!)* | |
+| [init-app-stack](./skills/init-app-stack/) | Bootstrap a Nuxt + Nuxt UI (bun) frontend with a FastAPI (uv) backend |
 
 ## Installation
 
