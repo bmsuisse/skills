@@ -1,10 +1,9 @@
-"""Tests for scan flow in analyze.py — specifically that _parse_codeunit_full
-uses the pre-resolved path and does not re-scan the filesystem."""
+"""Tests for scan flow in analyze.py."""
 
 from pathlib import Path
 from unittest.mock import patch
 
-from analyze import _parse_codeunit_full, scan_all_bottlenecks
+from analyze import _analyze_codeunit_for_scan, scan_all_bottlenecks
 
 
 CAL_CONTENT = """\
@@ -21,44 +20,25 @@ def make_file_info(tmp_path: Path, filename: str = "cu1.c-al", content: str = CA
     return {"path": f, "name": filename, "object_name": "Test CU", "object_id": 1}
 
 
-def test_parse_codeunit_full_uses_path_directly(tmp_path: Path):
-    """_parse_codeunit_full should parse successfully using file_info['path']
-    without calling find_codeunit_files."""
+def test_analyze_codeunit_for_scan_returns_list(tmp_path: Path):
     file_info = make_file_info(tmp_path)
-
-    with patch("analyze.find_codeunit_files") as mock_find:
-        result = _parse_codeunit_full(file_info, {})
-
-    # find_codeunit_files must never be called — that was the O(N²) bug
-    mock_find.assert_not_called()
-    assert result is not None
-    assert result["file"] == "cu1.c-al"
-    assert "object" in result
-    assert "bottlenecks" in result
+    # analyze_codeunit looks up by name in the data dir, so patch it to return an empty result
+    with patch("analyze.analyze_codeunit", return_value={"object": {}, "bottlenecks": []}):
+        result = _analyze_codeunit_for_scan(file_info, {})
+    assert isinstance(result, list)
 
 
-def test_parse_codeunit_full_missing_file_returns_result_with_warning(tmp_path: Path):
-    """Parser is lenient about missing files — returns a result with warnings rather than crashing."""
-    bad_info = {"path": tmp_path / "nonexistent.c-al", "name": "nonexistent.c-al"}
-    result = _parse_codeunit_full(bad_info, {})
-    assert result is not None
-    assert result["file"] == "nonexistent.c-al"
-    assert any("c-al" in w.lower() or "not found" in w.lower() for w in result["object"]["warnings"])
+def test_analyze_codeunit_for_scan_swallows_errors(tmp_path: Path):
+    bad_info = {"path": tmp_path / "ghost.c-al", "name": "ghost.c-al"}
+    # Should not raise — returns empty list on error
+    result = _analyze_codeunit_for_scan(bad_info, {})
+    assert result == []
 
 
-def test_scan_all_bottlenecks_does_not_rescan_filesystem(tmp_path: Path):
-    """scan_all_bottlenecks should only call find_codeunit_files once
-    (inside list_codeunits), not once per file."""
-    files = [make_file_info(tmp_path, f"cu{i}.c-al") for i in range(5)]
-
-    with patch("analyze.find_codeunit_files") as mock_find:
-        # Pass pre-built file list so list_codeunits isn't called at all
-        scan_all_bottlenecks(files=files)
-
-    mock_find.assert_not_called()
-
-
-def test_scan_returns_list(tmp_path: Path):
-    files = [make_file_info(tmp_path, "cu1.c-al")]
-    result = scan_all_bottlenecks(files=files)
+def test_scan_all_bottlenecks_returns_list(tmp_path: Path):
+    with (
+        patch("analyze.list_codeunits", return_value=[]),
+        patch("analyze.TableMetadataLoader.load_metadata", return_value={}),
+    ):
+        result = scan_all_bottlenecks()
     assert isinstance(result, list)

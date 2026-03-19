@@ -62,7 +62,7 @@ def list_codeunits():
     table_metadata = TableMetadataLoader.load_metadata()
 
     # Parse files in parallel
-    results = run_in_threadpool(_parse_codeunit_file, ((f, table_metadata) for f in files))
+    results = run_in_threadpool(_parse_codeunit_file, ((f, table_metadata) for f in files), desc="Listing")
 
     # Sort by filename to maintain consistent order
     return sorted(results, key=lambda x: x["name"])
@@ -114,7 +114,7 @@ def scan_all_bottlenecks():
     table_metadata = TableMetadataLoader.load_metadata()
 
     # Analyze all files in parallel
-    results = run_in_threadpool(_analyze_codeunit_for_scan, ((f, table_metadata) for f in files))
+    results = run_in_threadpool(_analyze_codeunit_for_scan, ((f, table_metadata) for f in files), desc="Scanning")
 
     # Flatten results
     all_bottlenecks = [b for bottlenecks in results for b in bottlenecks]
