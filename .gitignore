@@ -2,3 +2,7 @@
 .agent/
 .agents/
 .claude/
+
+# Cache files
+.cache/
+.pycache/
