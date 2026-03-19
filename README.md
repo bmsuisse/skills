@@ -5,9 +5,10 @@ Reusable AI agent skills for our engineering team — composable instructions th
 ## Available Skills
 
 <!-- SKILLS_TABLE_START -->
-| Skill | Description |
-|---|---|
-| [deslop](./skills/deslop/) | > |
+
+| Skill                                                    | Description                                                                                                           |
+| -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| [deslop](./skills/deslop/)                               | >                                                                                                                     |
 | [fabricks-sql-analyzer](./skills/fabricks-sql-analyzer/) | Analyzes all SQL files in the Fabricks.Runtime repository, builds a dependency DAG, runs performance heuristics, and… |
 | [init-app-stack](./skills/init-app-stack/)               | Use this skill whenever the user wants to bootstrap, scaffold, or initialize a new full-stack app with a Nuxt + Nuxt… |
 | [sql-optimization](./skills/sql-optimization/)           | Universal SQL performance optimization assistant for comprehensive query tuning, indexing strategies, and database p… |
@@ -33,13 +34,13 @@ npx skills add https://github.com/bmsuisse/skills
 
 The CLI auto-detects your agent platform and installs into the right directory:
 
-| Platform | Directory |
-|---|---|
+| Platform    | Directory                             |
+| ----------- | ------------------------------------- |
 | Antigravity | `.agents/skills/` or `.agent/skills/` |
-| Claude Code | `.claude/skills/` |
-| Cursor | `.cursor/rules/` |
-| Codex CLI | `~/.codex/skills/` |
-| Gemini CLI | auto-detected |
+| Claude Code | `.claude/skills/`                     |
+| Cursor      | `.cursor/rules/`                      |
+| Codex CLI   | `~/.codex/skills/`                    |
+| Gemini CLI  | auto-detected                         |
 
 ### Browse on skills.sh
 
