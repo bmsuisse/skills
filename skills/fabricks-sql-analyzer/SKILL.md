@@ -23,20 +23,20 @@ The user may pass arguments after the skill name, e.g.:
 
 Extract these from the invocation:
 
-| Argument | Default | Meaning |
-|---|---|---|
-| `--fix` | off | Create a branch and apply SQL rewrites after the report |
-| `--fix-top N` | 10 | When fixing, only fix the top-N tables by impact score (avoids huge PRs) |
-| `--branch NAME` | `perf/sql-fixes-YYYY-MM-DD` | Git branch name to create when `--fix` is set |
-| `--top N` | 20 | How many most-depended-upon tables to analyze |
-| `--all-files` | off | Analyze every SQL file, not just the top-N most depended-upon |
-| `--score-threshold N` | 0 | Skip tables with `impact_score` below N |
-| `--explain` | off | Fetch `EXPLAIN COST` plans from Databricks |
-| `--profile NAME` | `premium` | Databricks CLI profile |
-| `--ancestors TABLE` | off | Print transitive dependencies of a single table and stop |
-| `--graph` | off | Render a NetworkX dependency subgraph for the top-N tables |
-| `--graph-output FILE` | (interactive) | Save the graph to a file (PNG/SVG/PDF). Omit to display interactively |
-| `--graph-depth N` | 1 | Hops beyond the top-N nodes to include as context nodes in the graph |
+| Argument              | Default                     | Meaning                                                                  |
+| --------------------- | --------------------------- | ------------------------------------------------------------------------ |
+| `--fix`               | off                         | Create a branch and apply SQL rewrites after the report                  |
+| `--fix-top N`         | 10                          | When fixing, only fix the top-N tables by impact score (avoids huge PRs) |
+| `--branch NAME`       | `perf/sql-fixes-YYYY-MM-DD` | Git branch name to create when `--fix` is set                            |
+| `--top N`             | 20                          | How many most-depended-upon tables to analyze                            |
+| `--all-files`         | off                         | Analyze every SQL file, not just the top-N most depended-upon            |
+| `--score-threshold N` | 0                           | Skip tables with `impact_score` below N                                  |
+| `--explain`           | off                         | Fetch `EXPLAIN COST` plans from Databricks                               |
+| `--profile NAME`      | `premium`                   | Databricks CLI profile                                                   |
+| `--ancestors TABLE`   | off                         | Print transitive dependencies of a single table and stop                 |
+| `--graph`             | off                         | Render a NetworkX dependency subgraph for the top-N tables               |
+| `--graph-output FILE` | (interactive)               | Save the graph to a file (PNG/SVG/PDF). Omit to display interactively    |
+| `--graph-depth N`     | 1                           | Hops beyond the top-N nodes to include as context nodes in the graph     |
 
 ---
 
@@ -54,11 +54,13 @@ databricks -v
 - If the command is not found, install it:
 
 **macOS/Linux (Homebrew — preferred):**
+
 ```bash
 brew tap databricks/tap && brew install databricks
 ```
 
 **Linux fallback (no sudo):**
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
 ```
@@ -84,6 +86,7 @@ databricks auth profiles
 **Authentication opens a browser (OAuth — never use PATs).** After the browser flow the CLI prints `Profile premium was successfully saved`.
 
 **Verify** with a lightweight command before proceeding:
+
 ```bash
 databricks current-user me --profile premium
 ```
@@ -107,6 +110,7 @@ uv run python .agents/skills/fabricks-sql-analyzer/sql_dependency_analyzer.py \
 `--row-counts` is always included by default (fetches live `COUNT(*)` from Databricks to weight severity by table size).
 
 Additional flags the user may request:
+
 - `--explain` — fetch `EXPLAIN COST` plans from Databricks
 - `--profile <name>` — Databricks CLI profile (default: `premium`)
 - `--ancestors <table>` — print transitive dependencies of a single table and stop
@@ -126,18 +130,19 @@ Generate a report using the structure below. Fill every section with real findin
 
 ```markdown
 # Fabricks SQL Dependency & Performance Report
+
 _Generated: {date}_
 
 ## Executive Summary
 
-| Metric | Value |
-|--------|-------|
-| SQL files scanned | … |
-| Graph nodes | … |
-| Graph edges | … |
-| Weakly connected components | … |
-| Dependency cycles detected | … |
-| Tables analyzed | … |
+| Metric                      | Value |
+| --------------------------- | ----- |
+| SQL files scanned           | …     |
+| Graph nodes                 | …     |
+| Graph edges                 | …     |
+| Weakly connected components | …     |
+| Dependency cycles detected  | …     |
+| Tables analyzed             | …     |
 
 > **Key finding**: One-sentence summary of the most critical issue found.
 
@@ -148,9 +153,9 @@ _Generated: {date}_
 Tables with the highest number of dependents are the most critical to optimize — a performance problem here cascades to every downstream job.
 
 | Rank | Table | Dependents | Row Count | Impact Score | Warnings |
-|------|-------|-----------|-----------|-------------|----------|
-| 1 | … | … | … | … | … |
-| … | … | … | … | … | … |
+| ---- | ----- | ---------- | --------- | ------------ | -------- |
+| 1    | …     | …          | …         | …            | …        |
+| …    | …     | …          | …         | …            | …        |
 
 > Tables are sorted by **impact_score** = (dependents × 10) + (row_count_millions × 5) + severity_sum.
 
@@ -166,16 +171,17 @@ For each table with at least one warning, include a sub-section:
 
 #### Detected Issues
 
-| Severity | Pattern | Description |
-|----------|---------|-------------|
-| ⚠️ High | SELECT * | Avoid SELECT * — select only needed columns to reduce shuffle/IO |
-| … | … | … |
+| Severity | Pattern   | Description                                                       |
+| -------- | --------- | ----------------------------------------------------------------- |
+| ⚠️ High  | SELECT \* | Avoid SELECT \* — select only needed columns to reduce shuffle/IO |
+| …        | …         | …                                                                 |
 
 #### Recommended Fix
 
 Provide a concrete, Spark SQL–idiomatic rewrite or refactoring advice.
 Reference the Fabricks step layer (staging / raw / transf / core / semantic) when relevant.
 Prefer:
+
 - CTEs over repeated subqueries
 - `LEFT ANTI JOIN` over `NOT IN (SELECT …)`
 - `LEFT SEMI JOIN` or `EXISTS` over `WHERE x IN (SELECT …)`
@@ -241,10 +247,11 @@ uv run python .agents/skills/fabricks-sql-analyzer/sql_dependency_analyzer.py \
 ```
 
 What the graph shows:
+
 - **Nodes** — tables in the top-N set plus their immediate neighbours (`--graph-depth 1`, increase for wider context)
 - **Node size** — proportional to in-degree (more dependents = bigger node)
 - **Node colour**
-  - 🔴 Red  — top-tercile in-degree (hottest tables, most depended-upon)
+  - 🔴 Red — top-tercile in-degree (hottest tables, most depended-upon)
   - 🟠 Orange — mid-tercile
   - 🔵 Steel-blue — low in-degree
 - **Edges** — directed arrows showing which table depends on which
@@ -295,26 +302,27 @@ For each file in the fix list:
 
 Apply **only** the fixes that correspond to warnings actually detected in that file. Never invent new changes.
 
-| Warning | Fix to apply |
-|---|---|
-| `SELECT DISTINCT` | Replace `SELECT DISTINCT` with `SELECT` + add `GROUP BY ALL` at the end of the query/subquery |
-| `NOT IN subquery` | Rewrite `WHERE x NOT IN (SELECT y FROM t)` as `LEFT ANTI JOIN t ON x = t.y` |
-| `IN subquery` | Rewrite `WHERE x IN (SELECT y FROM t)` as `LEFT SEMI JOIN t ON x = t.y` or `WHERE EXISTS (SELECT 1 FROM t WHERE …)` |
-| `Repeated scan` (≥2×) | Introduce a CTE at the top: `WITH <alias> AS (SELECT … FROM <table>)` and replace all inline references |
-| `OR in JOIN condition` | Split `JOIN t ON a.k = t.k OR a.k2 = t.k2` into two branches combined with `UNION ALL` (deduplicate if needed) |
-| `Subquery in SELECT` | Rewrite as a CTE + `LEFT JOIN`, moving the correlated subquery into an aggregation CTE |
-| `EXPLODE` | Add a `WHERE` filter CTE before the `EXPLODE` to reduce row count first |
-| `SELECT *` on gold layer | Replace with an explicit column list drawn from columns actually produced by upstream sources — if the full column list cannot be determined statically, leave a `-- TODO: replace SELECT * with explicit columns` comment and skip the rewrite |
-| `UDF in WHERE/JOIN` | Replace with a built-in Spark SQL equivalent when the replacement is unambiguous (e.g., `udf_lower(x)` → `LOWER(x)`); otherwise leave a `-- TODO: replace UDF with built-in` comment |
-| `LIKE %val%` | Only rewrite if a clear prefix-only pattern is evident; leave other cases unchanged |
-| `ILIKE` | Rewrite as `LOWER(col) LIKE LOWER('pattern')` where safe; or, if the column is a string column used repeatedly for case-insensitive comparison, recommend setting `COLLATE UTF8_LCASE` on the column (see Collation tip below) |
-| `LOWER() comparison` | Rewrite `LOWER(col) = LOWER('val')` (or `LOWER(col) = 'val'`) by setting `COLLATE UTF8_LCASE` on the column and using a plain equality: `col = 'val'`. This unlocks Delta file-skipping and Photon optimization, yielding up to 22× speedup. Requires `ALTER TABLE … ALTER COLUMN … TYPE STRING COLLATE UTF8_LCASE` followed by `ANALYZE TABLE … COMPUTE STATISTICS FOR COLUMNS …`. Use language-specific collations (e.g., `DE`, `FR`, `EL_AI`) when sorting/comparing non-English text. |
-| `CAST on JOIN key` | Move the CAST into an upstream CTE so the join key is a plain column reference |
-| `array_contains in JOIN` | Rewrite as a `LATERAL VIEW EXPLODE` + equi-join, or filter before the join using a semi-join |
-| `Implicit cross join` | Rewrite `FROM a, b WHERE a.k = b.k` as `FROM a JOIN b ON a.k = b.k` |
-| `Unbounded window frame` | Remove the explicit `ROWS/RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING` if the default frame is equivalent, or narrow to `ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW` where semantics allow |
+| Warning                  | Fix to apply                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SELECT DISTINCT`        | Replace `SELECT DISTINCT` with `SELECT` + add `GROUP BY ALL` at the end of the query/subquery                                                                                                                                                                                                                                                                                                                                                                                             |
+| `NOT IN subquery`        | Rewrite `WHERE x NOT IN (SELECT y FROM t)` as `LEFT ANTI JOIN t ON x = t.y`                                                                                                                                                                                                                                                                                                                                                                                                               |
+| `IN subquery`            | Rewrite `WHERE x IN (SELECT y FROM t)` as `LEFT SEMI JOIN t ON x = t.y` or `WHERE EXISTS (SELECT 1 FROM t WHERE …)`                                                                                                                                                                                                                                                                                                                                                                       |
+| `Repeated scan` (≥2×)    | Introduce a CTE at the top: `WITH <alias> AS (SELECT … FROM <table>)` and replace all inline references                                                                                                                                                                                                                                                                                                                                                                                   |
+| `OR in JOIN condition`   | Split `JOIN t ON a.k = t.k OR a.k2 = t.k2` into two branches combined with `UNION ALL` (deduplicate if needed)                                                                                                                                                                                                                                                                                                                                                                            |
+| `Subquery in SELECT`     | Rewrite as a CTE + `LEFT JOIN`, moving the correlated subquery into an aggregation CTE                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `EXPLODE`                | Add a `WHERE` filter CTE before the `EXPLODE` to reduce row count first                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| `SELECT *` on gold layer | Replace with an explicit column list drawn from columns actually produced by upstream sources — if the full column list cannot be determined statically, leave a `-- TODO: replace SELECT * with explicit columns` comment and skip the rewrite                                                                                                                                                                                                                                           |
+| `UDF in WHERE/JOIN`      | Replace with a built-in Spark SQL equivalent when the replacement is unambiguous (e.g., `udf_lower(x)` → `LOWER(x)`); otherwise leave a `-- TODO: replace UDF with built-in` comment                                                                                                                                                                                                                                                                                                      |
+| `LIKE %val%`             | Only rewrite if a clear prefix-only pattern is evident; leave other cases unchanged                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `ILIKE`                  | Rewrite as `LOWER(col) LIKE LOWER('pattern')` where safe; or, if the column is a string column used repeatedly for case-insensitive comparison, recommend setting `COLLATE UTF8_LCASE` on the column (see Collation tip below)                                                                                                                                                                                                                                                            |
+| `LOWER() comparison`     | Rewrite `LOWER(col) = LOWER('val')` (or `LOWER(col) = 'val'`) by setting `COLLATE UTF8_LCASE` on the column and using a plain equality: `col = 'val'`. This unlocks Delta file-skipping and Photon optimization, yielding up to 22× speedup. Requires `ALTER TABLE … ALTER COLUMN … TYPE STRING COLLATE UTF8_LCASE` followed by `ANALYZE TABLE … COMPUTE STATISTICS FOR COLUMNS …`. Use language-specific collations (e.g., `DE`, `FR`, `EL_AI`) when sorting/comparing non-English text. |
+| `CAST on JOIN key`       | Move the CAST into an upstream CTE so the join key is a plain column reference                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `array_contains in JOIN` | Rewrite as a `LATERAL VIEW EXPLODE` + equi-join, or filter before the join using a semi-join                                                                                                                                                                                                                                                                                                                                                                                              |
+| `Implicit cross join`    | Rewrite `FROM a, b WHERE a.k = b.k` as `FROM a JOIN b ON a.k = b.k`                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `Unbounded window frame` | Remove the explicit `ROWS/RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING` if the default frame is equivalent, or narrow to `ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW` where semantics allow                                                                                                                                                                                                                                                                            |
 
 **Safety rules:**
+
 - Preserve all existing comments and formatting style.
 - Do not rename columns, add/remove columns, or change output schema.
 - Do not change the output table name or Fabricks step/topic/item path.

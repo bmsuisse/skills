@@ -2,12 +2,14 @@
 Table metadata loader (standalone, matching service implementation).
 """
 
+import bisect
 import json
-from pathlib import Path
-from typing import Dict, Any, Optional
 from functools import lru_cache
+from pathlib import Path
+from typing import Any, Dict, Optional
 
 from scripts.helpers import run_in_threadpool
+
 
 class TableMetadataLoader:
     """Loads table metadata from JSON files."""
@@ -18,14 +20,14 @@ class TableMetadataLoader:
         "small": {"max": 10000, "multiplier": 0.5, "severity": "50% of baseline (minor impact)"},
         "medium": {"max": 100000, "multiplier": 1.0, "severity": "baseline severity"},
         "large": {"max": 1000000, "multiplier": 1.5, "severity": "150% of baseline (high impact)"},
-        "very_large": {"max": float('inf'), "multiplier": 2.5, "severity": "250% of baseline (critical concern)"},
+        "very_large": {"max": float("inf"), "multiplier": 2.5, "severity": "250% of baseline (critical concern)"},
     }
 
     @staticmethod
     def _load_single_json(json_file: Path) -> Optional[tuple[str, Dict[str, Any]]]:
         """Load a single JSON file and return (normalized_name, metadata) tuple."""
         try:
-            with open(json_file, 'r', encoding='utf-8') as f:
+            with open(json_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
 
             table_name = data.get("table_name", "")
@@ -48,7 +50,7 @@ class TableMetadataLoader:
                 "rowCount": row_count,  # Alias for compatibility
                 "sizeCategory": size_category,
                 "impactMultiplier": category_info["multiplier"],
-                "friendlySize": TableMetadataLoader._get_friendly_size(row_count, size_category),
+                "friendlySize": TableMetadataLoader._get_friendly_size(row_count),
                 "severityAdjustment": category_info["severity"],
             }
 
@@ -105,21 +107,13 @@ class TableMetadataLoader:
         for category, info in TableMetadataLoader.SIZE_CATEGORIES.items():
             if row_count < info["max"]:
                 return category, info
-            
+
         return "very_large", TableMetadataLoader.SIZE_CATEGORIES["very_large"]
 
     @staticmethod
-    def _get_friendly_size(row_count: int, category: str) -> str:
-        """Get human-readable size description."""
-        if row_count == 0:
-            return "empty"
-        elif row_count < 1000:
-            return f"{row_count} rows (tiny)"
-        elif row_count < 10000:
-            return f"{row_count:,} rows (small)"
-        elif row_count < 100000:
-            return f"{row_count:,} rows (medium)"
-        elif row_count < 1000000:
-            return f"{row_count:,} rows (large)"
-        else:
-            return f"{row_count:,} rows (very large)"
+    def _get_friendly_size(row_count: int) -> str:
+        thresholds = [0, 1000, 10000, 100000, 1000000]
+        labels = ["empty", "tiny", "small", "medium", "large", "very large"]
+        label = labels[bisect.bisect_right(thresholds, row_count) - 1]
+
+        return f"{row_count:,} rows ({label})" if row_count else "empty"

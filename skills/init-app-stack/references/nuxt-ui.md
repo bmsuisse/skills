@@ -14,9 +14,9 @@ bun add @nuxt/ui tailwindcss
 ```ts
 // nuxt.config.ts
 export default defineNuxtConfig({
-  modules: ['@nuxt/ui'],
-  css: ['~/assets/css/main.css'],
-})
+  modules: ["@nuxt/ui"],
+  css: ["~/assets/css/main.css"],
+});
 ```
 
 ```css
@@ -47,6 +47,7 @@ Uses Iconify (200,000+ icons). Format: `i-{collection}-{name}`
 ```
 
 Install collections locally:
+
 ```bash
 bun add @iconify-json/lucide @iconify-json/simple-icons
 ```
@@ -59,9 +60,9 @@ bun add @iconify-json/lucide @iconify-json/simple-icons
 // app.config.ts
 export default defineAppConfig({
   ui: {
-    colors: { primary: 'indigo', neutral: 'zinc' }
-  }
-})
+    colors: { primary: "indigo", neutral: "zinc" },
+  },
+});
 ```
 
 Always use semantic utilities (`text-default`, `bg-elevated`, `border-muted`) — never raw Tailwind palette colors.
@@ -81,32 +82,32 @@ Find slot names in `.nuxt/ui/<component>.ts`.
 
 ```ts
 // Toast notifications
-const toast = useToast()
-toast.add({ title: 'Saved', color: 'success', icon: 'i-lucide-check' })
+const toast = useToast();
+toast.add({ title: "Saved", color: "success", icon: "i-lucide-check" });
 
 // Programmatic overlays
-const overlay = useOverlay()
-const modal = overlay.create(MyModal)
-const { result } = modal.open({ title: 'Confirm' })
-await result
+const overlay = useOverlay();
+const modal = overlay.create(MyModal);
+const { result } = modal.open({ title: "Confirm" });
+await result;
 
 // Keyboard shortcuts
 defineShortcuts({
   meta_k: () => openSearch(),
   escape: () => close(),
-})
+});
 ```
 
 ## Form validation (Standard Schema — Zod/Valibot/Yup/Joi)
 
 ```vue
 <script setup lang="ts">
-import { z } from 'zod'
+import { z } from "zod";
 const schema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
-})
-const state = reactive({ email: '', password: '' })
+});
+const state = reactive({ email: "", password: "" });
 </script>
 
 <template>
@@ -137,11 +138,13 @@ const state = reactive({ email: '', password: '' })
 </USlideover>
 
 <!-- Dropdown -->
-<UDropdownMenu :items="[
-  { label: 'Edit', icon: 'i-lucide-pencil' },
-  { type: 'separator' },
-  { label: 'Delete', icon: 'i-lucide-trash', color: 'error' },
-]">
+<UDropdownMenu
+  :items="[
+    { label: 'Edit', icon: 'i-lucide-pencil' },
+    { type: 'separator' },
+    { label: 'Delete', icon: 'i-lucide-trash', color: 'error' },
+  ]"
+>
   <UButton icon="i-lucide-ellipsis-vertical" variant="ghost" />
 </UDropdownMenu>
 ```

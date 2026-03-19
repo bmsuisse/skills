@@ -7,3 +7,13 @@
 .cache/
 .pycache/
 .__pycache__/
+.ruff_cache/
+
+# Environment files
+.env
+.env.*
+.venv/
+node_modules/
+
+# UV Lock file
+uv.lock

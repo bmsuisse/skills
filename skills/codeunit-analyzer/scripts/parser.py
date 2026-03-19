@@ -13,14 +13,51 @@ class CodeunitParser:
 
     # Reserved words to exclude from call extraction
     RESERVED_WORDS = {
-        "INIT", "INSERT", "MODIFY", "DELETE", "RENAME", "COMMIT",
-        "FINDFIRST", "FINDLAST", "FINDSET", "GET", "SETRANGE",
-        "SETFILTER", "COPYSTR", "EXIT", "STRPOS", "FORMAT",
-        "IF", "THEN", "ELSE", "BEGIN", "END", "WITH", "DO",
-        "CASE", "OF", "REPEAT", "UNTIL", "WHILE", "FOR", "TO",
-        "CLEAR", "ERROR", "MESSAGE", "CONFIRM", "CALCFIELDS",
-        "CALCSUM", "UPPERCASE", "LOWERCASE", "STRLEN", "TESTFIELD",
-        "VALIDATE", "EVALUATE", "ROUND", "ABS", "POWER",
+        "INIT",
+        "INSERT",
+        "MODIFY",
+        "DELETE",
+        "RENAME",
+        "COMMIT",
+        "FINDFIRST",
+        "FINDLAST",
+        "FINDSET",
+        "GET",
+        "SETRANGE",
+        "SETFILTER",
+        "COPYSTR",
+        "EXIT",
+        "STRPOS",
+        "FORMAT",
+        "IF",
+        "THEN",
+        "ELSE",
+        "BEGIN",
+        "END",
+        "WITH",
+        "DO",
+        "CASE",
+        "OF",
+        "REPEAT",
+        "UNTIL",
+        "WHILE",
+        "FOR",
+        "TO",
+        "CLEAR",
+        "ERROR",
+        "MESSAGE",
+        "CONFIRM",
+        "CALCFIELDS",
+        "CALCSUM",
+        "UPPERCASE",
+        "LOWERCASE",
+        "STRLEN",
+        "TESTFIELD",
+        "VALIDATE",
+        "EVALUATE",
+        "ROUND",
+        "ABS",
+        "POWER",
     }
 
     # Statement keywords that indicate not a procedure definition
@@ -30,12 +67,12 @@ class CodeunitParser:
         cal_path = Path(cal_path)
 
         # Handle both .cs and .c-al inputs
-        if cal_path.suffix == '.cs':
+        if cal_path.suffix == ".cs":
             self.cs_path = cal_path
-            self.cal_path = cal_path.with_suffix('.c-al')
-        elif cal_path.suffix == '.c-al':
+            self.cal_path = cal_path.with_suffix(".c-al")
+        elif cal_path.suffix == ".c-al":
             self.cal_path = cal_path
-            self.cs_path = cal_path.with_suffix('.cs')
+            self.cs_path = cal_path.with_suffix(".cs")
         else:
             self.cal_path = cal_path
             self.cs_path = None
@@ -46,13 +83,7 @@ class CodeunitParser:
         self.object_id = None
         self.object_name = None
         self.procedures = {}
-        self.dependencies = {
-            "reports": set(),
-            "pages": set(),
-            "codeunits": set(),
-            "xmlports": set(),
-            "tables": set()
-        }
+        self.dependencies = {"reports": set(), "pages": set(), "codeunits": set(), "xmlports": set(), "tables": set()}
         self.warnings = []
         self.global_variables = {}
         self.table_variables = {}
@@ -566,16 +597,18 @@ class CodeunitParser:
         side_effects = []
         for proc_name, data in self.procedures.items():
             for write in data["writes"]:
-                side_effects.append({
-                    "operation": write["operation"],
-                    "tableVar": write.get("tableVar"),
-                    "tableName": write.get("tableName"),
-                    "isTemporary": write.get("isTemporary", False),
-                    "guard": write.get("guard"),
-                    "runTrigger": write.get("runTrigger", True),
-                    "line": write["line"],
-                    "procedure": proc_name,
-                })
+                side_effects.append(
+                    {
+                        "operation": write["operation"],
+                        "tableVar": write.get("tableVar"),
+                        "tableName": write.get("tableName"),
+                        "isTemporary": write.get("isTemporary", False),
+                        "guard": write.get("guard"),
+                        "runTrigger": write.get("runTrigger", True),
+                        "line": write["line"],
+                        "procedure": proc_name,
+                    }
+                )
 
         return {
             "object_id": self.object_id,

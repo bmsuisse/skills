@@ -24,15 +24,19 @@ description: >
 ## Sub-Commands
 
 ### 1. **list** - Show All Codeunits
+
 List all available .cs and .c-al files in the workspace.
 
 ### 2. **analyze** - Deep Codeunit Analysis
+
 Analyze a specific codeunit with bottleneck detection and dependency extraction.
 
 ### 3. **scan** - Project-Wide Bottleneck Scan
+
 Scan all codeunits for performance issues and generate ranked report.
 
 ### 4. **optimize** - Optimization Recommendations
+
 Get actionable refactoring suggestions with code examples.
 
 ---
@@ -65,13 +69,14 @@ python .skills/codeunit-analyzer/analyze.py optimize 80.cs
 ### Pattern 1: List Codeunits
 
 **User says:**
+
 - "List all codeunits"
 - "Show me available files"
 - "What codeunits can I analyze?"
 
 **Action:**
+
 ```bash
-cd /c/Users/poskinf/Documents/Workspace/OneTrade
 python .skills/codeunit-analyzer/analyze.py list
 ```
 
@@ -83,17 +88,19 @@ Table showing: File name | Object name | ID
 ### Pattern 2: Analyze Specific Codeunit
 
 **User says:**
+
 - "Analyze codeunit 80"
 - "Explain what codeunit 1.cs does"
 - "Analyze <filename>"
 
 **Action:**
+
 ```bash
-cd /c/Users/poskinf/Documents/Workspace/OneTrade
 python .skills/codeunit-analyzer/analyze.py analyze <filename>
 ```
 
 **Steps:**
+
 1. If no filename provided, run `list` first
 2. Execute analysis command
 3. Display bottlenecks sorted by severity
@@ -101,6 +108,7 @@ python .skills/codeunit-analyzer/analyze.py analyze <filename>
 5. If critical issues found, suggest running `optimize`
 
 **Output includes:**
+
 - Codeunit overview (ID, name, procedures)
 - Performance bottlenecks with severity levels
 - Dependencies (tables referenced)
@@ -111,23 +119,26 @@ python .skills/codeunit-analyzer/analyze.py analyze <filename>
 ### Pattern 3: Scan All Codeunits
 
 **User says:**
+
 - "Scan for bottlenecks"
 - "Find all performance issues"
 - "Which codeunits are slow?"
 - "Performance audit"
 
 **Action:**
+
 ```bash
-cd /c/Users/poskinf/Documents/Workspace/OneTrade
 python .skills/codeunit-analyzer/analyze.py scan
 ```
 
 **Save to JSON:**
+
 ```bash
 python .skills/codeunit-analyzer/analyze.py scan -o bottlenecks_$(date +%Y%m%d).json
 ```
 
 **Steps:**
+
 1. Scan all .cs and .c-al files
 2. Detect bottlenecks in each
 3. Sort by severity and score
@@ -136,6 +147,7 @@ python .skills/codeunit-analyzer/analyze.py scan -o bottlenecks_$(date +%Y%m%d).
 6. Show critical issues first
 
 **Output includes:**
+
 - Total issue count by severity
 - Top 10 worst codeunits (by score)
 - Critical issues detailed (first 5)
@@ -146,18 +158,20 @@ python .skills/codeunit-analyzer/analyze.py scan -o bottlenecks_$(date +%Y%m%d).
 ### Pattern 4: Optimize Codeunit
 
 **User says:**
+
 - "Optimize codeunit 80"
 - "How can I improve performance?"
 - "Fix bottlenecks in <file>"
 - "Make it faster"
 
 **Action:**
+
 ```bash
-cd /c/Users/poskinf/Documents/Workspace/OneTrade
 python .skills/codeunit-analyzer/analyze.py optimize <filename>
 ```
 
 **Steps:**
+
 1. Analyze the file for bottlenecks
 2. Group issues by severity
 3. Create phased optimization plan
@@ -165,6 +179,7 @@ python .skills/codeunit-analyzer/analyze.py optimize <filename>
 5. Estimate performance impact
 
 **Output includes:**
+
 - Phase 1: Critical fixes (do first)
 - Phase 2: High priority fixes (do next)
 - Phase 3: Medium priority backlog
@@ -176,6 +191,7 @@ python .skills/codeunit-analyzer/analyze.py optimize <filename>
 ## Interactive Flow
 
 **Scenario 1: User invokes with just "list"**
+
 ```
 User: /codeunit-analyzer list
 → Run: python .skills/codeunit-analyzer/analyze.py list
@@ -183,6 +199,7 @@ User: /codeunit-analyzer list
 ```
 
 **Scenario 2: User wants to analyze but doesn't specify file**
+
 ```
 User: /codeunit-analyzer analyze
 → Run list first to show options
@@ -192,6 +209,7 @@ User: /codeunit-analyzer analyze
 ```
 
 **Scenario 3: User provides filename directly**
+
 ```
 User: /codeunit-analyzer analyze 1.cs
 → Run: python .skills/codeunit-analyzer/analyze.py analyze 1.cs
@@ -199,6 +217,7 @@ User: /codeunit-analyzer analyze 1.cs
 ```
 
 **Scenario 4: Generic request**
+
 ```
 User: "Find performance issues"
 → Infer command: scan
@@ -212,9 +231,11 @@ User: "Find performance issues"
 The script detects these performance anti-patterns:
 
 ### 1. **N+1 Query** (Critical - 150 points)
+
 Database queries inside loops causing massive slowdown.
 
 **Example:**
+
 ```cal
 // ❌ Bad: Queries database for each iteration
 REPEAT
@@ -230,9 +251,11 @@ UNTIL SalesLine.NEXT = 0;
 ```
 
 ### 2. **Explicit COMMIT** (High - 100 points)
+
 Manual transaction commits that break rollback behavior.
 
 **Example:**
+
 ```cal
 // ❌ Bad: Breaks automatic rollback
 IF Customer.INSERT THEN BEGIN
@@ -247,9 +270,11 @@ END;
 ```
 
 ### 3. **Nested Loops with Writes** (High - 120 points)
+
 Database writes inside nested loops.
 
 **Example:**
+
 ```cal
 // ❌ Bad: Write operation in nested loop
 REPEAT
@@ -269,6 +294,7 @@ UNTIL SalesLine.NEXT = 0;
 ```
 
 ### 4. **High Write Density** (Medium - 60 points)
+
 Too many individual write operations (>10 per codeunit).
 
 **Recommendation:** Batch operations or use MODIFYALL/DELETEALL.
@@ -357,6 +383,7 @@ That's it! No `requirements.txt`, no `pip install`, no virtual environment.
 ### Common Errors
 
 **1. No codeunits found**
+
 ```
 Error: No codeunits found.
 Expected directory: c:\Users\...\data\codeunits
@@ -365,6 +392,7 @@ Expected directory: c:\Users\...\data\codeunits
 **Solution:** Create the data directory and add your .cs or .c-al files.
 
 **2. File not found**
+
 ```
 Error: FileNotFoundError: '80.cs'
 ```
@@ -372,6 +400,7 @@ Error: FileNotFoundError: '80.cs'
 **Solution:** Run `python .skills/codeunit-analyzer/analyze.py list` to see available files.
 
 **3. No bottlenecks detected**
+
 ```
 [OK] No bottlenecks detected - this codeunit is already optimized!
 ```
@@ -385,19 +414,21 @@ Error: FileNotFoundError: '80.cs'
 ### Script won't run
 
 **Check Python version:**
+
 ```bash
 python --version  # Should be 3.10+
 ```
 
 **Run from project root:**
+
 ```bash
-cd /c/Users/poskinf/Documents/Workspace/OneTrade
 python .skills/codeunit-analyzer/analyze.py list
 ```
 
 ### No files listed
 
 **Check data directory:**
+
 ```bash
 ls data/codeunits/*.cs | wc -l
 ```
@@ -427,11 +458,13 @@ python .skills/codeunit-analyzer/analyze.py list
 ## Examples
 
 ### Example 1: Quick list
+
 ```bash
 python .skills/codeunit-analyzer/analyze.py list
 ```
 
 Output:
+
 ```
 Found 2414 codeunits:
 
@@ -443,11 +476,13 @@ File                 Object Name                                        ID
 ```
 
 ### Example 2: Analyze specific file
+
 ```bash
 python .skills/codeunit-analyzer/analyze.py analyze 80.cs
 ```
 
 Output:
+
 ```
 ================================================================================
 CODEUNIT: Sales-Post
@@ -468,11 +503,13 @@ Medium: 1
 ```
 
 ### Example 3: Full scan
+
 ```bash
 python .skills/codeunit-analyzer/analyze.py scan -o scan_results.json
 ```
 
 Output:
+
 ```
 ================================================================================
 BOTTLENECK SCAN SUMMARY
@@ -511,6 +548,7 @@ Full report saved to: scan_results.json
 ## Limitations
 
 This is a **simplified parser** using regex. It may not detect:
+
 - Complex nested logic
 - Dynamic table references
 - Indirect procedure calls
@@ -522,16 +560,16 @@ For production use, consider the full analysis service with Pydantic schemas and
 
 ## Comparison: Standalone vs Full Service
 
-| Feature | Standalone Script | Full Service |
-|---------|------------------|--------------|
-| Dependencies | None | Pydantic, Cashews, etc. |
-| Setup | Zero | Virtual env + pip install |
-| Speed | Fast | Faster (cached) |
-| Accuracy | Good (regex) | Excellent (full parser) |
-| Offline | ✅ Yes | ✅ Yes |
-| Table metadata | ❌ No | ✅ Yes |
-| AI explanations | ❌ No | ✅ Yes (with Azure) |
-| Best for | Quick analysis | Production use |
+| Feature         | Standalone Script | Full Service              |
+| --------------- | ----------------- | ------------------------- |
+| Dependencies    | None              | Pydantic, Cashews, etc.   |
+| Setup           | Zero              | Virtual env + pip install |
+| Speed           | Fast              | Faster (cached)           |
+| Accuracy        | Good (regex)      | Excellent (full parser)   |
+| Offline         | ✅ Yes            | ✅ Yes                    |
+| Table metadata  | ❌ No             | ✅ Yes                    |
+| AI explanations | ❌ No             | ✅ Yes (with Azure)       |
+| Best for        | Quick analysis    | Production use            |
 
 **Use standalone for:** Quick scans, CI/CD, no-dependency environments
 **Use full service for:** Detailed analysis, AI insights, production workflows

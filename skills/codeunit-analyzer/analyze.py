@@ -14,19 +14,20 @@ import json
 import sys
 from pathlib import Path
 
-from scripts.parser import CodeunitParser
 from scripts.detector import BottleneckDetector
-from scripts.table_metadata import TableMetadataLoader
 from scripts.helpers import run_in_threadpool
-
+from scripts.parser import CodeunitParser
+from scripts.table_metadata import TableMetadataLoader
 
 # ============================================================================
 # FILE OPERATIONS
 # ============================================================================
 
+
 def get_data_dir():
     """Get the data directory path."""
-    return Path(__file__).parent.parent.parent / "data" 
+    return Path(__file__).parent.parent.parent / "data"
+
 
 def _parse_codeunit_file(file, table_metadata=None):
     """Parse a single codeunit file (for parallel execution)."""
@@ -37,16 +38,11 @@ def _parse_codeunit_file(file, table_metadata=None):
             "path": file,
             "name": file.name,
             "object_name": data.get("object_name", "Unknown"),
-            "object_id": data.get("object_id", "N/A")
+            "object_id": data.get("object_id", "N/A"),
         }
 
     except Exception:
-        return {
-            "path": file,
-            "name": file.name,
-            "object_name": "Error parsing",
-            "object_id": "N/A"
-        }
+        return {"path": file, "name": file.name, "object_name": "Error parsing", "object_id": "N/A"}
 
 
 def list_codeunits():
@@ -90,10 +86,7 @@ def analyze_codeunit(filename, table_metadata=None):
     detector = BottleneckDetector(data, file_path, table_metadata=table_metadata)
     bottlenecks = detector.detect()
 
-    return {
-        "object": data,
-        "bottlenecks": bottlenecks
-    }
+    return {"object": data, "bottlenecks": bottlenecks}
 
 
 def _analyze_codeunit_for_scan(file_info, table_metadata):
@@ -101,13 +94,13 @@ def _analyze_codeunit_for_scan(file_info, table_metadata):
     try:
         result = analyze_codeunit(file_info["name"], table_metadata=table_metadata)
         bottlenecks = []
-    
+
         for b in result["bottlenecks"]:
             b["codeunit"]["file"] = file_info["name"]
             bottlenecks.append(b)
-    
+
         return bottlenecks
-    
+
     except Exception as e:
         print(f"Error analyzing {file_info['name']}: {e}", file=sys.stderr)
         return []
@@ -136,6 +129,7 @@ def scan_all_bottlenecks():
 # FORMATTING FUNCTIONS
 # ============================================================================
 
+
 def format_severity_badge(severity):
     """Return colored severity badge."""
     badges = {
@@ -157,9 +151,9 @@ def format_bottleneck(bottleneck, index):
     recommendation = bottleneck.get("recommendation", "")
 
     output = [
-        f"\n{'='*80}",
+        f"\n{'=' * 80}",
         f"[{index + 1}] {severity} - {pattern}",
-        f"{'='*80}",
+        f"{'=' * 80}",
         f"Procedure: {procedure}",
         f"Score: {score} points",
         "\nIssue:",
@@ -179,6 +173,7 @@ def format_bottleneck(bottleneck, index):
 # COMMAND HANDLERS
 # ============================================================================
 
+
 def cmd_list():
     """List all available codeunits."""
     print("Fetching codeunits...\n")
@@ -195,9 +190,9 @@ def cmd_list():
     print("=" * 120)
 
     for file_info in files:
-        name = file_info['name']
-        obj_name = file_info['object_name'] or "Unknown"
-        obj_id = file_info['object_id'] or "N/A"
+        name = file_info["name"]
+        obj_name = file_info["object_name"] or "Unknown"
+        obj_id = file_info["object_id"] or "N/A"
         print(f"{name:<20} {obj_name:<50} {obj_id:<10}")
 
     return 0
@@ -214,7 +209,7 @@ def cmd_analyze(filename, with_ai=False):
         print(f"Error: {e}")
         print("\nRun 'python .skills/codeunit-analyzer/analyze.py list' to see available files.")
         return 1
-    
+
     except Exception as e:
         print(f"Error: {e}")
         return 1
@@ -232,9 +227,9 @@ def cmd_analyze(filename, with_ai=False):
 
     # Display bottlenecks
     if bottlenecks:
-        print(f"\n\n{'='*80}")
+        print(f"\n\n{'=' * 80}")
         print(f"PERFORMANCE BOTTLENECKS ({len(bottlenecks)} issues)")
-        print(f"{'='*80}")
+        print(f"{'=' * 80}")
 
         # Group by severity
         critical = [b for b in bottlenecks if b.get("severity") == "critical"]
@@ -257,17 +252,17 @@ def cmd_analyze(filename, with_ai=False):
     # Display dependencies
     deps = obj.get("dependencies", {})
     if deps.get("tables"):
-        print(f"\n\n{'='*80}")
+        print(f"\n\n{'=' * 80}")
         print("DEPENDENCIES")
-        print(f"{'='*80}")
+        print(f"{'=' * 80}")
         print(f"\nTables ({len(deps['tables'])}):")
         for table in deps["tables"]:
             print(f"  - {table}")
 
     if with_ai:
-        print(f"\n\n{'='*80}")
+        print(f"\n\n{'=' * 80}")
         print("AI EXPLANATION")
-        print(f"{'='*80}\n")
+        print(f"{'=' * 80}\n")
         print("AI explanations require Azure OpenAI configuration.")
         print("Set environment variables: AZURE_ENDPOINT, AZURE_API_KEY, AZURE_DEPLOYMENT")
 
@@ -354,29 +349,31 @@ def cmd_scan(output_file=None, limit: int | None = 25):
 
     # Print each codeunit as a table row
     for idx, (file, data) in enumerate(sorted_codeunits, 1):
-        name = data['name'][:40] + '...' if len(data['name']) > 40 else data['name']
-        file_display = file[:25] + '...' if len(file) > 25 else file
-        obj_id = str(data['object_id'])
-        total_score = data['total_score']
-        total_issues = len(data['bottlenecks'])
-        critical_count = data['critical']
-        high_count = data['high']
-        medium_count = data['medium']
-        low_count = data['low']
+        name = data["name"][:40] + "..." if len(data["name"]) > 40 else data["name"]
+        file_display = file[:25] + "..." if len(file) > 25 else file
+        obj_id = str(data["object_id"])
+        total_score = data["total_score"]
+        total_issues = len(data["bottlenecks"])
+        critical_count = data["critical"]
+        high_count = data["high"]
+        medium_count = data["medium"]
+        low_count = data["low"]
 
-        print(f"| {idx} | {name} | {file_display} | {obj_id} | {total_score} | {total_issues} | {critical_count} | {high_count} | {medium_count} | {low_count} |")
+        print(
+            f"| {idx} | {name} | {file_display} | {obj_id} | {total_score} | {total_issues} | {critical_count} | {high_count} | {medium_count} | {low_count} |"
+        )
 
     # Print summary statistics
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print("SUMMARY STATISTICS")
     print("=" * 80)
 
-    total_score = sum(data['total_score'] for _, data in sorted_codeunits)
-    total_issues = sum(len(data['bottlenecks']) for _, data in sorted_codeunits)
-    total_critical = sum(data['critical'] for _, data in sorted_codeunits)
-    total_high = sum(data['high'] for _, data in sorted_codeunits)
-    total_medium = sum(data['medium'] for _, data in sorted_codeunits)
-    total_low = sum(data['low'] for _, data in sorted_codeunits)
+    total_score = sum(data["total_score"] for _, data in sorted_codeunits)
+    total_issues = sum(len(data["bottlenecks"]) for _, data in sorted_codeunits)
+    total_critical = sum(data["critical"] for _, data in sorted_codeunits)
+    total_high = sum(data["high"] for _, data in sorted_codeunits)
+    total_medium = sum(data["medium"] for _, data in sorted_codeunits)
+    total_low = sum(data["low"] for _, data in sorted_codeunits)
 
     print(f"Codeunits shown: {len(sorted_codeunits)}")
     print(f"Total score: {total_score} points")
@@ -394,25 +391,23 @@ def cmd_scan(output_file=None, limit: int | None = 25):
         # Save structured by codeunit
         output_data = []
         for file, data in sorted_codeunits:
-            output_data.append({
-                "codeunit": {
-                    "file": file,
-                    "name": data["name"],
-                    "object_id": data["object_id"]
-                },
-                "total_score": data["total_score"],
-                "issue_counts": {
-                    "critical": data["critical"],
-                    "high": data["high"],
-                    "medium": data["medium"],
-                    "low": data["low"]
-                },
-                "bottlenecks": sorted(data['bottlenecks'], key=lambda x: x.get("score", 0), reverse=True)
-            })
+            output_data.append(
+                {
+                    "codeunit": {"file": file, "name": data["name"], "object_id": data["object_id"]},
+                    "total_score": data["total_score"],
+                    "issue_counts": {
+                        "critical": data["critical"],
+                        "high": data["high"],
+                        "medium": data["medium"],
+                        "low": data["low"],
+                    },
+                    "bottlenecks": sorted(data["bottlenecks"], key=lambda x: x.get("score", 0), reverse=True),
+                }
+            )
 
-        with open(output_file, 'w') as f:
+        with open(output_file, "w") as f:
             json.dump(output_data, f, indent=2)
-            
+
         print(f"\n\nFull report saved to: {output_file}")
 
     return 0
@@ -428,7 +423,7 @@ def cmd_optimize(filename):
     except FileNotFoundError as e:
         print(f"Error: {e}")
         return 1
-    
+
     except Exception as e:
         print(f"Error: {e}")
         return 1
@@ -458,9 +453,9 @@ def cmd_optimize(filename):
 
     # Critical fixes
     if critical:
-        print(f"\n\n{'='*80}")
+        print(f"\n\n{'=' * 80}")
         print("PHASE 1: CRITICAL FIXES (Do First)")
-        print(f"{'='*80}")
+        print(f"{'=' * 80}")
 
         for idx, bottleneck in enumerate(critical, 1):
             pattern = bottleneck.get("pattern", "").replace("_", " ").title()
@@ -477,9 +472,9 @@ def cmd_optimize(filename):
 
     # High priority fixes
     if high:
-        print(f"\n\n{'='*80}")
+        print(f"\n\n{'=' * 80}")
         print("PHASE 2: HIGH PRIORITY FIXES (Do Next)")
-        print(f"{'='*80}")
+        print(f"{'=' * 80}")
 
         for idx, bottleneck in enumerate(high, 1):
             pattern = bottleneck.get("pattern", "").replace("_", " ").title()
@@ -489,9 +484,9 @@ def cmd_optimize(filename):
             print(f"   Fix: {bottleneck.get('recommendation', '')}")
 
     # Recommendations summary
-    print(f"\n\n{'='*80}")
+    print(f"\n\n{'=' * 80}")
     print("RECOMMENDATIONS")
-    print(f"{'='*80}\n")
+    print(f"{'=' * 80}\n")
 
     if critical:
         print("1. IMMEDIATE ACTION (Critical):")
@@ -516,9 +511,9 @@ def cmd_optimize(filename):
     high_score = sum(b.get("score", 0) for b in high)
 
     if critical_score + high_score > 0:
-        print(f"\n\n{'='*80}")
+        print(f"\n\n{'=' * 80}")
         print("ESTIMATED IMPACT")
-        print(f"{'='*80}")
+        print(f"{'=' * 80}")
         print(f"Fixing critical + high issues: {critical_score + high_score} points reduction")
         print("Estimated performance gain: 60-80% improvement on affected operations")
 
@@ -528,6 +523,7 @@ def cmd_optimize(filename):
 # ============================================================================
 # MAIN
 # ============================================================================
+
 
 def main():
     """Main CLI entry point."""

@@ -15,7 +15,7 @@ def run_in_threadpool(func, iterable, max_workers=32):
     """
     results = []
     iterable_as_list = list(iterable)
-    
+
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         # Convert generator to list if needed
         futures = {executor.submit(func, *args): args for args in iterable_as_list}

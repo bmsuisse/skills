@@ -15,7 +15,7 @@ description: >
 
 # Deslop
 
-AI-generated code often *works* but doesn't *belong*. It is technically
+AI-generated code often _works_ but doesn't _belong_. It is technically
 correct but inconsistent — stuffed with comments nobody would write, defensive
 checks that don't match the codebase's trust model, abstractions added "just
 in case", and style that clashes with the surrounding file.
@@ -30,14 +30,14 @@ the first place.
 
 Before fixing anything, recognise the patterns:
 
-| Category | Examples |
-|---|---|
-| **Redundant comments** | `# increment counter by 1`, `// returns the user` |
-| **Over-defensive code** | `if value is not None and value != "" and value != []` where `if value` suffices; unnecessary `try/except` wrapping happy paths |
-| **Type escapes** | Spurious casts, `as any`, `!` non-null assertions added "just to be safe" |
-| **Inconsistent style** | Naming conventions, import ordering, or patterns that differ from the surrounding file |
-| **Premature abstraction** | Hooks, interfaces, base classes, or configuration keys that serve no current requirement |
-| **Vibe extras** | Logging statements, TODO comments, or fallback branches that weren't asked for |
+| Category                  | Examples                                                                                                                        |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| **Redundant comments**    | `# increment counter by 1`, `// returns the user`                                                                               |
+| **Over-defensive code**   | `if value is not None and value != "" and value != []` where `if value` suffices; unnecessary `try/except` wrapping happy paths |
+| **Type escapes**          | Spurious casts, `as any`, `!` non-null assertions added "just to be safe"                                                       |
+| **Inconsistent style**    | Naming conventions, import ordering, or patterns that differ from the surrounding file                                          |
+| **Premature abstraction** | Hooks, interfaces, base classes, or configuration keys that serve no current requirement                                        |
+| **Vibe extras**           | Logging statements, TODO comments, or fallback branches that weren't asked for                                                  |
 
 ---
 
@@ -53,7 +53,7 @@ six months write this?"**
 Work through the diff/file systematically:
 
 - [ ] **Comments**: Remove any comment a competent maintainer wouldn't need.
-      Keep comments that explain *why*, delete ones that restate *what*.
+      Keep comments that explain _why_, delete ones that restate _what_.
 - [ ] **Defensive checks**: Remove guards that don't match the existing trust
       model. If the rest of the codebase already validates inputs at the
       boundary, don't re-validate deep inside a helper.
@@ -104,6 +104,7 @@ Narrow the problem before writing a single line.
 - What assumptions does this part of the code make?
 
 Output a short context summary:
+
 - Relevant files
 - Key constraints and patterns
 - Open questions (and answers)
@@ -115,7 +116,7 @@ Use this summary as your prompt context for the next steps.
 Turn the research into intent. A good plan stops slop before the model
 generates it.
 
-- What must change? What must *not* change?
+- What must change? What must _not_ change?
 - What naming and style conventions apply?
 - What error-handling pattern does the codebase use?
 - Are comments needed? At what level of detail?
@@ -138,6 +139,7 @@ Apply the reactive checklist above to everything that was generated. Then ask:
 "Does this feel like it belongs here?"
 
 Also verify:
+
 - Tests pass
 - Linting is clean
 - Code matches the plan
@@ -152,6 +154,7 @@ When output doesn't match expectations, identify the root cause:
 - What assumption did the model make?
 
 Then feed the learning back:
+
 - Update project rules / `.cursor/rules` / system prompts
 - Update agent instructions or slash commands
 - Document the pattern so it doesn't recur
