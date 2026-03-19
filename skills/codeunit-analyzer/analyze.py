@@ -85,10 +85,13 @@ def analyze_codeunit(filename, table_metadata=None):
 
 def _parse_codeunit_full(file_info, table_metadata):
     try:
-        result = analyze_codeunit(file_info["name"], table_metadata=table_metadata)
-        for b in result["bottlenecks"]:
+        # Use the path we already have — avoid re-running find_codeunit_files() per file
+        file_path = file_info["path"]
+        data = CodeunitParser(file_path, table_metadata=table_metadata).parse()
+        bottlenecks = BottleneckDetector(data, file_path, table_metadata=table_metadata).detect()
+        for b in bottlenecks:
             b["codeunit"]["file"] = file_info["name"]
-        return {"file": file_info["name"], "object": result["object"], "bottlenecks": result["bottlenecks"]}
+        return {"file": file_info["name"], "object": data, "bottlenecks": bottlenecks}
     except Exception as e:
         print(f"Error analyzing {file_info['name']}: {e}", file=sys.stderr)
         return None
