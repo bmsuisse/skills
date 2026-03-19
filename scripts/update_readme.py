@@ -18,10 +18,25 @@ def parse_frontmatter(skill_md: Path) -> dict[str, str]:
     if not match:
         return {}
     fm: dict[str, str] = {}
-    for line in match.group(1).splitlines():
-        if ":" in line:
+    lines = match.group(1).splitlines()
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if ":" in line and not line.startswith(" "):
             key, _, value = line.partition(":")
-            fm[key.strip()] = value.strip()
+            key = key.strip()
+            value = value.strip()
+            # Handle YAML block scalars: > (folded) and | (literal)
+            if value in (">", "|"):
+                block_lines = []
+                i += 1
+                while i < len(lines) and (lines[i].startswith(" ") or lines[i] == ""):
+                    block_lines.append(lines[i].strip())
+                    i += 1
+                fm[key] = " ".join(filter(None, block_lines))
+                continue
+            fm[key] = value
+        i += 1
     return fm
 
 
