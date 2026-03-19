@@ -5,8 +5,7 @@
 
 # Cache files
 .cache/
-.pycache/
-.__pycache__/
+**/__pycache__/
 .ruff_cache/
 
 # Environment files

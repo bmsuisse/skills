@@ -4,6 +4,7 @@ Table metadata loader (standalone, matching service implementation).
 
 import bisect
 import json
+import os
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -76,9 +77,21 @@ class TableMetadataLoader:
             - friendlySize: human-readable size description
             - severityAdjustment: severity adjustment description
         """
-        # Find data directory
-        script_dir = Path(__file__).parent
-        data_dir = Path(dir) if dir else script_dir.parent.parent.parent / "data" / "tables"
+        if dir:
+            data_dir = Path(dir)
+        elif env_dir := os.environ.get("TABLES_DIR"):
+            data_dir = Path(env_dir)
+        else:
+            path = Path(__file__).resolve().parent
+            data_dir = None
+            for _ in range(8):
+                candidate = path / "data" / "tables"
+                if candidate.exists():
+                    data_dir = candidate
+                    break
+                path = path.parent
+            if data_dir is None:
+                data_dir = Path(__file__).parent.parent.parent.parent / "data" / "tables"
 
         if not data_dir.exists():
             return {}
