@@ -15,11 +15,11 @@ description: >
 
 ## ✨ Key Features
 
-- ✅ **Zero dependencies** - Pure Python standard library only
+- ✅ **No external dependencies** - Pure Python standard library
+- ✅ **No virtual environment needed** - Works immediately
 - ✅ **Fast & lightweight** - Simple regex-based parsing
 - ✅ **Windows compatible** - No Unicode issues
 - ✅ **Offline capable** - No API server required
-- ✅ **Smart path discovery** - Auto-detects project root; override with `CODEUNITS_DIR` env var
 
 ## Sub-Commands
 
@@ -41,53 +41,25 @@ Get actionable refactoring suggestions with code examples.
 
 ---
 
-## Setup: Detect Python Command
-
-**Before running any command**, find the correct Python executable:
-
-```bash
-# Try each in order, use the first that works
-python --version 2>/dev/null || \
-python3 --version 2>/dev/null || \
-uv run python --version 2>/dev/null || \
-echo "Python not found — install Python 3.10+ or run: uv python install 3.12"
-```
-
-Set a variable for the rest of the session:
-
-```bash
-PYTHON=$(command -v python3 || command -v python || echo "uv run python")
-echo "Using: $PYTHON"
-```
-
-If none work, tell the user:
-
-> Python is not available. Install it via `uv python install 3.12` (if using uv), `brew install python` (macOS), or from python.org.
-
----
-
 ## Quick Start
 
-**No setup required beyond Python 3.10+.**
+**No setup required!** Just Python 3.10+ and you're ready.
 
 ```bash
-# Detect Python first (see above)
-PYTHON=$(command -v python3 || command -v python || echo "uv run python")
-
 # List all available codeunits
-$PYTHON .claude/skills/codeunit-analyzer/analyze.py list
+python .skills/codeunit-analyzer/analyze.py list
 
 # Analyze a specific codeunit
-$PYTHON .claude/skills/codeunit-analyzer/analyze.py analyze 1.cs
+python .skills/codeunit-analyzer/analyze.py analyze 1.cs
 
 # Scan all codeunits for bottlenecks
-$PYTHON .claude/skills/codeunit-analyzer/analyze.py scan
+python .skills/codeunit-analyzer/analyze.py scan
 
 # Save scan results to file
-$PYTHON .claude/skills/codeunit-analyzer/analyze.py scan -o bottlenecks.json
+python .skills/codeunit-analyzer/analyze.py scan -o bottlenecks.json
 
 # Get optimization suggestions
-$PYTHON .claude/skills/codeunit-analyzer/analyze.py optimize 80.cs
+python .skills/codeunit-analyzer/analyze.py optimize 80.cs
 ```
 
 ---
@@ -105,7 +77,7 @@ $PYTHON .claude/skills/codeunit-analyzer/analyze.py optimize 80.cs
 **Action:**
 
 ```bash
-python .agents/skills/codeunit-analyzer/analyze.py list
+python .skills/codeunit-analyzer/analyze.py list
 ```
 
 **Output:**
@@ -124,7 +96,7 @@ Table showing: File name | Object name | ID
 **Action:**
 
 ```bash
-python .agents/skills/codeunit-analyzer/analyze.py analyze <filename>
+python .skills/codeunit-analyzer/analyze.py analyze <filename>
 ```
 
 **Steps:**
@@ -156,13 +128,13 @@ python .agents/skills/codeunit-analyzer/analyze.py analyze <filename>
 **Action:**
 
 ```bash
-python .agents/skills/codeunit-analyzer/analyze.py scan
+python .skills/codeunit-analyzer/analyze.py scan
 ```
 
 **Save to JSON:**
 
 ```bash
-python .agents/skills/codeunit-analyzer/analyze.py scan -o bottlenecks_$(date +%Y%m%d).json
+python .skills/codeunit-analyzer/analyze.py scan -o bottlenecks_$(date +%Y%m%d).json
 ```
 
 **Steps:**
@@ -195,7 +167,7 @@ python .agents/skills/codeunit-analyzer/analyze.py scan -o bottlenecks_$(date +%
 **Action:**
 
 ```bash
-python .agents/skills/codeunit-analyzer/analyze.py optimize <filename>
+python .skills/codeunit-analyzer/analyze.py optimize <filename>
 ```
 
 **Steps:**
@@ -222,7 +194,7 @@ python .agents/skills/codeunit-analyzer/analyze.py optimize <filename>
 
 ```
 User: /codeunit-analyzer list
-→ Run: python .agents/skills/codeunit-analyzer/analyze.py list
+→ Run: python .skills/codeunit-analyzer/analyze.py list
 → Show table of all codeunits
 ```
 
@@ -233,14 +205,14 @@ User: /codeunit-analyzer analyze
 → Run list first to show options
 → Ask: "Which file would you like to analyze?"
 → User selects file
-→ Run: python .agents/skills/codeunit-analyzer/analyze.py analyze <selected_file>
+→ Run: python .skills/codeunit-analyzer/analyze.py analyze <selected_file>
 ```
 
 **Scenario 3: User provides filename directly**
 
 ```
 User: /codeunit-analyzer analyze 1.cs
-→ Run: python .agents/skills/codeunit-analyzer/analyze.py analyze 1.cs
+→ Run: python .skills/codeunit-analyzer/analyze.py analyze 1.cs
 → Display results immediately
 ```
 
@@ -249,7 +221,7 @@ User: /codeunit-analyzer analyze 1.cs
 ```
 User: "Find performance issues"
 → Infer command: scan
-→ Run: python .agents/skills/codeunit-analyzer/analyze.py scan
+→ Run: python .skills/codeunit-analyzer/analyze.py scan
 ```
 
 ---
@@ -386,22 +358,23 @@ Code Example:
 
 ## Environment Requirements
 
-- **Python:** 3.10+ (standard library only, no pip packages needed)
+### Minimal Setup ✨
+
+- **Python:** 3.10+ (standard library only)
 
 ### Directory Structure
 
 ```
-project/
-├── codeunits/              # Your .cs/.c-al files
+OneTrade/
+├── scripts/
+│   └── analyze.py          # Standalone script (zero deps)
 ├── data/
-│   └── tables/             # Optional: table metadata JSON files
-└── .claude/
-    └── skills/
-        └── codeunit-analyzer/
+│   └── codeunits/          # Your .cs/.c-al files
+└── .skills/
+    └── codeunit-analyzer/  # This skill
 ```
 
-Set `CODEUNITS_DIR=/path/to/codeunits` to override auto-discovery.
-Set `TABLES_DIR=/path/to/tables` to override table metadata discovery.
+That's it! No `requirements.txt`, no `pip install`, no virtual environment.
 
 ---
 
@@ -424,7 +397,7 @@ Expected directory: c:\Users\...\data\codeunits
 Error: FileNotFoundError: '80.cs'
 ```
 
-**Solution:** Run `python .agents/skills/codeunit-analyzer/analyze.py list` to see available files.
+**Solution:** Run `python .skills/codeunit-analyzer/analyze.py list` to see available files.
 
 **3. No bottlenecks detected**
 
@@ -449,7 +422,7 @@ python --version  # Should be 3.10+
 **Run from project root:**
 
 ```bash
-python .agents/skills/codeunit-analyzer/analyze.py list
+python .skills/codeunit-analyzer/analyze.py list
 ```
 
 ### No files listed
@@ -466,7 +439,7 @@ If empty, add your C-AL files to `data/codeunits/`.
 
 ```bash
 chmod +x scripts/analyze.py
-python .agents/skills/codeunit-analyzer/analyze.py list
+python .skills/codeunit-analyzer/analyze.py list
 ```
 
 ---
@@ -475,7 +448,7 @@ python .agents/skills/codeunit-analyzer/analyze.py list
 
 - **List:** < 1 second for 2000+ files
 - **Analyze:** < 2 seconds per file
-- **Scan:** Processes all files in parallel via thread pool (~sub-second for most projects)
+- **Scan:** Processes all files sequentially (~1-2 sec per file)
 - **Optimize:** < 2 seconds per file
 
 **Note:** No caching implemented yet - each run re-parses files. This keeps the code simple and dependency-free.
@@ -487,7 +460,7 @@ python .agents/skills/codeunit-analyzer/analyze.py list
 ### Example 1: Quick list
 
 ```bash
-python .claude/skills/codeunit-analyzer/analyze.py list
+python .skills/codeunit-analyzer/analyze.py list
 ```
 
 Output:
@@ -505,7 +478,7 @@ File                 Object Name                                        ID
 ### Example 2: Analyze specific file
 
 ```bash
-python .claude/skills/codeunit-analyzer/analyze.py analyze 80.cs
+python .skills/codeunit-analyzer/analyze.py analyze 80.cs
 ```
 
 Output:
@@ -532,7 +505,7 @@ Medium: 1
 ### Example 3: Full scan
 
 ```bash
-python .claude/skills/codeunit-analyzer/analyze.py scan -o scan_results.json
+python .skills/codeunit-analyzer/analyze.py scan -o scan_results.json
 ```
 
 Output:
@@ -589,7 +562,7 @@ For production use, consider the full analysis service with Pydantic schemas and
 
 | Feature         | Standalone Script | Full Service              |
 | --------------- | ----------------- | ------------------------- |
-| Dependencies    | Zero (stdlib)     | Pydantic, Cashews, etc.   |
+| Dependencies    | None              | Pydantic, Cashews, etc.   |
 | Setup           | Zero              | Virtual env + pip install |
 | Speed           | Fast              | Faster (cached)           |
 | Accuracy        | Good (regex)      | Excellent (full parser)   |

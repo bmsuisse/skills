@@ -12,15 +12,21 @@ Usage:
 import argparse
 import json
 import sys
+from pathlib import Path
 
 from scripts.detector import BottleneckDetector
-from scripts.helpers import find_codeunit_files, get_search_root, run_in_threadpool
+from scripts.helpers import run_in_threadpool
 from scripts.parser import CodeunitParser
 from scripts.table_metadata import TableMetadataLoader
 
 # ============================================================================
 # FILE OPERATIONS
 # ============================================================================
+
+
+def get_data_dir():
+    """Get the data directory path."""
+    return Path(__file__).parent.parent.parent / "data"
 
 
 def _parse_codeunit_file(file, table_metadata=None):
@@ -41,7 +47,13 @@ def _parse_codeunit_file(file, table_metadata=None):
 
 def list_codeunits():
     """List all C-AL files (parallel)."""
-    files = find_codeunit_files()
+    data_dir = get_data_dir()
+    codeunits_dir = data_dir / "codeunits"
+
+    if not codeunits_dir.exists():
+        return []
+
+    files = sorted(list(codeunits_dir.glob("*.cs")) + list(codeunits_dir.glob("*.c-al")))
 
     if not files:
         return []
@@ -49,7 +61,8 @@ def list_codeunits():
     # Load table metadata once
     table_metadata = TableMetadataLoader.load_metadata()
 
-    results = run_in_threadpool(_parse_codeunit_file, ((f, table_metadata) for f in files), desc="Listing")
+    # Parse files in parallel
+    results = run_in_threadpool(_parse_codeunit_file, ((f, table_metadata) for f in files))
 
     # Sort by filename to maintain consistent order
     return sorted(results, key=lambda x: x["name"])
@@ -57,18 +70,11 @@ def list_codeunits():
 
 def analyze_codeunit(filename, table_metadata=None):
     """Analyze a single codeunit."""
-    # Find all codeunit files
-    all_files = find_codeunit_files()
+    data_dir = get_data_dir()
+    file_path = data_dir / "codeunits" / filename
 
-    # Find the matching file by name
-    file_path = None
-    for f in all_files:
-        if f.name == filename:
-            file_path = f
-            break
-
-    if file_path is None:
-        raise FileNotFoundError(f"File not found: {filename}\nSearched in: {get_search_root()}")
+    if not file_path.exists():
+        raise FileNotFoundError(f"File not found: {file_path}")
 
     # Load table metadata if not provided
     if table_metadata is None:
@@ -83,78 +89,37 @@ def analyze_codeunit(filename, table_metadata=None):
     return {"object": data, "bottlenecks": bottlenecks}
 
 
-def _parse_codeunit_full(file_info, table_metadata):
+def _analyze_codeunit_for_scan(file_info, table_metadata):
+    """Analyze a codeunit and return bottlenecks with file info (for parallel execution)."""
     try:
-        # Use the path we already have — avoid re-running find_codeunit_files() per file
-        file_path = file_info["path"]
-        data = CodeunitParser(file_path, table_metadata=table_metadata).parse()
-        bottlenecks = BottleneckDetector(data, file_path, table_metadata=table_metadata).detect()
-        for b in bottlenecks:
+        result = analyze_codeunit(file_info["name"], table_metadata=table_metadata)
+        bottlenecks = []
+
+        for b in result["bottlenecks"]:
             b["codeunit"]["file"] = file_info["name"]
-        return {"file": file_info["name"], "object": data, "bottlenecks": bottlenecks}
+            bottlenecks.append(b)
+
+        return bottlenecks
+
     except Exception as e:
         print(f"Error analyzing {file_info['name']}: {e}", file=sys.stderr)
-        return None
+        return []
 
 
-def _build_cross_codeunit_bottlenecks(parse_results):
-    procedure_map = {}
-    for r in parse_results:
-        codeunit_name = r["object"].get("object_name", r["file"])
-        for proc_name, proc_data in r["object"]["procedures"].items():
-            writes = [w for w in proc_data.get("writes", []) if not w.get("isTemporary") and w["operation"] in ("INSERT", "MODIFY", "DELETE")]
-            reads = [rd for rd in proc_data.get("reads", []) if not rd.get("isTemporary") and rd["operation"] not in ("SETRANGE", "SETFILTER")]
-            db_weight = len(writes) * 3 + len(reads)
-            if db_weight > 0 and proc_name not in procedure_map:
-                procedure_map[proc_name] = {
-                    "codeunit": codeunit_name,
-                    "file": r["file"],
-                    "db_weight": db_weight,
-                    "has_writes": len(writes) > 0,
-                }
-
-    cross_bottlenecks = []
-    for r in parse_results:
-        for proc_name, proc_data in r["object"]["procedures"].items():
-            for call in proc_data.get("calls_in_loop", []):
-                method_name = call.split(".")[-1] if "." in call else call
-                callee = procedure_map.get(method_name)
-                if callee and callee["file"] != r["file"] and callee["db_weight"] >= 5:
-                    severity = "critical" if callee["db_weight"] >= 15 else "high"
-                    cross_bottlenecks.append({
-                        "pattern": "indirect_db_via_loop_call",
-                        "severity": severity,
-                        "score": min(60 + callee["db_weight"] * 3, 150),
-                        "procedure": proc_name,
-                        "explanation": f"Calls {method_name} (from {callee['codeunit']}) inside a loop. That procedure performs {callee['db_weight']} weighted DB operations.",
-                        "recommendation": f"Move the call to {method_name} outside the loop or refactor to batch processing.",
-                        "example": f"// {method_name} is defined in {callee['codeunit']}\n// Pre-load or batch all needed data before the loop",
-                        "codeunit": {
-                            "file": r["file"],
-                            "object_name": r["object"].get("object_name"),
-                            "object_id": r["object"].get("object_id"),
-                        },
-                    })
-
-    return cross_bottlenecks
-
-
-def scan_all_bottlenecks(files=None):
+def scan_all_bottlenecks():
     """Scan all codeunits for bottlenecks (parallel)."""
-    if files is None:
-        files = list_codeunits()
+    files = list_codeunits()
 
+    # Load table metadata once for all analyses
     table_metadata = TableMetadataLoader.load_metadata()
 
-    parse_results = run_in_threadpool(
-        _parse_codeunit_full,
-        ((f, table_metadata) for f in files),
-        desc="Scanning",
-    )
-    parse_results = [r for r in parse_results if r]
+    # Analyze all files in parallel
+    results = run_in_threadpool(_analyze_codeunit_for_scan, ((f, table_metadata) for f in files))
 
-    all_bottlenecks = [b for r in parse_results for b in r["bottlenecks"]]
-    all_bottlenecks.extend(_build_cross_codeunit_bottlenecks(parse_results))
+    # Flatten results
+    all_bottlenecks = [b for bottlenecks in results for b in bottlenecks]
+
+    # Sort by score (highest first)
     all_bottlenecks.sort(key=lambda x: x.get("score", 0), reverse=True)
 
     return all_bottlenecks
@@ -217,8 +182,7 @@ def cmd_list():
 
     if not files:
         print("No codeunits found.")
-        print(f"Searched in: {get_search_root()}")
-        print("Tip: Set CODEUNITS_DIR environment variable to specify a custom search location")
+        print(f"Expected directory: {get_data_dir()}")
         return 1
 
     print(f"Found {len(files)} codeunits:\n")
@@ -317,7 +281,7 @@ def cmd_scan(output_file=None, limit: int | None = 25):
 
     print(f"Analyzing {len(files)} codeunits...\n")
 
-    all_bottlenecks = scan_all_bottlenecks(files)
+    all_bottlenecks = scan_all_bottlenecks()
 
     # Display summary
     print("=" * 80)

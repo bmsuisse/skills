@@ -98,8 +98,6 @@ class CodeunitParser:
         self.with_variable = None
         self.loop_depth = 0
         self.in_loop = False
-        self._loop_stack = []
-        self._pending_while_for = 0
         self.filtered_vars = set()
 
     @lru_cache(maxsize=None)
@@ -306,21 +304,19 @@ class CodeunitParser:
         proc_name = proc_info["name"]
         self.current_procedure = proc_name
 
+        # Reset state
         self.block_depth = 0
         self.max_nesting = 0
         self.in_with_block = False
         self.with_variable = None
         self.loop_depth = 0
         self.in_loop = False
-        self._loop_stack = []
-        self._pending_while_for = 0
         self.filtered_vars = set()
 
         self.procedures[proc_name] = {
             "params": proc_info["params"],
             "returnType": proc_info["return_type"],
             "calls": [],
-            "calls_in_loop": [],
             "writes": [],
             "reads": [],
             "guards": [],
@@ -357,16 +353,9 @@ class CodeunitParser:
         if stripped.startswith("BEGIN"):
             self.block_depth += 1
             self.max_nesting = max(self.max_nesting, self.block_depth)
-            while self._pending_while_for > 0:
-                self._loop_stack.append(("WHILE_FOR", self.block_depth))
-                self._pending_while_for -= 1
 
         elif stripped in ["END;", "END"]:
             self.block_depth = max(0, self.block_depth - 1)
-            while self._loop_stack and self._loop_stack[-1][0] == "WHILE_FOR" and self._loop_stack[-1][1] > self.block_depth:
-                self._loop_stack.pop()
-                self.loop_depth = max(0, self.loop_depth - 1)
-            self.in_loop = self.loop_depth > 0
             if self.in_with_block and self.block_depth == 0:
                 self.in_with_block = False
                 self.with_variable = None
@@ -378,30 +367,16 @@ class CodeunitParser:
 
         proc_data["nesting_depth"] = max(proc_data.get("nesting_depth", 0), self.block_depth)
 
-    _STREAM_PATTERN = re.compile(r"\b(?:IN|OUT)?STREAM\b|\.EOS\b", re.IGNORECASE)
-
     def _track_loops(self, upper_line: str, proc_data: dict):
         """Track loop entry/exit for context-aware analysis."""
-        if re.search(r"\bREPEAT\b", upper_line):
+        if re.search(r"\b(REPEAT|WHILE|FOR)\b", upper_line):
             self.loop_depth += 1
             self.in_loop = True
-            self._loop_stack.append(("REPEAT", self.block_depth))
-
-        if re.search(r"\b(WHILE|FOR)\b", upper_line) and not self._STREAM_PATTERN.search(upper_line):
-            self.loop_depth += 1
-            self.in_loop = True
-            if re.search(r"\bBEGIN\b", upper_line):
-                self._loop_stack.append(("WHILE_FOR", self.block_depth))
-            else:
-                self._pending_while_for += 1
 
         if re.search(r"\bUNTIL\b", upper_line):
-            for i in range(len(self._loop_stack) - 1, -1, -1):
-                if self._loop_stack[i][0] == "REPEAT":
-                    self._loop_stack.pop(i)
-                    break
             self.loop_depth = max(0, self.loop_depth - 1)
-            self.in_loop = self.loop_depth > 0
+            if self.loop_depth == 0:
+                self.in_loop = False
 
         proc_data["max_loop_depth"] = max(proc_data.get("max_loop_depth", 0), self.loop_depth)
 
@@ -459,8 +434,6 @@ class CodeunitParser:
                 full_call = f"{obj_name}.{method_name}"
                 if full_call not in proc_data["calls"]:
                     proc_data["calls"].append(full_call)
-                if self.in_loop and full_call not in proc_data["calls_in_loop"]:
-                    proc_data["calls_in_loop"].append(full_call)
 
         method_pattern = r"\b([A-Z][A-Za-z0-9_]+)\s*(?:\(|(?=;))"
         for match in re.finditer(method_pattern, line):
@@ -474,9 +447,6 @@ class CodeunitParser:
                 if method_name not in proc_data["calls"]:
                     if not any(call.endswith(f".{method_name}") for call in proc_data["calls"]):
                         proc_data["calls"].append(method_name)
-                if self.in_loop and method_name not in proc_data["calls_in_loop"]:
-                    if not any(c.endswith(f".{method_name}") for c in proc_data["calls_in_loop"]):
-                        proc_data["calls_in_loop"].append(method_name)
 
     def _detect_operations(self, line: str, proc_data: dict):
         """Detect write operations and guard patterns."""
