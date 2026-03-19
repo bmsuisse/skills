@@ -41,25 +41,69 @@ Get actionable refactoring suggestions with code examples.
 
 ---
 
+## Pre-Flight Setup (Run This First, Every Time)
+
+**Before any command**, resolve two things: the Python executable and the codeunits directory. Do both in one shot:
+
+```bash
+# 1. Find Python
+PYTHON=$(command -v python3 || command -v python || echo "uv run python")
+$PYTHON --version || { echo "Python not found. Install via: brew install python  OR  uv python install 3.12"; exit 1; }
+
+# 2. Find the SKILL path
+SKILL="$(dirname "$(find . -path '*codeunit-analyzer/analyze.py' | head -1)")"
+
+# 3. Find the codeunits directory — check common locations
+CODEUNITS_DIR=$(
+  for candidate in codeunits data/codeunits src/codeunits .agents/data/codeunits; do
+    [ -d "$candidate" ] && { echo "$candidate"; break; }
+  done
+)
+
+# 4. If not found, search from project root
+if [ -z "$CODEUNITS_DIR" ]; then
+  CODEUNITS_DIR=$(find . -name "*.c-al" -o -name "*.cs" 2>/dev/null | head -1 | xargs dirname 2>/dev/null)
+fi
+
+# 5. Export so the script picks it up automatically
+export CODEUNITS_DIR
+echo "Python : $PYTHON"
+echo "Skill  : $SKILL/analyze.py"
+echo "Codeunits: $CODEUNITS_DIR"
+```
+
+> If `CODEUNITS_DIR` is still empty, ask the user where their `.cs`/`.c-al` files are and set it manually:
+> `export CODEUNITS_DIR=/path/to/codeunits`
+
+With those three variables set, all commands become:
+
+```bash
+$PYTHON $SKILL/analyze.py list
+$PYTHON $SKILL/analyze.py scan
+$PYTHON $SKILL/analyze.py analyze <file>
+```
+
+---
+
 ## Quick Start
 
-**No setup required!** Just Python 3.10+ and you're ready.
+**No setup required beyond the pre-flight above.**
 
 ```bash
 # List all available codeunits
-python .skills/codeunit-analyzer/analyze.py list
+$PYTHON $SKILL/analyze.py list
 
 # Analyze a specific codeunit
-python .skills/codeunit-analyzer/analyze.py analyze 1.cs
+$PYTHON $SKILL/analyze.py analyze 1.cs
 
 # Scan all codeunits for bottlenecks
-python .skills/codeunit-analyzer/analyze.py scan
+$PYTHON $SKILL/analyze.py scan
 
 # Save scan results to file
-python .skills/codeunit-analyzer/analyze.py scan -o bottlenecks.json
+$PYTHON $SKILL/analyze.py scan -o bottlenecks.json
 
 # Get optimization suggestions
-python .skills/codeunit-analyzer/analyze.py optimize 80.cs
+$PYTHON $SKILL/analyze.py optimize 80.cs
 ```
 
 ---
