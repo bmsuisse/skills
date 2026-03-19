@@ -1,6 +1,6 @@
 ---
 name: sql-optimization
-description: 'Universal SQL performance optimization assistant for comprehensive query tuning, indexing strategies, and database performance analysis across all SQL databases (MySQL, PostgreSQL, SQL Server, Oracle, Databricks). SQL style: sqlfmt lowercase, CTEs over subqueries, QUALIFY over row_number subqueries, GROUP BY ALL, meaningful aliases, alias-prefixed columns, no select *.'
+description: "Universal SQL performance optimization assistant for comprehensive query tuning, indexing strategies, and database performance analysis across all SQL databases (MySQL, PostgreSQL, SQL Server, Oracle, Databricks). SQL style: sqlfmt lowercase, CTEs over subqueries, QUALIFY over row_number subqueries, GROUP BY ALL, meaningful aliases, alias-prefixed columns, no select *."
 ---
 
 # SQL Performance Optimization Assistant
@@ -26,14 +26,15 @@ Expert SQL performance optimization for ${selection} (or entire project if no se
   - ✅ Prefix every selected column with its table alias: `ord.id`, `cust.name`
   - ✅ Backticks for identifiers with spaces or reserved words: `` `my name` ``, `` `order` `` — **never** single quotes
   - ✅ Single quotes for string literals only: `'active'`, `'2024-01-01'`
-  - ✅ `qualify` instead of `row_number()` CTE wrappers — *Databricks SQL / DuckDB / BigQuery / Snowflake*
-  - ✅ `group by all` for clean aggregations — *Databricks SQL / DuckDB / Spark SQL 3.4+*
+  - ✅ `qualify` instead of `row_number()` CTE wrappers — _Databricks SQL / DuckDB / BigQuery / Snowflake_
+  - ✅ `group by all` for clean aggregations — _Databricks SQL / DuckDB / Spark SQL 3.4+_
 
 ---
 
 ## 🎯 Core Optimization Areas
 
 ### Query Performance Analysis
+
 ```sql
 -- ❌ bad: select *, function on column breaks index, IN subquery
 select *
@@ -72,6 +73,7 @@ from orders_2024 as ord;
 ```
 
 ### Index Strategy Optimization
+
 ```sql
 -- ❌ bad: over-indexed, wrong column order
 create index idx_user_data on users(email, first_name, last_name, created_at);
@@ -86,6 +88,7 @@ where status is not null;
 ```
 
 ### CTE over Subquery / Correlated Subquery
+
 ```sql
 -- ❌ bad: correlated subquery — re-executes for every row
 select prod.product_name, prod.price
@@ -114,6 +117,7 @@ where pwa.price > pwa.avg_category_price;
 ## 📊 Performance Tuning Techniques
 
 ### JOIN Optimization
+
 ```sql
 -- ❌ bad: select *, left joins where inner suffices, late filter, no column aliases
 select o.*, c.name, p.product_name
@@ -142,6 +146,7 @@ inner join products as prod on items.product_id = prod.id;
 ```
 
 ### Pagination Optimization
+
 ```sql
 -- ❌ bad: offset-based — full scan up to offset position
 select
@@ -164,6 +169,7 @@ limit 20;
 ```
 
 ### Aggregation — GROUP BY ALL
+
 ```sql
 -- ❌ bad: repeating every dimension column in group by
 select
@@ -202,7 +208,8 @@ group by all;
 
 ## 🔍 Query Anti-Patterns and Fixes
 
-### No SELECT * — Explicit Columns with Alias Prefix
+### No SELECT \* — Explicit Columns with Alias Prefix
+
 ```sql
 -- ❌ bad: select * — fetches all columns, breaks on schema changes, hides intent
 select *
@@ -221,6 +228,7 @@ inner join customers as cust on ord.customer_id = cust.id;
 ```
 
 ### QUALIFY over ROW_NUMBER Subquery
+
 ```sql
 -- ❌ bad: row_number() wrapped in CTE + filter — verbose, two-pass feel
 with ranked_orders as (
@@ -261,6 +269,7 @@ qualify rank() over (partition by prod.category_id order by prod.price asc) <= 3
 ```
 
 ### WHERE Clause / Collation Optimization
+
 ```sql
 -- ❌ bad: function on column breaks index usage
 select ord.id, ord.customer_email, ord.total_amount
@@ -289,6 +298,7 @@ where ord.customer_email = 'john@example.com';
 ```
 
 ### OR vs UNION ALL
+
 ```sql
 -- ❌ bad: or condition — optimizer may not use per-branch indexes
 select prod.id, prod.name, prod.category, prod.price
@@ -321,6 +331,7 @@ from books;
 ## 📈 Database-Agnostic Optimization
 
 ### Batch Operations
+
 ```sql
 -- ❌ bad: row-by-row inserts — N round-trips
 insert into products (name, price) values ('Product 1', 10.00);
@@ -336,6 +347,7 @@ values
 ```
 
 ### CTE over Temporary Tables
+
 ```sql
 -- ❌ bad: temporary table — DDL side-effect, can't be inlined
 create temporary table temp_customer_totals as
@@ -380,6 +392,7 @@ inner join customers as cust on hvc.customer_id = cust.id;
 ## ⚡ Databricks / Spark SQL Optimization
 
 ### Collations for Case/Accent-Insensitive Comparisons
+
 **Up to 22× faster** than `lower()` wrappers — enables Delta file-skipping and Photon optimization.
 
 ```sql
@@ -399,12 +412,12 @@ where cust.name = 'john smith';
 
 **Collation reference:**
 
-| Collation | Use case |
-|---|---|
-| `utf8_lcase` | English case-insensitive (default choice) |
-| `unicode` | Unicode-aware, case-sensitive |
-| `de`, `fr`, `el`, `ru`, `zh` | Language-specific ordering |
-| `<lang>_ai` | Accent-insensitive (e.g., `el_ai`, `fr_ai`) |
+| Collation                    | Use case                                    |
+| ---------------------------- | ------------------------------------------- |
+| `utf8_lcase`                 | English case-insensitive (default choice)   |
+| `unicode`                    | Unicode-aware, case-sensitive               |
+| `de`, `fr`, `el`, `ru`, `zh` | Language-specific ordering                  |
+| `<lang>_ai`                  | Accent-insensitive (e.g., `el_ai`, `fr_ai`) |
 
 ```sql
 -- list all available collations:
@@ -418,6 +431,7 @@ create table hero_names (
 ```
 
 ### QUALIFY for Deduplication / Top-N per Group
+
 ```sql
 -- latest order per customer — no wrapper CTE needed
 select
@@ -439,6 +453,7 @@ qualify rank() over (partition by prod.category_id order by prod.price asc) <= 3
 ```
 
 ### GROUP BY ALL
+
 ```sql
 -- clean aggregation without repeating dimension columns
 select
@@ -454,6 +469,7 @@ group by all;
 ```
 
 ### Z-ORDER and Liquid Clustering
+
 ```sql
 -- z-order: co-locate data for frequently filtered columns
 optimize my_table zorder by (customer_id, event_date);
@@ -467,6 +483,7 @@ alter table my_table cluster by (customer_id, event_date);
 ## 🛠️ Index Management
 
 ### Index Design Principles
+
 ```sql
 -- ✅ good: covering index — query satisfied from index alone
 create index idx_orders_covering
@@ -476,6 +493,7 @@ include (total_amount, status);  -- sql server syntax
 ```
 
 ### Partial Index Strategy
+
 ```sql
 -- ✅ good: partial index — smaller, faster for selective predicates
 create index idx_orders_active
@@ -533,6 +551,7 @@ select ord.customer_id, count(*) as order_count from orders as ord group by all;
 ## 🧹 SQL Correctness and Clarity Patterns
 
 ### FILTER (WHERE …) over CASE WHEN for Conditional Aggregation
+
 ```sql
 -- ❌ bad: case when inside aggregate — verbose, harder to read
 select
@@ -550,6 +569,7 @@ from orders as ord;
 ```
 
 ### NOT EXISTS over NOT IN (NULL Safety)
+
 ```sql
 -- ❌ bad: not in with nullable column — returns zero rows if any value is null!
 select ord.id, ord.customer_id, ord.total_amount
@@ -576,6 +596,7 @@ where cust.id is null;
 ```
 
 ### NULLS LAST / NULLS FIRST in ORDER BY
+
 ```sql
 -- ❌ bad: null ordering is database-dependent (postgres puts nulls last, sql server first)
 select prod.id, prod.name, prod.discontinued_at
@@ -589,6 +610,7 @@ order by prod.discontinued_at desc nulls last;
 ```
 
 ### BETWEEN Gotcha with Timestamps — Use >= / <
+
 ```sql
 -- ❌ bad: between is inclusive on both ends — misses rows at exact end-of-day boundary
 select ord.id, ord.created_at, ord.total_amount
@@ -604,6 +626,7 @@ where ord.created_at >= '2024-01-01'
 ```
 
 ### Boolean WHERE Predicate — No Redundant Comparison
+
 ```sql
 -- ❌ bad: comparing boolean column to true/false literal
 select ord.id, ord.customer_id, ord.total_amount
@@ -619,6 +642,7 @@ where ord.is_paid
 ```
 
 ### Boolean Expression as Alias — No CASE WHEN
+
 ```sql
 -- ❌ bad: case when just to produce a boolean — redundant and noisy
 select
@@ -637,7 +661,8 @@ select
 from orders as ord;
 ```
 
-### EXISTS over COUNT(*) for Existence Checks
+### EXISTS over COUNT(\*) for Existence Checks
+
 ```sql
 -- ❌ bad: count(*) > 0 — scans all matching rows unnecessarily
 select cust.id, cust.name
@@ -655,6 +680,7 @@ where exists (
 ```
 
 ### Identifier Quoting — Backticks for Names, Single Quotes for Strings
+
 ```sql
 -- ❌ bad: single quotes used for an identifier — this selects the string literal, not the column!
 select 'my name', 'order date'
@@ -687,8 +713,8 @@ where cust.status = 'active'
 
 ---
 
-
 ### Query Structure
+
 - [ ] No `select *` — explicit column list with table alias prefix (`ord.id`, `cust.name`)
 - [ ] Meaningful table aliases (not `a`, `b`, `c`)
 - [ ] CTEs (`with … as`) instead of subqueries or derived tables
@@ -705,6 +731,7 @@ where cust.status = 'active'
 - [ ] `exists` instead of `count(*) > 0` for existence checks
 
 ### Index Strategy
+
 - [ ] Indexes on frequently filtered/joined columns
 - [ ] Composite indexes ordered by selectivity (most selective first)
 - [ ] No over-indexing (each index costs on insert/update)
@@ -712,6 +739,7 @@ where cust.status = 'active'
 - [ ] Partial indexes for selective predicates
 
 ### Data Types and Schema
+
 - [ ] Appropriate data types for storage efficiency
 - [ ] Normalized for OLTP, denormalized for OLAP
 - [ ] Constraints used to help the query optimizer
@@ -719,6 +747,7 @@ where cust.status = 'active'
 - [ ] (Databricks) Collations on string columns with case/accent-insensitive comparisons
 
 ### Query Patterns
+
 - [ ] `limit`/`top` for result set control
 - [ ] Cursor-based pagination instead of `offset`
 - [ ] Batch inserts/updates instead of row-by-row
@@ -726,6 +755,7 @@ where cust.status = 'active'
 - [ ] Prepared statements / parameterized queries for repeated execution
 
 ### Performance Testing
+
 - [ ] Tested with realistic data volumes
 - [ ] Execution plans reviewed (`explain`, `explain analyze`, `explain cost`)
 - [ ] Query performance monitored over time

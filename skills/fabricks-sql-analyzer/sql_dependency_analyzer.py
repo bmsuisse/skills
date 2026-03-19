@@ -156,11 +156,7 @@ def fetch_row_counts(
         from databricks.sdk.service.sql import StatementState
 
         w = _get_workspace_client(profile)
-        warehouses = [
-            wh
-            for wh in w.warehouses.list()
-            if wh.state and wh.state.name in ("RUNNING", "STARTING")
-        ]
+        warehouses = [wh for wh in w.warehouses.list() if wh.state and wh.state.name in ("RUNNING", "STARTING")]
         if not warehouses:
             print("  [row-count] No running SQL warehouse found -- skipping row counts")
             return {t: None for t in tables}
@@ -218,11 +214,7 @@ def get_execution_plan(sql: str, profile: str = "premium") -> str | None:
         from databricks.sdk.service.sql import StatementState
 
         w = _get_workspace_client(profile)
-        warehouses = [
-            wh
-            for wh in w.warehouses.list()
-            if wh.state and wh.state.name in ("RUNNING", "STARTING")
-        ]
+        warehouses = [wh for wh in w.warehouses.list() if wh.state and wh.state.name in ("RUNNING", "STARTING")]
         if not warehouses:
             return "No running SQL warehouse found -- start one first"
 
@@ -454,10 +446,10 @@ def render_graph(
 
     sorted_degs = sorted(in_degrees.values())
     n = len(sorted_degs)
-    tier_hi  = sorted_degs[int(n * 0.66)] if n >= 3 else sorted_degs[-1]
+    tier_hi = sorted_degs[int(n * 0.66)] if n >= 3 else sorted_degs[-1]
     tier_mid = sorted_degs[int(n * 0.33)] if n >= 3 else 0
 
-    COLOR_HOT  = "#e05252"
+    COLOR_HOT = "#e05252"
     COLOR_WARM = "#f0a830"
     COLOR_COOL = "#4a90d9"
 
@@ -466,8 +458,8 @@ def render_graph(
     node_y = [pos[nd][1] for nd in node_list]
     node_colors: list[str] = []
     node_sizes: list[float] = []
-    node_text: list[str] = []      # hover
-    node_labels: list[str] = []    # short label on the node
+    node_text: list[str] = []  # hover
+    node_labels: list[str] = []  # short label on the node
 
     for nd in node_list:
         deg = in_degrees.get(nd, 0)
@@ -484,11 +476,7 @@ def render_graph(
         # size: 18–60 px, linear in in-degree
         node_sizes.append(18 + 42 * deg / max_deg)
 
-        node_text.append(
-            f"<b>{nd}</b><br>"
-            f"In-degree (dependents): {deg}<br>"
-            f"Row count: {rc_str}"
-        )
+        node_text.append(f"<b>{nd}</b><br>In-degree (dependents): {deg}<br>Row count: {rc_str}")
         node_labels.append(".".join(nd.split(".")[-2:]) if "." in nd else nd)
 
     # --- edge traces (one per edge so we can draw arrows) ----------------
@@ -512,10 +500,14 @@ def render_graph(
         # arrowhead annotation
         annotations.append(
             dict(
-                ax=x0, ay=y0,
-                x=x1,  y=y1,
-                xref="x", yref="y",
-                axref="x", ayref="y",
+                ax=x0,
+                ay=y0,
+                x=x1,
+                y=y1,
+                xref="x",
+                yref="y",
+                axref="x",
+                ayref="y",
                 showarrow=True,
                 arrowhead=3,
                 arrowsize=1.2,
@@ -547,17 +539,23 @@ def render_graph(
     # --- legend as dummy scatter traces -----------------------------------
     legend_traces = [
         go.Scatter(
-            x=[None], y=[None], mode="markers",
-            marker={"color": COLOR_HOT,  "size": 12},
+            x=[None],
+            y=[None],
+            mode="markers",
+            marker={"color": COLOR_HOT, "size": 12},
             name="High in-degree (hot)",
         ),
         go.Scatter(
-            x=[None], y=[None], mode="markers",
+            x=[None],
+            y=[None],
+            mode="markers",
             marker={"color": COLOR_WARM, "size": 12},
             name="Medium in-degree",
         ),
         go.Scatter(
-            x=[None], y=[None], mode="markers",
+            x=[None],
+            y=[None],
+            mode="markers",
             marker={"color": COLOR_COOL, "size": 12},
             name="Low in-degree",
         ),
@@ -568,10 +566,7 @@ def render_graph(
         data=[*edge_traces, node_trace, *legend_traces],
         layout=go.Layout(
             title=dict(
-                text=(
-                    f"Fabricks SQL Dependency Graph — "
-                    f"Top {len(top_nodes)} tables + {depth}-hop neighbours"
-                ),
+                text=(f"Fabricks SQL Dependency Graph — Top {len(top_nodes)} tables + {depth}-hop neighbours"),
                 font={"size": 16, "color": "#e0e0ff"},
             ),
             paper_bgcolor="#1a1a2e",

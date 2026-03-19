@@ -6,6 +6,7 @@ description: Use this skill whenever the user wants to bootstrap, scaffold, or i
 # Init App Stack
 
 Bootstrap a full-stack project with:
+
 - **Frontend**: Nuxt (latest) + Nuxt UI v4 + TailwindCSS, managed with **bun**
 - **Backend**: FastAPI, managed with **uv**
 
@@ -18,6 +19,7 @@ uv run python scripts/create.py <project-name>
 ```
 
 The script (works on Mac, Linux, Windows):
+
 1. Runs `bunx nuxi@latest init frontend --package-manager bun`
 2. Installs `@nuxt/ui tailwindcss`, configures `nuxt.config.ts`, `assets/css/main.css`, and `app.vue`
 3. Runs `uv init` + `uv add "fastapi[standard]"` in `backend/`
@@ -26,6 +28,7 @@ The script (works on Mac, Linux, Windows):
 6. Writes a root `.gitignore`
 
 After running:
+
 - **Frontend**: `cd <project-name>/frontend && bun run dev`
 - **Backend**: `cd <project-name>/backend && uv run dev`
 
@@ -38,6 +41,7 @@ uv run python scripts/install-skills.py
 ```
 
 Installs into `.agents/skills/`, `.agent/skills/`, and `.claude/skills/`:
+
 - `nuxt-ui` — Nuxt UI v4 components, theming, composables
 - `nuxt` — Nuxt framework (routing, data fetching, SSR, server routes)
 - `frontend-design` — Anthropic's design aesthetics guide
@@ -47,13 +51,13 @@ Installs into `.agents/skills/`, `.agent/skills/`, and `.claude/skills/`:
 
 ## Reference files (load as needed, not all at once)
 
-| File | When to read |
-|---|---|
-| [`references/nuxt-ui.md`](references/nuxt-ui.md) | Working on frontend components, theming, forms, overlays |
-| [`references/nuxt.md`](references/nuxt.md) | Routing, data fetching, server routes, SSR, deployment |
-| [`references/fastapi-templates.md`](references/fastapi-templates.md) | Backend structure, CRUD repos, dependency injection, auth |
-| [`references/fastapi-sse.md`](references/fastapi-sse.md) | Adding SSE streaming endpoints (AI chat, live updates, logs) |
-| [`references/frontend-design.md`](references/frontend-design.md) | UI aesthetics, typography, color, motion — avoid generic looks |
+| File                                                                 | When to read                                                   |
+| -------------------------------------------------------------------- | -------------------------------------------------------------- |
+| [`references/nuxt-ui.md`](references/nuxt-ui.md)                     | Working on frontend components, theming, forms, overlays       |
+| [`references/nuxt.md`](references/nuxt.md)                           | Routing, data fetching, server routes, SSR, deployment         |
+| [`references/fastapi-templates.md`](references/fastapi-templates.md) | Backend structure, CRUD repos, dependency injection, auth      |
+| [`references/fastapi-sse.md`](references/fastapi-sse.md)             | Adding SSE streaming endpoints (AI chat, live updates, logs)   |
+| [`references/frontend-design.md`](references/frontend-design.md)     | UI aesthetics, typography, color, motion — avoid generic looks |
 
 ---
 

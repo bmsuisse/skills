@@ -1,15 +1,11 @@
+---
 name: Update README skills table
-
 on:
   push:
     branches: [main]
-    paths:
-      - "skills/**/SKILL.md"
-      - "scripts/update_readme.py"
-
+    paths: [skills/**/SKILL.md, scripts/update_readme.py]
 permissions:
   contents: write
-
 jobs:
   update-readme:
     runs-on: ubuntu-latest
@@ -17,14 +13,11 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
       - uses: astral-sh/setup-uv@v5
-
       - name: Regenerate skills table
         run: uv run python scripts/update_readme.py
-
       - name: Commit if changed
-        run: |
+        run: |-
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git diff --quiet README.md || (

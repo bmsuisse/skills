@@ -11,8 +11,8 @@ Creates:
         backend/    FastAPI (uv)
 """
 
-import sys
 import subprocess
+import sys
 import textwrap
 from pathlib import Path
 
@@ -53,26 +53,35 @@ def main() -> None:
     run(["bun", "install"], fe, "bun install")
     run(["bun", "add", "@nuxt/ui", "tailwindcss"], fe, "bun add @nuxt/ui tailwindcss")
 
-    write(fe / "nuxt.config.ts", """\
+    write(
+        fe / "nuxt.config.ts",
+        """\
         export default defineNuxtConfig({
           modules: ['@nuxt/ui'],
           css: ['~/assets/css/main.css'],
           devtools: { enabled: true },
         })
-        """)
+        """,
+    )
 
-    write(fe / "assets" / "css" / "main.css", """\
+    write(
+        fe / "assets" / "css" / "main.css",
+        """\
         @import "tailwindcss";
         @import "@nuxt/ui";
-        """)
+        """,
+    )
 
-    write(fe / "app.vue", """\
+    write(
+        fe / "app.vue",
+        """\
         <template>
           <UApp>
             <NuxtPage />
           </UApp>
         </template>
-        """)
+        """,
+    )
 
     print("✅ Frontend ready")
 
@@ -83,7 +92,9 @@ def main() -> None:
     run(["uv", "init", "."], be, "uv init")
     run(["uv", "add", "fastapi[standard]"], be, "uv add fastapi[standard]")
 
-    write(be / "main.py", """\
+    write(
+        be / "main.py",
+        """\
         from fastapi import FastAPI
         from fastapi.middleware.cors import CORSMiddleware
 
@@ -101,7 +112,8 @@ def main() -> None:
         @app.get("/health")
         async def health() -> dict:
             return {"status": "ok"}
-        """)
+        """,
+    )
 
     # Append [tool.uv.scripts] to pyproject.toml if not present
     pyproject = be / "pyproject.toml"
@@ -114,7 +126,9 @@ def main() -> None:
     print("✅ Backend ready")
 
     # ── Root .gitignore ───────────────────────────────────────────────────────
-    write(root / ".gitignore", """\
+    write(
+        root / ".gitignore",
+        """\
         # Node / Bun
         node_modules/
         .nuxt/
@@ -133,7 +147,8 @@ def main() -> None:
         .env
         .env.*
         !.env.example
-        """)
+        """,
+    )
 
     print(f"""
 🎉 Project '{project}' is ready!
