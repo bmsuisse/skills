@@ -7,7 +7,6 @@ A collection of reusable AI agent skills for our engineering team. Skills are co
 <!-- SKILLS_TABLE_START -->
 | Skill | Description |
 |---|---|
-| [add-skill](./skills/add-skill/) | Use this skill whenever the user wants to add, create, publish, or contribute a new skill to the bmsuisse/skills repo… |
 | [deslop](./skills/deslop/) | > |
 | [fabricks-sql-analyzer](./skills/fabricks-sql-analyzer/) | Analyzes all SQL files in the Fabricks.Runtime repository, builds a dependency DAG, runs performance heuristics, and… |
 | [init-app-stack](./skills/init-app-stack/) | Use this skill whenever the user wants to bootstrap, scaffold, or initialize a new full-stack app with a Nuxt + Nuxt… |
