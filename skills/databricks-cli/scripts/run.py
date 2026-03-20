@@ -31,13 +31,9 @@ import time
 from pathlib import Path
 
 
-# ---------------------------------------------------------------------------
-# Databricks API wrappers (thin shims over the CLI so no SDK needed)
-# ---------------------------------------------------------------------------
 
 
 def _cli(profile: str, method: str, path: str, body: dict) -> dict:
-    """Call the Databricks REST API via the installed CLI."""
     cmd = ["databricks", "api", method, path, "--profile", profile, "--json", json.dumps(body)]
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
@@ -85,10 +81,6 @@ def destroy_context(profile: str, cluster_id: str, context_id: str) -> None:
     _cli(profile, "post", "/api/1.2/contexts/destroy", {"clusterId": cluster_id, "contextId": context_id})
 
 
-# ---------------------------------------------------------------------------
-# Language detection + SQL wrapping
-# ---------------------------------------------------------------------------
-
 _EXT_TO_LANG = {".py": "python", ".sql": "sql", ".r": "r", ".scala": "scala"}
 
 
@@ -100,21 +92,8 @@ def detect_language(file: Path | None, explicit: str | None) -> str:
     return "python"
 
 
-def wrap_sql(code: str, language: str) -> str:
-    """Wrap a SQL statement so it runs cleanly in a Python exec context."""
-    if language != "sql":
-        return code
-    # SQL contexts accept raw SQL; no wrapping needed.
-    return code
-
-
-# ---------------------------------------------------------------------------
-# Output rendering
-# ---------------------------------------------------------------------------
-
 
 def print_result(resp: dict) -> int:
-    """Print the result and return exit code (0 = success, 1 = error)."""
     results = resp.get("results", {})
     result_type = results.get("resultType", "")
 
@@ -129,7 +108,6 @@ def print_result(resp: dict) -> int:
             print(summary, file=sys.stderr)
         return 1
 
-    # text / table result
     data = results.get("data", "")
     if data:
         print(data)
@@ -137,7 +115,6 @@ def print_result(resp: dict) -> int:
         schema = results.get("schema")
         rows = results.get("data")
         if schema and rows is not None:
-            # tabular output
             cols = [c["name"] for c in schema] if isinstance(schema, list) else []
             if cols:
                 print("\t".join(cols))
@@ -149,10 +126,6 @@ def print_result(resp: dict) -> int:
 
     return 0
 
-
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
 
 
 def main() -> None:
@@ -175,7 +148,6 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    # Resolve code + language
     if args.file:
         code = args.file.read_text(encoding="utf-8")
     else:
@@ -183,30 +155,22 @@ def main() -> None:
 
     language = detect_language(args.file, args.lang)
 
-    # Prepend ARGS injection for Python
     if args.args and language == "python":
         try:
-            json.loads(args.args)  # validate
+            json.loads(args.args)  # validate JSON before injecting
         except json.JSONDecodeError as e:
             print(f"[error] --args must be valid JSON: {e}", file=sys.stderr)
             sys.exit(1)
         code = f"ARGS = {args.args}\n{code}"
 
-    code = wrap_sql(code, language)
-
     print(f"[run] profile={args.profile} cluster={args.cluster_id} lang={language}", file=sys.stderr)
-
-    # Open context
     print("[run] opening execution context …", file=sys.stderr)
     ctx_id = create_context(args.profile, args.cluster_id, language)
     print(f"[run] context {ctx_id}", file=sys.stderr)
 
     try:
-        # Submit command
         print("[run] submitting command …", file=sys.stderr)
         cmd_id = execute(args.profile, args.cluster_id, ctx_id, language, code)
-
-        # Poll
         resp = poll(args.profile, args.cluster_id, ctx_id, cmd_id, interval=args.poll_interval)
     finally:
         if not args.no_destroy:

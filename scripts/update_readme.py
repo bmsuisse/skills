@@ -49,7 +49,6 @@ def build_table() -> str:
         fm = parse_frontmatter(skill_md)
         name = fm.get("name", skill_dir.name)
         description = fm.get("description", "")
-        # Truncate long descriptions for the table
         if len(description) > 120:
             description = description[:117].rstrip() + "…"
         rows.append((name, description))
