@@ -1,5 +1,5 @@
 ---
-name: "databricks-cli"
+name: databricks-cli
 description: >
   Databricks CLI operations: auth, profiles, data exploration, bundles, and
   notebook execution. Use this skill for ANY Databricks task — running or
