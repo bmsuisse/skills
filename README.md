@@ -8,7 +8,7 @@ Reusable AI agent skills for our engineering team — composable instructions th
 | Skill | Description |
 |---|---|
 | [codeunit-analyzer](./skills/codeunit-analyzer/) | Comprehensive C-AL codeunit analysis tool for the OneTrade/Navision project. Zero-dependency Python script with three… |
-| ["databricks-cli"](./skills/"databricks-cli"/) | Databricks CLI operations: auth, profiles, data exploration, bundles, and notebook execution. Use this skill for ANY… |
+| [databricks-cli](./skills/databricks-cli/) | Databricks CLI operations: auth, profiles, data exploration, bundles, and notebook execution. Use this skill for ANY… |
 | [deslop](./skills/deslop/) | Remove AI slop from code and pull requests. Use this skill whenever the user wants to clean up AI-generated code, rev… |
 | [fabricks-sql-analyzer](./skills/fabricks-sql-analyzer/) | Analyzes all SQL files in the Fabricks.Runtime repository, builds a dependency DAG, runs performance heuristics, and… |
 | [init-app-stack](./skills/init-app-stack/) | Use this skill whenever the user wants to bootstrap, scaffold, or initialize a new full-stack app with a Nuxt + Nuxt… |
