@@ -3,19 +3,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
 def run_in_threadpool(func, iterable, max_workers=32, desc=None):
-    """Run a function with multiple argument sets in a thread pool.
-
-    Prints a live progress line to stderr while working.
-
-    Args:
-        func: Function to execute
-        iterable: Iterable of argument tuples
-        max_workers: Max number of parallel threads
-        desc: Optional label shown in the progress line
-
-    Returns:
-        List of results (order not guaranteed)
-    """
     results = []
     items = list(iterable)
     total = len(items)
@@ -37,6 +24,5 @@ def run_in_threadpool(func, iterable, max_workers=32, desc=None):
             bar = "#" * (pct // 5) + "-" * (20 - pct // 5)
             print(f"\r  {label}[{bar}] {completed}/{total} ({pct}%)", end="", file=sys.stderr, flush=True)
 
-    # Clear the progress line
     print(f"\r  {label}done ({total} files)        ", file=sys.stderr)
     return results

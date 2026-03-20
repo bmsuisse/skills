@@ -1,14 +1,8 @@
-"""
-Bottleneck detector (standalone, matching service implementation).
-"""
-
 from pathlib import Path
 from typing import Any, Dict, List
 
 
 class BottleneckDetector:
-    """Detect bottlenecks matching service RuleEngine implementation."""
-
     def __init__(self, parsed_data, file_path, table_metadata=None):
         self.data = parsed_data
         self.file_path = Path(file_path)
@@ -16,7 +10,6 @@ class BottleneckDetector:
         self.bottlenecks = []
 
     def detect(self):
-        """Detect all bottlenecks using service RuleEngine logic."""
         raw_procedures = self.data.get("procedures", {})
 
         for proc_name, proc_data in raw_procedures.items():
@@ -25,7 +18,6 @@ class BottleneckDetector:
         return self.bottlenecks
 
     def _get_table_info(self, table_name: str) -> Dict[str, Any]:
-        """Get table metadata info if available."""
         if not table_name or not self.table_metadata:
             return {}
 
@@ -33,61 +25,34 @@ class BottleneckDetector:
         return self.table_metadata.get(normalized_name, {})
 
     def _get_table_impact_multiplier(self, table_name: str) -> float:
-        """Get the impact multiplier for a table based on its size."""
-        info = self._get_table_info(table_name)
-        return info.get("impactMultiplier", 1.0)
+        return self._get_table_info(table_name).get("impactMultiplier", 1.0)
 
     def _get_table_row_count(self, table_name: str) -> int:
-        """Get the row count for a table."""
-        info = self._get_table_info(table_name)
-        return info.get("rowCount", 0)
+        return self._get_table_info(table_name).get("rowCount", 0)
 
     def _get_table_friendly_size(self, table_name: str) -> str:
-        """Get a friendly size description for a table."""
-        info = self._get_table_info(table_name)
-        return info.get("friendlySize", "unknown size")
+        return self._get_table_info(table_name).get("friendlySize", "unknown size")
 
     def _get_table_severity_adjustment(self, table_name: str) -> str:
-        """Get the severity adjustment description for a table."""
-        info = self._get_table_info(table_name)
-        return info.get("severityAdjustment", "unknown impact")
+        return self._get_table_info(table_name).get("severityAdjustment", "unknown impact")
 
     def _detect_procedure_bottlenecks(self, proc_name: str, proc_data: dict):
-        """Detect all bottleneck patterns in a procedure."""
         writes = [
             w["operation"] for w in proc_data.get("writes", []) if w["operation"] in ["INSERT", "MODIFY", "DELETE"]
         ]
         has_commit = any(w["operation"] == "COMMIT" for w in proc_data.get("writes", []))
 
-        # Pattern 1: Large transaction with COMMIT
         self._detect_large_transaction(proc_name, proc_data, has_commit)
-
-        # Pattern 2: N+1 Query
         self._detect_n_plus_one_query(proc_name, proc_data)
-
-        # Pattern 3: CALCFIELDS in loops
         self._detect_calcfields_in_loop(proc_name, proc_data)
-
-        # Pattern 4: Heavy MODIFY operations
         self._detect_heavy_modify_operations(proc_name, proc_data, writes)
-
-        # Pattern 5: Unfiltered FINDSET/FIND operations
         self._detect_unfiltered_reads(proc_name, proc_data)
-
-        # Pattern 6: Nested loops with database operations
         self._detect_nested_loops_with_db_ops(proc_name, proc_data)
-
-        # Pattern 7: Read-heavy procedures
         self._detect_read_heavy_procedure(proc_name, proc_data)
-
-        # Pattern 8: Compound anti-patterns
         self._detect_compound_antipatterns(proc_name, proc_data, has_commit)
-
-        # Pattern 9: Bulk DELETE operations
         self._detect_bulk_delete_operations(proc_name, proc_data, writes)
 
     def _detect_large_transaction(self, proc_name: str, proc_data: dict, has_commit: bool):
-        """Pattern 1: Transaction size analysis."""
         if not has_commit:
             return
 
@@ -96,7 +61,6 @@ class BottleneckDetector:
         modify_count = sum(1 for w in real_writes if w["operation"] == "MODIFY")
         delete_count = sum(1 for w in real_writes if w["operation"] == "DELETE")
 
-        # Weight: DELETE=3, INSERT=2, MODIFY=1
         transaction_weight = delete_count * 3 + insert_count * 2 + modify_count
 
         if transaction_weight >= 30:
@@ -121,7 +85,6 @@ class BottleneckDetector:
             )
 
     def _detect_n_plus_one_query(self, proc_name: str, proc_data: dict):
-        """Pattern 2: N+1 Query detection."""
         reads_in_loops = [r for r in proc_data.get("reads", []) if r.get("inLoop") and not r.get("isTemporary")]
         findset_in_loops = [r for r in reads_in_loops if r["operation"] == "FINDSET"]
         get_in_loops = [r for r in reads_in_loops if r["operation"] == "GET"]
@@ -129,7 +92,6 @@ class BottleneckDetector:
         if len(findset_in_loops) < 2 and len(get_in_loops) < 5:
             return
 
-        # Calculate impact multiplier based on table sizes
         tables_in_loops = list(
             set([r.get("tableName", "") for r in (findset_in_loops + get_in_loops) if r.get("tableName")])
         )
@@ -143,7 +105,6 @@ class BottleneckDetector:
                 max_impact_multiplier = max(max_impact_multiplier, multiplier)
                 table_size_info.append(f"{table_name} ({friendly_size})")
 
-        # Adjust severity based on table size
         base_severity = "critical" if (len(findset_in_loops) >= 3 or len(get_in_loops) >= 10) else "high"
         adjusted_score = int((85 + min(len(findset_in_loops) * 5, 15)) * max_impact_multiplier)
 
@@ -174,7 +135,6 @@ class BottleneckDetector:
         )
 
     def _detect_calcfields_in_loop(self, proc_name: str, proc_data: dict):
-        """Pattern 3: CALCFIELDS in loops."""
         reads_in_loops = [r for r in proc_data.get("reads", []) if r.get("inLoop") and not r.get("isTemporary")]
         calcfields_in_loops = [r for r in reads_in_loops if r["operation"] == "CALCFIELDS"]
         calcsums_in_loops = [r for r in reads_in_loops if r["operation"] == "CALCSUMS"]
@@ -184,7 +144,6 @@ class BottleneckDetector:
 
         total_calc_ops = len(calcfields_in_loops) + len(calcsums_in_loops)
 
-        # Get table sizes for CALCFIELDS operations
         calc_tables = list(
             set([r.get("tableName", "") for r in (calcfields_in_loops + calcsums_in_loops) if r.get("tableName")])
         )
@@ -228,7 +187,6 @@ class BottleneckDetector:
         )
 
     def _detect_heavy_modify_operations(self, proc_name: str, proc_data: dict, writes: List[str]):
-        """Pattern 4: Heavy write operations."""
         modify_count = sum(1 for w in writes if w == "MODIFY")
 
         if modify_count >= 5:
@@ -250,7 +208,6 @@ class BottleneckDetector:
             )
 
     def _detect_unfiltered_reads(self, proc_name: str, proc_data: dict):
-        """Pattern 5: Unfiltered FINDSET/FIND operations."""
         unfiltered_reads = [
             r for r in proc_data.get("reads", []) if r["operation"] in ["FINDSET", "FIND"] and not r.get("hasFilter")
         ]
@@ -258,7 +215,6 @@ class BottleneckDetector:
         if len(unfiltered_reads) < 2:
             return
 
-        # Calculate impact based on actual table sizes
         tables_unfiltered = list(set([r.get("tableName", "") for r in unfiltered_reads if r.get("tableName")]))
         max_impact_multiplier = 1.0
         max_row_count = 0
@@ -279,8 +235,6 @@ class BottleneckDetector:
 
         if max_impact_multiplier >= 2.0:
             severity = "critical"
-        elif max_impact_multiplier >= 1.5:
-            severity = "high"
         else:
             severity = "high"
 
@@ -306,7 +260,6 @@ class BottleneckDetector:
         )
 
     def _detect_nested_loops_with_db_ops(self, proc_name: str, proc_data: dict):
-        """Pattern 6: Nested loops with database operations."""
         max_loop_depth = proc_data.get("max_loop_depth", 0)
         reads_in_loops = [r for r in proc_data.get("reads", []) if r.get("inLoop") and not r.get("isTemporary")]
 
@@ -329,7 +282,6 @@ class BottleneckDetector:
             )
 
     def _detect_read_heavy_procedure(self, proc_name: str, proc_data: dict):
-        """Pattern 7: Read-heavy procedures."""
         real_reads = [
             r
             for r in proc_data.get("reads", [])
@@ -355,7 +307,6 @@ class BottleneckDetector:
             )
 
     def _detect_compound_antipatterns(self, proc_name: str, proc_data: dict, has_commit: bool):
-        """Pattern 8: Compound anti-patterns (multiple issues amplify each other)."""
         reads_in_loops = [r for r in proc_data.get("reads", []) if r.get("inLoop") and not r.get("isTemporary")]
         findset_in_loops = [r for r in reads_in_loops if r["operation"] == "FINDSET"]
         get_in_loops = [r for r in reads_in_loops if r["operation"] == "GET"]
@@ -401,7 +352,6 @@ class BottleneckDetector:
             )
 
     def _detect_bulk_delete_operations(self, proc_name: str, proc_data: dict, writes: List[str]):
-        """Pattern 9: Many DELETE operations."""
         delete_count = sum(1 for w in writes if w == "DELETE")
 
         if delete_count >= 4:

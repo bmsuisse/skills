@@ -1,7 +1,3 @@
-"""
-Enhanced C-AL codeunit parser (standalone, matching service implementation).
-"""
-
 import re
 from functools import lru_cache
 from pathlib import Path
@@ -9,9 +5,6 @@ from typing import Any, Dict, List, Optional
 
 
 class CodeunitParser:
-    """Enhanced parser for C/AL codeunit files matching service implementation."""
-
-    # Reserved words to exclude from call extraction
     RESERVED_WORDS = {
         "INIT",
         "INSERT",
@@ -60,13 +53,11 @@ class CodeunitParser:
         "POWER",
     }
 
-    # Statement keywords that indicate not a procedure definition
     STATEMENT_KEYWORDS = ["IF", "WHILE", "WITH", "CASE", "UNTIL", "FOR", "REPEAT"]
 
     def __init__(self, cal_path, table_metadata=None):
         cal_path = Path(cal_path)
 
-        # Handle both .cs and .c-al inputs
         if cal_path.suffix == ".cs":
             self.cs_path = cal_path
             self.cal_path = cal_path.with_suffix(".c-al")
@@ -79,7 +70,6 @@ class CodeunitParser:
 
         self.table_metadata = table_metadata or {}
 
-        # Extracted Data
         self.object_id = None
         self.object_name = None
         self.procedures = {}
@@ -90,7 +80,6 @@ class CodeunitParser:
         self.temp_table_vars = set()
         self.source_code = ""
 
-        # State during parsing
         self.current_procedure = None
         self.block_depth = 0
         self.max_nesting = 0
@@ -102,14 +91,12 @@ class CodeunitParser:
 
     @lru_cache(maxsize=None)
     def parse(self):
-        """Main parsing entry point."""
         self._parse_cs_companion()
         self._parse_cal()
 
         return self._build_report()
 
     def _parse_cs_companion(self):
-        """Extract metadata from .cs companion file if available."""
         if not self.cs_path or not self.cs_path.exists():
             self.warnings.append("No .cs companion file found; object metadata may be incomplete.")
             return
@@ -118,13 +105,11 @@ class CodeunitParser:
             with open(self.cs_path, "r", encoding="utf-8", errors="ignore") as f:
                 content = f.read()
 
-            # Method 1: Extract from [NavCodeunit(2, "Company-Initialize")] attribute
             match = re.search(r'\[NavCodeunit\((\d+),\s*"([^"]+)"\)\]', content)
             if match:
                 self.object_id = int(match.group(1))
                 self.object_name = match.group(2)
 
-            # Method 2: Extract from class name and ObjectName property
             if not self.object_id:
                 class_match = re.search(r"class\s+Codeunit(\d+)\s*:\s*NavCodeunit", content)
                 if class_match:
@@ -135,14 +120,12 @@ class CodeunitParser:
                 if name_match:
                     self.object_name = name_match.group(1)
 
-            # Extract global variables
             var_pattern = r"private\s+(\w+)\s+([a-zA-Z0-9_]+);"
             for match in re.finditer(var_pattern, content):
                 var_type = match.group(1)
                 var_name = match.group(2)
                 self.global_variables[var_name] = var_type
 
-            # Extract table variable mappings (Record_TableName pattern)
             table_var_pattern = r"private\s+Record_([A-Za-z0-9_]+)\s+([a-zA-Z0-9_]+);"
             for match in re.finditer(table_var_pattern, content):
                 table_name = match.group(1).replace("_", " ")
@@ -150,10 +133,8 @@ class CodeunitParser:
                 self.table_variables[var_name] = table_name
                 self.global_variables[var_name] = {"type": "Record", "table": table_name}
 
-            # Extract NavRecordHandle variables with table IDs
             self._extract_navrecord_handles(content)
 
-            # Detect temporary table variables
             for var_name in self.global_variables.keys():
                 if var_name.startswith("Temp") or var_name.startswith("temp"):
                     self.temp_table_vars.add(var_name)
@@ -162,7 +143,6 @@ class CodeunitParser:
             self.warnings.append(f"Could not parse .cs companion: {str(e)}")
 
     def _extract_navrecord_handles(self, content: str):
-        """Extract NavRecordHandle variables and map them to table names using table IDs."""
         try:
             handle_declarations = re.finditer(r"(?:public|private)\s+NavRecordHandle\s+([a-zA-Z0-9_]+);", content)
             var_names = set()
@@ -188,7 +168,6 @@ class CodeunitParser:
                             "id": table_id,
                         }
 
-                        # Check if temporary table
                         temp_match = re.search(
                             rf"{re.escape(var_name)}\s*=\s*new\s+NavRecordHandle\s*\(\s*this\s*,\s*\d+\s*,\s*(true|false)",
                             content,
@@ -200,7 +179,6 @@ class CodeunitParser:
             pass
 
     def _get_table_name_by_id(self, table_id: str) -> Optional[str]:
-        """Look up table name by table ID using table metadata."""
         if not self.table_metadata:
             return None
 
@@ -211,7 +189,6 @@ class CodeunitParser:
         return None
 
     def _parse_cal(self):
-        """Parse the C/AL file."""
         if not self.cal_path.exists():
             self.warnings.append(f"C-AL file not found: {self.cal_path}")
             return
@@ -223,7 +200,6 @@ class CodeunitParser:
             self.warnings.append(f"Could not parse C/AL file: {str(e)}")
 
     def _read_cal_lines(self) -> List[str]:
-        """Pre-process C/AL file to handle multi-line statements."""
         with open(self.cal_path, "r", encoding="utf-8", errors="ignore") as f:
             raw_lines = f.readlines()
 
@@ -262,7 +238,6 @@ class CodeunitParser:
         return processed
 
     def _parse_procedures(self, lines: List[str]):
-        """Parse procedures from processed lines."""
         for line in lines:
             stripped = line.strip()
             if not stripped:
@@ -278,7 +253,6 @@ class CodeunitParser:
                 self._analyze_line(stripped)
 
     def _match_procedure_definition(self, line: str) -> Optional[Dict[str, Any]]:
-        """Match and extract procedure definition metadata."""
         proc_pattern = r"^([A-Za-z][A-Za-z0-9_]*)\s*\((.*?)\)(?:\s*:\s*(.+))?$"
         match = re.match(proc_pattern, line)
 
@@ -300,11 +274,9 @@ class CodeunitParser:
         }
 
     def _start_new_procedure(self, proc_info: Dict[str, Any]):
-        """Initialize a new procedure for tracking."""
         proc_name = proc_info["name"]
         self.current_procedure = proc_name
 
-        # Reset state
         self.block_depth = 0
         self.max_nesting = 0
         self.in_with_block = False
@@ -329,7 +301,6 @@ class CodeunitParser:
         }
 
     def _analyze_line(self, line: str):
-        """Analyze a single line of code within a procedure."""
         if not self.current_procedure:
             return
 
@@ -347,7 +318,6 @@ class CodeunitParser:
         self._detect_operations(line, proc_data)
 
     def _track_blocks(self, upper_line: str, proc_data: dict):
-        """Track BEGIN/END blocks and WITH statements for nesting depth."""
         stripped = upper_line.strip()
 
         if stripped.startswith("BEGIN"):
@@ -368,7 +338,6 @@ class CodeunitParser:
         proc_data["nesting_depth"] = max(proc_data.get("nesting_depth", 0), self.block_depth)
 
     def _track_loops(self, upper_line: str, proc_data: dict):
-        """Track loop entry/exit for context-aware analysis."""
         if re.search(r"\b(REPEAT|WHILE|FOR)\b", upper_line):
             self.loop_depth += 1
             self.in_loop = True
@@ -381,7 +350,6 @@ class CodeunitParser:
         proc_data["max_loop_depth"] = max(proc_data.get("max_loop_depth", 0), self.loop_depth)
 
     def _track_filters(self, upper_line: str):
-        """Track SETRANGE/SETFILTER to know if subsequent operations are filtered."""
         filter_pattern = r"([A-Za-z0-9_]+)\.(?:SETRANGE|SETFILTER)\s*\("
         match = re.search(filter_pattern, upper_line)
         if match:
@@ -393,7 +361,6 @@ class CodeunitParser:
             self.filtered_vars.discard(match.group(1))
 
     def _update_complexity(self, upper_line: str, proc_data: dict):
-        """Calculate cyclomatic complexity."""
         if re.search(r"\bIF\b", upper_line):
             proc_data["complexity"] += 1
         if re.search(r"\bCASE\b", upper_line):
@@ -409,7 +376,6 @@ class CodeunitParser:
         proc_data["complexity"] += upper_line.count(" OR ")
 
     def _extract_dependencies(self, line: str):
-        """Extract dependency references."""
         patterns = {
             "reports": re.compile(r'REPORT::(?:"([^"]+)"|([A-Za-z0-9_]+))'),
             "pages": re.compile(r'PAGE::(?:"([^"]+)"|([A-Za-z0-9_]+))'),
@@ -424,7 +390,6 @@ class CodeunitParser:
                     self.dependencies[dep_type].add(dep_name)
 
     def _extract_calls(self, line: str, proc_data: dict):
-        """Extract function/method calls."""
         obj_method_pattern = r"([A-Z][A-Za-z0-9_]+)\.([A-Z][A-Za-z0-9_]+)\s*(?:\(|;)"
         for match in re.finditer(obj_method_pattern, line):
             obj_name = match.group(1)
@@ -449,7 +414,6 @@ class CodeunitParser:
                         proc_data["calls"].append(method_name)
 
     def _detect_operations(self, line: str, proc_data: dict):
-        """Detect write operations and guard patterns."""
         upper_line = line.upper()
 
         self._detect_guards(upper_line, proc_data)
@@ -457,7 +421,6 @@ class CodeunitParser:
         self._detect_writes(line, upper_line, proc_data)
 
     def _detect_guards(self, upper_line: str, proc_data: dict):
-        """Detect guard patterns."""
         guard_patterns = [
             (r"IF\s+NOT\s+([A-Za-z0-9_]+)\.FINDFIRST", "IF NOT FINDFIRST"),
             (r"IF\s+NOT\s+([A-Za-z0-9_]+)\.GET\s*\(", "IF NOT GET"),
@@ -476,7 +439,6 @@ class CodeunitParser:
                 break
 
     def _is_temporary_table(self, var_name: str) -> bool:
-        """Check if a variable is a temporary table."""
         return (
             var_name in self.temp_table_vars
             or var_name.upper().startswith("TEMP")
@@ -484,7 +446,6 @@ class CodeunitParser:
         )
 
     def _get_table_name(self, var_name: str) -> str:
-        """Get the table name for a variable."""
         if var_name in self.table_variables:
             return self.table_variables[var_name]
 
@@ -496,7 +457,6 @@ class CodeunitParser:
         return "Unknown"
 
     def _detect_reads(self, line: str, upper_line: str, proc_data: dict):
-        """Detect read operations with metadata."""
         read_ops = {
             "FINDSET": r"([A-Za-z0-9_]+)\.FINDSET(?:\s*\(\s*(TRUE|FALSE)?\s*\))?",
             "FINDFIRST": r"([A-Za-z0-9_]+)\.FINDFIRST",
@@ -535,7 +495,6 @@ class CodeunitParser:
                 break
 
     def _detect_writes(self, line: str, upper_line: str, proc_data: dict):
-        """Detect write operations with metadata."""
         write_ops = {
             "INSERT": r"([A-Za-z0-9_]+)\.INSERT(?:\s*\(\s*(TRUE|FALSE)?\s*\))?",
             "MODIFY": r"([A-Za-z0-9_]+)\.MODIFY(?:\s*\(\s*(TRUE|FALSE)?\s*\))?",
@@ -589,11 +548,8 @@ class CodeunitParser:
                     self.dependencies["tables"].add(table_name)
 
     def _build_report(self):
-        """Build the final analysis report."""
-        # Calculate total complexity
         total_complexity = sum(p.get("complexity", 1) for p in self.procedures.values())
 
-        # Collect side effects
         side_effects = []
         for proc_name, data in self.procedures.items():
             for write in data["writes"]:

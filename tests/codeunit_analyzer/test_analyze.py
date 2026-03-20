@@ -1,4 +1,3 @@
-"""Tests for scan flow in analyze.py."""
 
 from pathlib import Path
 from unittest.mock import patch
@@ -22,7 +21,6 @@ def make_file_info(tmp_path: Path, filename: str = "cu1.c-al", content: str = CA
 
 def test_analyze_codeunit_for_scan_returns_list(tmp_path: Path):
     file_info = make_file_info(tmp_path)
-    # analyze_codeunit looks up by name in the data dir, so patch it to return an empty result
     with patch("analyze.analyze_codeunit", return_value={"object": {}, "bottlenecks": []}):
         result = _analyze_codeunit_for_scan(file_info, {})
     assert isinstance(result, list)
@@ -30,7 +28,6 @@ def test_analyze_codeunit_for_scan_returns_list(tmp_path: Path):
 
 def test_analyze_codeunit_for_scan_swallows_errors(tmp_path: Path):
     bad_info = {"path": tmp_path / "ghost.c-al", "name": "ghost.c-al"}
-    # Should not raise — returns empty list on error
     result = _analyze_codeunit_for_scan(bad_info, {})
     assert result == []
 
