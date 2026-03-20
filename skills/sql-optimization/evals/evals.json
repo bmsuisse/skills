@@ -1,0 +1,45 @@
+{
+  "skill_name": "sql-optimization",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Optimize this SQL query for Databricks:\n\n```sql\nSELECT DISTINCT o.customer_id, c.name, c.region\nFROM orders o\nLEFT JOIN customers c ON o.customer_id = c.id\nWHERE LOWER(c.email) = 'john@example.com'\n  AND o.created_at BETWEEN '2024-01-01' AND '2024-01-31';\n```",
+      "expected_output": "The assistant rewrites the query applying: SELECT DISTINCT → GROUP BY ALL, LOWER() → collation (utf8_lcase), BETWEEN → >= / < half-open interval, explicit column list with alias prefixes, meaningful aliases. All keywords lowercase.",
+      "files": [],
+      "expectations": [
+        "SELECT DISTINCT is replaced with GROUP BY ALL",
+        "LOWER(c.email) comparison is replaced with a collation recommendation (utf8_lcase)",
+        "BETWEEN is replaced with >= / < half-open interval",
+        "The rewritten query uses explicit column list (no SELECT *)",
+        "All SQL keywords are lowercase",
+        "Table aliases are meaningful (not single letters like o, c)"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Rewrite this to use QUALIFY instead of the ROW_NUMBER subquery pattern:\n\n```sql\nWITH ranked AS (\n  SELECT id, customer_id, created_at, total_amount,\n         ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY created_at DESC) AS rn\n  FROM orders\n)\nSELECT id, customer_id, created_at, total_amount\nFROM ranked\nWHERE rn = 1;\n```",
+      "expected_output": "The assistant rewrites using QUALIFY, removes the CTE wrapper, prefixes all column references with a meaningful alias, and uses lowercase keywords throughout.",
+      "files": [],
+      "expectations": [
+        "QUALIFY is used instead of a CTE wrapper with WHERE rn = 1",
+        "The ranked CTE is eliminated",
+        "Column references are prefixed with a table alias",
+        "All SQL keywords are lowercase",
+        "The rewrite is semantically equivalent to the original"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "I have a NOT IN subquery that's killing performance on a large table. How do I fix it?\n\n```sql\nSELECT id, name FROM products\nWHERE id NOT IN (SELECT product_id FROM order_items WHERE order_id = 5);\n```",
+      "expected_output": "The assistant rewrites using LEFT ANTI JOIN (or NOT EXISTS), explains the NULL safety issue with NOT IN, uses meaningful aliases and lowercase keywords, prefixes all columns with aliases.",
+      "files": [],
+      "expectations": [
+        "The rewrite uses LEFT ANTI JOIN or NOT EXISTS",
+        "The NULL safety issue with NOT IN is explained",
+        "Meaningful table aliases are used (not p, oi)",
+        "All SQL keywords are lowercase",
+        "Column references include alias prefix"
+      ]
+    }
+  ]
+}

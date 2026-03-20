@@ -1,0 +1,41 @@
+{
+  "skill_name": "codeunit-analyzer",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Scan all codeunits for performance bottlenecks and show me the top offenders.",
+      "expected_output": "The assistant runs the pre-flight setup to locate Python and the CODEUNITS_DIR, then runs `analyze.py scan`, displaying the top 10 worst codeunits by score with severity breakdown (Critical/High/Medium/Low).",
+      "files": [],
+      "expectations": [
+        "The assistant runs the pre-flight setup block to resolve PYTHON and CODEUNITS_DIR",
+        "The assistant runs analyze.py scan (not analyze or list)",
+        "The output includes a ranked list of codeunits sorted by score",
+        "Severity levels (Critical/High/Medium/Low) are reported"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Analyze codeunit 80.cs and tell me what performance issues it has.",
+      "expected_output": "The assistant runs analyze.py analyze 80.cs and reports bottlenecks with their severity, procedure names, and recommendations. If critical issues are found it suggests running optimize.",
+      "files": [],
+      "expectations": [
+        "The assistant runs analyze.py analyze with 80.cs as the argument",
+        "Output includes bottleneck names and severity levels",
+        "Output includes the procedure name where each issue was found",
+        "If critical issues exist, the assistant suggests running optimize"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Give me optimization suggestions for codeunit 80.cs so I can fix the performance issues.",
+      "expected_output": "The assistant runs analyze.py optimize 80.cs, producing a phased remediation plan (Phase 1 Critical, Phase 2 High, Phase 3 Medium) with code examples showing before/after patterns.",
+      "files": [],
+      "expectations": [
+        "The assistant runs analyze.py optimize (not analyze or scan)",
+        "Output is organized by phase/severity",
+        "Concrete code examples (CAL before/after) are provided",
+        "Estimated performance impact or recommendations summary is included"
+      ]
+    }
+  ]
+}

@@ -327,8 +327,10 @@ spark.sql("SHOW TABLES IN <schema>").show()
 
 ## Reference Guides
 
+- [Databricks CLI docs](https://docs.databricks.com/aws/en/dev-tools/cli) — official CLI reference (commands, flags, auth, bundles)
+- [Databricks llms.txt](https://docs.databricks.com/llms.txt) — machine-readable index of all Databricks docs
 - [CLI Installation](databricks-cli-install.md)
 - [CLI Authentication](databricks-cli-auth.md)
 - [Data Exploration](data-exploration.md)
 - [Asset Bundles](asset-bundles.md)
-- [Databricks SQL CLI (Azure docs)](https://learn.microsoft.com/en-us/azure/databricks/dev-tools/databricks-sql-cli) — check here for the latest SQL CLI options, authentication methods, and output formats
+- [Databricks SQL CLI (Azure docs)](https://learn.microsoft.com/en-us/azure/databricks/dev-tools/databricks-sql-cli) — SQL CLI options, authentication methods, and output formats

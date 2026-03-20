@@ -1,0 +1,23 @@
+{
+  "skill_name": "databricks-cli",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I need to run a quick SQL query on our Databricks cluster to see the top 10 rows from prod_catalog.sales.orders. We're on the premium profile. Can you do that for me?",
+      "expected_output": "The assistant uses scripts/run.py with --lang sql to execute the query on the cluster, shows the command used, and explains what the output means. It selects the correct profile and asks for or notes the cluster ID.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "I wrote a migration script at /tmp/migrate_customers.py that needs to run on the Databricks cluster — specifically on the general-purpose cluster (not the GPU one). It reads from a ARGS dict so I need to pass catalog='prod' and dry_run=True to it. Profile is premium.",
+      "expected_output": "The assistant uses scripts/run.py with --file, --args JSON, --cluster-id for the general-purpose cluster, and --profile premium. It explains that ARGS will be injected as a Python dict. It looks up or asks for the general-purpose cluster ID.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "The notebook I uploaded to Databricks yesterday is failing. How do I check what the error was? The run ID is 194658749253431 and I think it's on the premium profile. Also how do I re-run it after fixing the error?",
+      "expected_output": "The assistant correctly uses the jobs runs get-output API call with the task run ID (not the job ID), reads error and error_trace fields, and explains the fix-and-retry cycle from the SKILL.md notebook runner section.",
+      "files": []
+    }
+  ]
+}

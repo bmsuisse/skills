@@ -1,0 +1,29 @@
+{
+  "skill_name": "init-app-stack",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Set up a new full-stack app called 'expense-tracker' with a Nuxt frontend and FastAPI backend.",
+      "expected_output": "The assistant runs `uv run python scripts/create.py expense-tracker`, explains what the script creates (Nuxt frontend with bun, FastAPI backend with uv), and provides the dev startup commands for both frontend and backend.",
+      "files": [],
+      "expectations": [
+        "The assistant runs scripts/create.py with expense-tracker as the project name",
+        "bun is used for the frontend (not npm or yarn)",
+        "uv is used for the backend (not pip)",
+        "The assistant provides the frontend dev command: cd expense-tracker/frontend && bun run dev",
+        "The assistant provides the backend dev command: cd expense-tracker/backend && uv run dev"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "After scaffolding a new app, how do I install the companion skills so the AI has context on the stack?",
+      "expected_output": "The assistant runs `uv run python scripts/install-skills.py` and explains the four skills it installs (nuxt-ui, nuxt, frontend-design, fastapi-templates) and where they are installed (.agents/skills/, .agent/skills/, .claude/skills/).",
+      "files": [],
+      "expectations": [
+        "The assistant runs scripts/install-skills.py",
+        "The four installed skills are named: nuxt-ui, nuxt, frontend-design, fastapi-templates",
+        "The install locations (.agents/skills etc.) are mentioned"
+      ]
+    }
+  ]
+}

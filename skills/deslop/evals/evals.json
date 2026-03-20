@@ -1,0 +1,41 @@
+{
+  "skill_name": "deslop",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Can you deslop this Python function? It was written by an AI and feels off:\n\n```python\ndef get_user_by_id(user_id: int) -> Optional[User]:\n    # Get the user by their ID\n    if user_id is None:\n        return None\n    if not isinstance(user_id, int):\n        raise TypeError(\"user_id must be an integer\")\n    if user_id <= 0:\n        return None\n    # Fetch user from the database\n    user = db.query(User).filter(User.id == user_id).first()\n    # Return the user or None\n    return user\n```",
+      "expected_output": "The assistant applies the reactive checklist: removes redundant comments, removes over-defensive guards that don't match the codebase trust model, and produces a clean version plus a deslop report listing what was removed and why.",
+      "files": [],
+      "expectations": [
+        "The assistant produces a cleaned version of the function",
+        "Redundant comments (restating what the code does) are removed",
+        "At least one over-defensive guard is removed with justification",
+        "A deslop report section is produced with Removed / Changed / Kept headings"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I'm about to add a caching layer to our API. Can you run me through the proactive deslop loop so I don't end up with slop in the PR?",
+      "expected_output": "The assistant walks through the Research → Plan → Execute → Review → Revise loop applied to the caching task, asking clarifying questions about existing patterns, trust boundaries, and naming conventions before suggesting any code.",
+      "files": [],
+      "expectations": [
+        "The assistant references the Research → Plan → Execute → Review → Revise loop by name",
+        "The Research step asks about or identifies existing patterns in the codebase",
+        "The Plan step identifies naming/style/error-handling conventions to follow",
+        "The Revise step is mentioned as a way to feed learnings back into project rules"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Does this TypeScript look AI-written? Review it for slop:\n\n```typescript\n// Function to fetch user data from the API\nasync function fetchUserData(userId: string): Promise<User | null> {\n  console.log(`Fetching user data for userId: ${userId}`);\n  try {\n    const response = await api.get(`/users/${userId}`);\n    console.log('Got response', response);\n    if (response && response.data && response.data.user) {\n      return response.data.user as User;\n    }\n    return null;\n  } catch (error: unknown) {\n    console.error('Error fetching user data:', error);\n    return null;\n  }\n}\n```",
+      "expected_output": "The assistant identifies the vibe extras (console.log statements), the defensive chaining (response && response.data && response.data.user), the type escape pattern, and the try/catch wrapping a happy path. It produces a cleaned version and a deslop report.",
+      "files": [],
+      "expectations": [
+        "console.log statements are flagged and removed as vibe extras",
+        "Redundant comment at the top is removed",
+        "Over-defensive optional chaining or null checks are simplified",
+        "A deslop report with Removed / Changed sections is produced"
+      ]
+    }
+  ]
+}

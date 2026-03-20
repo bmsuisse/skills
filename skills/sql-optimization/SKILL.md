@@ -7,29 +7,7 @@ description: "Universal SQL performance optimization assistant for comprehensive
 
 Expert SQL performance optimization for ${selection} (or entire project if no selection). Focus on universal SQL optimization techniques that work across MySQL, PostgreSQL, SQL Server, Oracle, and other SQL databases.
 
-**Formatting and style rules applied throughout this skill:**
-
-- **ANSI SQL first**: prefer standard ANSI-92/SQL:2003 constructs that work across all databases. Vendor-specific extensions (`qualify`, `group by all`, Databricks collations, `explain cost`) are used only where they offer a clear, significant benefit and are **explicitly labelled** with the supported platform.
-- **SQL** — formatted with [`sqlfmt`](https://sqlfmt.com) (`line_length = 119`):
-  - All keywords lowercase (`select`, `from`, `where`, `join`, `with`, …)
-  - ANSI join syntax (`inner join`, `left join`) — never implicit comma joins
-  - CTEs (`with … as (…)`) instead of subqueries or derived tables
-  - One clause per line, 4-space indentation inside CTEs
-  - Trailing commas on column lists
-- **Python** — formatted with [`ruff`](https://docs.astral.sh/ruff/) (`line-length = 119`, `target-version = "py312"`):
-  - Apply `ruff format` + `ruff check --fix` to any Python that embeds or generates SQL
-  - SQL strings inside Python still follow sqlfmt conventions
-
-- **Naming and clarity:**
-  - ❌ `select *` — always list explicit columns
-  - ❌ Single-letter aliases (`a`, `b`, `c`) — use meaningful names (`ord`, `cust`, `prod`)
-  - ✅ Prefix every selected column with its table alias: `ord.id`, `cust.name`
-  - ✅ Backticks for identifiers with spaces or reserved words: `` `my name` ``, `` `order` `` — **never** single quotes
-  - ✅ Single quotes for string literals only: `'active'`, `'2024-01-01'`
-  - ✅ `qualify` instead of `row_number()` CTE wrappers — _Databricks SQL / DuckDB / BigQuery / Snowflake_
-  - ✅ `group by all` for clean aggregations — _Databricks SQL / DuckDB / Spark SQL 3.4+_
-
----
+Before writing or rewriting any SQL or Python, check how formatting is configured in this project. Look for `pyproject.toml`, `.sqlfmt.toml`, `ruff.toml`, `setup.cfg`, or editor config files (`.editorconfig`). Use whatever `line_length`, formatter, and style settings are defined there — do not assume defaults.
 
 ## 🎯 Core Optimization Areas
 

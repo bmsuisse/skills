@@ -1,0 +1,43 @@
+{
+  "skill_name": "fabricks-sql-analyzer",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "/fabricks-sql-analyzer --top 20",
+      "expected_output": "The assistant checks Databricks CLI auth, runs the sql_dependency_analyzer.py script with --top 20 --row-counts, and produces a full Markdown report with Executive Summary, Dependency Hotspots table, Performance Findings per table, and a Recommendations Summary.",
+      "files": [],
+      "expectations": [
+        "The assistant checks CLI installation and authentication before running the script",
+        "The script is invoked with --top 20 and --row-counts flags",
+        "The Markdown report includes an Executive Summary with graph stats",
+        "The report includes a Dependency Hotspots table sorted by impact_score",
+        "At least one Performance Findings sub-section with detected issues is present"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "/fabricks-sql-analyzer --fix --top 10 --branch perf/march-fixes",
+      "expected_output": "The assistant runs the analyzer, produces the report, then creates the git branch perf/march-fixes, applies fixes to the top-10 tables (SELECT DISTINCT → GROUP BY ALL, NOT IN → LEFT ANTI JOIN, etc.), runs sqlfmt after each edit, commits, and appends an Applied Fixes section to the report.",
+      "files": [],
+      "expectations": [
+        "The assistant creates a git branch named perf/march-fixes",
+        "SQL rewrites are applied: at least one of SELECT DISTINCT, NOT IN subquery, or Repeated scan fixes",
+        "sqlfmt is run after each file edit",
+        "A git commit is made with a descriptive message referencing the tables fixed",
+        "An Applied Fixes section is appended to the report"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "/fabricks-sql-analyzer --graph --graph-output /tmp/dep_graph.html --top 15",
+      "expected_output": "The assistant runs the script with --graph and --graph-output flags (no --fix), then explains what the interactive HTML graph shows: node colors (red/orange/blue by in-degree tercile), node sizes (proportional to dependents), and directed edges.",
+      "files": [],
+      "expectations": [
+        "The script is run with --graph and --graph-output /tmp/dep_graph.html",
+        "The assistant explains node color coding (red = high in-degree, orange = mid, blue = low)",
+        "The assistant mentions node sizes are proportional to dependency count",
+        "The output HTML file path is confirmed to the user"
+      ]
+    }
+  ]
+}
