@@ -1,14 +1,4 @@
-"""
-Databricks Unity Catalog metadata helpers.
-
-Functions
----------
-catalogs(profile)               -> list of catalog names
-schemas(profile, catalog)       -> list of schema names
-tables(profile, catalog, schema)-> list of table dicts
-describe(profile, fqn)          -> full table dict (columns, comment, owner, …)
-search(profile, keyword, catalog) -> prints matching tables via information_schema
-"""
+"""Databricks Unity Catalog metadata helpers."""
 
 from __future__ import annotations
 
@@ -54,11 +44,7 @@ def describe(profile: str, fqn: str) -> dict:
 
 
 def search(profile: str, keyword: str, catalog: str | None = None) -> None:
-    """Search information_schema for tables matching keyword.
-
-    Streams output directly — does not return a value.
-    Uses `databricks experimental aitools tools query` (no cluster needed).
-    """
+    """Stream matching tables from information_schema via aitools query."""
     safe_kw = keyword.replace("'", "''")  # basic SQL escaping
     where = f"table_name LIKE '%{safe_kw}%'"
     if catalog:
