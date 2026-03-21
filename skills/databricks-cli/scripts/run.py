@@ -1,10 +1,4 @@
-"""
-Databricks execution context helpers — importable library.
-
-Use cli.py as the entrypoint. This module exposes:
-  create_context, execute, poll, destroy_context,
-  detect_language, wrap_sql_as_json, format_markdown_table, print_result
-"""
+"""Databricks execution context helpers — use cli.py as the entrypoint."""
 
 from __future__ import annotations
 
@@ -26,8 +20,7 @@ def _cli(profile: str, method: str, path: str, body: dict) -> dict:
 
 def create_context(profile: str, cluster_id: str, language: str) -> str:
     resp = _cli(profile, "post", "/api/1.2/contexts/create", {"clusterId": cluster_id, "language": language})
-    ctx_id: str = resp["id"]
-    return ctx_id
+    return resp["id"]
 
 
 def execute(profile: str, cluster_id: str, context_id: str, language: str, command: str) -> str:
@@ -37,8 +30,7 @@ def execute(profile: str, cluster_id: str, context_id: str, language: str, comma
         "/api/1.2/commands/execute",
         {"clusterId": cluster_id, "contextId": context_id, "language": language, "command": command},
     )
-    cmd_id: str = resp["id"]
-    return cmd_id
+    return resp["id"]
 
 
 def poll(profile: str, cluster_id: str, context_id: str, command_id: str, interval: float = 2.0) -> dict:
@@ -102,7 +94,6 @@ def format_markdown_table(columns: list[str], rows: list[list[str]]) -> str:
         ) + " |"
         lines.append(line)
     return "\n".join(lines)
-
 
 
 def print_result(resp: dict, output_format: str = "text") -> int:
