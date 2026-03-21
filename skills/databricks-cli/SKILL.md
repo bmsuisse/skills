@@ -216,6 +216,44 @@ Read `error` (short) and `error_trace` (full traceback).
 | `FileNotFoundError` (DBFS) | Verify path on DBFS |
 | Syntax error | Fix the offending line |
 
+## Ad-hoc Job Submit
+
+Run a notebook (or Python script already uploaded to the workspace) directly as a one-time job — no runner job wrapper needed.
+
+⚠️ The CLI uses a **tasks array**, not top-level `existing_cluster_id` / `notebook_task`.
+
+```bash
+databricks jobs submit --profile premium --json '{
+  "run_name": "my_ad_hoc_run",
+  "tasks": [{
+    "task_key": "main",
+    "existing_cluster_id": "<CLUSTER_ID>",
+    "notebook_task": {
+      "notebook_path": "<WORKSPACE_PATH>",
+      "base_parameters": {"sample": "500", "epochs": "1"}
+    }
+  }]
+}'
+```
+
+Capture the `run_id` from the response, then poll and fetch output the same way as the runner job (steps 4–6 above).
+
+**For Python scripts** (not notebooks), use `spark_python_task` instead:
+
+```bash
+databricks jobs submit --profile premium --json '{
+  "run_name": "my_script_run",
+  "tasks": [{
+    "task_key": "main",
+    "existing_cluster_id": "<CLUSTER_ID>",
+    "spark_python_task": {
+      "python_file": "<WORKSPACE_PATH>.py",
+      "parameters": ["--sample", "500"]
+    }
+  }]
+}'
+```
+
 ## Running Code on the Cluster
 
 **Use `scripts/run.py`** — a single command that opens a context, executes
