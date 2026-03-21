@@ -9,7 +9,7 @@ description: >
   notebook error", "query the table", or anything involving the Databricks workspace.
 compatibility: Requires databricks CLI (>= v0.292.0)
 metadata:
-  version: "0.2.0"
+  version: "0.3.0"
 ---
 
 # Databricks
@@ -254,34 +254,42 @@ databricks jobs submit --profile premium --json '{
 }'
 ```
 
-## Running Code on the Cluster
+## Scripts
 
-**Use `scripts/run.py`** — a single command that opens a context, executes
-Python or SQL, polls for the result, prints output, and cleans up.
+All scripts are accessed through the single entrypoint `scripts/cli.py`.
+`run.py` and `metadata.py` are libraries — do not invoke them directly.
+
+```bash
+uv run scripts/cli.py <subcommand> [flags]
+```
+
+### run — Execute code on a cluster
+
+Opens an execution context, runs Python or SQL, polls for the result, prints output, and cleans up.
 
 ```bash
 # Python — inline
-uv run scripts/run.py \
+uv run scripts/cli.py run \
   --profile premium \
   --cluster-id <CLUSTER_ID> \
   --lang python \
   --code "print(spark.version)"
 
 # Python — from a local file (language inferred from .py extension)
-uv run scripts/run.py \
+uv run scripts/cli.py run \
   --profile premium \
   --cluster-id <CLUSTER_ID> \
   --file path/to/script.py
 
 # SQL
-uv run scripts/run.py \
+uv run scripts/cli.py run \
   --profile premium \
   --cluster-id <CLUSTER_ID> \
   --lang sql \
   --code "SELECT * FROM catalog.schema.table LIMIT 10"
 
 # Pass arguments to a Python script (injected as ARGS dict)
-uv run scripts/run.py \
+uv run scripts/cli.py run \
   --profile premium \
   --cluster-id <CLUSTER_ID> \
   --file migrate.py \
@@ -304,10 +312,44 @@ dry_run = ARGS.get("dry_run", False)
 | `--code` | — | Inline code string (mutually exclusive with `--file`) |
 | `--file` | — | Local script file |
 | `--args` | — | JSON dict injected as `ARGS` variable (Python only) |
+| `--format` | `text` | `text` \| `markdown` (renders SQL results as a table) |
 | `--poll-interval` | `2.0` | Seconds between status polls |
 | `--no-destroy` | off | Keep context open after run |
 
 Stdout goes to stdout; errors and tracebacks go to stderr with a non-zero exit code.
+
+### tables — List tables in a schema
+
+```bash
+uv run scripts/cli.py tables \
+  --profile premium \
+  --catalog <CATALOG> \
+  --schema <SCHEMA>
+```
+
+Outputs a markdown table with fully qualified name, table type, and description. No cluster needed.
+
+### describe — Full metadata for a table
+
+```bash
+uv run scripts/cli.py describe \
+  --profile premium \
+  <CATALOG.SCHEMA.TABLE>
+```
+
+Outputs table type, owner, comment, and a column-level table with types, nullability, and per-column descriptions. No cluster needed.
+
+### search — Find tables by keyword
+
+```bash
+# Search across all catalogs
+uv run scripts/cli.py search --profile premium <KEYWORD>
+
+# Restrict to a specific catalog
+uv run scripts/cli.py search --profile premium <KEYWORD> --catalog <CATALOG>
+```
+
+Queries `system.information_schema.tables` via `experimental aitools tools query`. No cluster needed.
 
 ## Running SQL on the Cluster
 

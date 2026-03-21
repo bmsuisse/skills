@@ -4,10 +4,10 @@
     {
       "id": 1,
       "prompt": "I need to run a quick SQL query on our Databricks cluster to see the top 10 rows from prod_catalog.sales.orders. We're on the premium profile. Can you do that for me?",
-      "expected_output": "The assistant uses scripts/run.py with --lang sql to execute the query on the cluster, shows the command used, and explains what the output means.",
+      "expected_output": "The assistant uses scripts/cli.py run with --lang sql to execute the query on the cluster, shows the command used, and explains what the output means.",
       "files": [],
       "expectations": [
-        "Uses scripts/run.py (not raw API calls or databricks sql execute)",
+        "Uses scripts/cli.py run (not raw API calls or databricks sql execute)",
         "Passes --lang sql",
         "Passes --profile premium",
         "Asks for or looks up the cluster ID before running",
@@ -17,10 +17,10 @@
     {
       "id": 2,
       "prompt": "I wrote a migration script at /tmp/migrate_customers.py that needs to run on the Databricks cluster — specifically on the general-purpose cluster (not the GPU one). It reads from a ARGS dict so I need to pass catalog='prod' and dry_run=True to it. Profile is premium.",
-      "expected_output": "The assistant uses scripts/run.py with --file, --args JSON, --cluster-id for the general-purpose cluster, and --profile premium.",
+      "expected_output": "The assistant uses scripts/cli.py run with --file, --args JSON, --cluster-id for the general-purpose cluster, and --profile premium.",
       "files": [],
       "expectations": [
-        "Uses scripts/run.py with --file /tmp/migrate_customers.py",
+        "Uses scripts/cli.py run with --file /tmp/migrate_customers.py",
         "Passes --args with valid JSON containing catalog and dry_run keys",
         "Uses the general-purpose cluster ID (not the GPU cluster 0303-075313-aono4t6a)",
         "Passes --profile premium",
@@ -57,10 +57,10 @@
     {
       "id": 5,
       "prompt": "I want to check what Python and Spark versions are running on the GPU cluster. Can you quickly execute something to find out?",
-      "expected_output": "The assistant uses scripts/run.py with inline Python code that prints sys.version and spark.version.",
+      "expected_output": "The assistant uses scripts/cli.py run with inline Python code that prints sys.version and spark.version.",
       "files": [],
       "expectations": [
-        "Uses scripts/run.py with --code (not --file)",
+        "Uses scripts/cli.py run with --code (not --file)",
         "The code imports sys and prints sys.version or sys.version_info",
         "The code prints spark.version",
         "Uses the GPU cluster ID 0303-075313-aono4t6a",
@@ -70,14 +70,38 @@
     {
       "id": 6,
       "prompt": "I need to run a local Python script /tmp/etl_pipeline.py on the general-purpose cluster. But I don't want the execution context destroyed after it runs because I need to inspect variables. Profile is premium.",
-      "expected_output": "The assistant uses scripts/run.py with --file and --no-destroy flags.",
+      "expected_output": "The assistant uses scripts/cli.py run with --file and --no-destroy flags.",
       "files": [],
       "expectations": [
-        "Uses scripts/run.py with --file /tmp/etl_pipeline.py",
+        "Uses scripts/cli.py run with --file /tmp/etl_pipeline.py",
         "Passes --no-destroy to keep the context open",
         "Uses the general-purpose cluster (not GPU)",
         "Passes --profile premium",
         "Mentions that the context will remain open for further commands"
+      ]
+    }
+    ,{
+      "id": 7,
+      "prompt": "What tables are available in the analytics schema of the prod catalog? Profile is premium.",
+      "expected_output": "The assistant uses scripts/cli.py tables to list all tables in prod.analytics as a formatted table showing name, type, and description.",
+      "files": [],
+      "expectations": [
+        "Uses scripts/cli.py tables (not databricks tables list directly)",
+        "Passes --catalog prod and --schema analytics",
+        "Passes --profile premium",
+        "Does NOT use scripts/cli.py run or a cluster"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "Can you describe the table prod.analytics.customer_orders? I want to know the columns, their types, and any descriptions. Profile is premium.",
+      "expected_output": "The assistant uses scripts/cli.py describe to show full column-level metadata for the table.",
+      "files": [],
+      "expectations": [
+        "Uses scripts/cli.py describe (not databricks tables get directly)",
+        "Passes the fully qualified name prod.analytics.customer_orders as a positional argument",
+        "Passes --profile premium",
+        "Shows columns with types, nullable flag, and descriptions"
       ]
     }
   ]
