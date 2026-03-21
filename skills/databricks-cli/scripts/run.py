@@ -92,8 +92,38 @@ def detect_language(file: Path | None, explicit: str | None) -> str:
     return "python"
 
 
+def wrap_sql_as_json(sql: str) -> str:
+    """Wrap a SQL query in Python that returns columns + rows as JSON."""
+    escaped = sql.replace("\\", "\\\\").replace('"', '\\"')
+    return (
+        "import json as _json\n"
+        f'_df = spark.sql("{escaped}")\n'
+        "_cols = _df.columns\n"
+        "_rows = [[str(v) if v is not None else '' for v in row] for row in _df.collect()]\n"
+        'print("__MD_TABLE_JSON__" + _json.dumps({"columns": _cols, "rows": _rows}))\n'
+    )
 
-def print_result(resp: dict) -> int:
+
+def format_markdown_table(columns: list[str], rows: list[list[str]]) -> str:
+    widths = [len(c) for c in columns]
+    for row in rows:
+        for i, val in enumerate(row):
+            if i < len(widths):
+                widths[i] = max(widths[i], len(val))
+    header = "| " + " | ".join(c.ljust(w) for c, w in zip(columns, widths)) + " |"
+    separator = "|" + "|".join("-" * (w + 2) for w in widths) + "|"
+    lines = [header, separator]
+    for row in rows:
+        line = "| " + " | ".join(
+            (row[i] if i < len(row) else "").ljust(w)
+            for i, w in enumerate(widths)
+        ) + " |"
+        lines.append(line)
+    return "\n".join(lines)
+
+
+
+def print_result(resp: dict, output_format: str = "text") -> int:
     results = resp.get("results", {})
     result_type = results.get("resultType", "")
 
@@ -109,20 +139,18 @@ def print_result(resp: dict) -> int:
         return 1
 
     data = results.get("data", "")
-    if data:
+    if data and output_format == "markdown" and "__MD_TABLE_JSON__" in data:
+        marker = "__MD_TABLE_JSON__"
+        idx = data.index(marker)
+        prefix = data[:idx].strip()
+        if prefix:
+            print(prefix)
+        payload = json.loads(data[idx + len(marker) :])
+        print(format_markdown_table(payload["columns"], payload["rows"]))
+    elif data:
         print(data)
     else:
-        schema = results.get("schema")
-        rows = results.get("data")
-        if schema and rows is not None:
-            cols = [c["name"] for c in schema] if isinstance(schema, list) else []
-            if cols:
-                print("\t".join(cols))
-                print("-" * (sum(len(c) for c in cols) + len(cols) * 3))
-            for row in rows:
-                print("\t".join(str(v) for v in row))
-        else:
-            print("[no output]")
+        print("[no output]")
 
     return 0
 
@@ -143,6 +171,7 @@ def main() -> None:
     src.add_argument("--file", type=Path, help="Local script file to upload and execute")
 
     parser.add_argument("--args", help="JSON dict injected as ARGS variable before exec (Python only)", default=None)
+    parser.add_argument("--format", dest="output_format", choices=["text", "markdown"], default="text", help="Output format (default: text)")
     parser.add_argument("--no-destroy", action="store_true", help="Keep the execution context open after running")
     parser.add_argument("--poll-interval", type=float, default=2.0, metavar="SEC", help="Polling interval in seconds")
 
@@ -163,6 +192,10 @@ def main() -> None:
             sys.exit(1)
         code = f"ARGS = {args.args}\n{code}"
 
+    if language == "sql" and args.output_format == "markdown":
+        code = wrap_sql_as_json(code)
+        language = "python"
+
     print(f"[run] profile={args.profile} cluster={args.cluster_id} lang={language}", file=sys.stderr)
     print("[run] opening execution context …", file=sys.stderr)
     ctx_id = create_context(args.profile, args.cluster_id, language)
@@ -176,7 +209,7 @@ def main() -> None:
         if not args.no_destroy:
             destroy_context(args.profile, args.cluster_id, ctx_id)
 
-    exit_code = print_result(resp)
+    exit_code = print_result(resp, output_format=args.output_format)
     sys.exit(exit_code)
 
 

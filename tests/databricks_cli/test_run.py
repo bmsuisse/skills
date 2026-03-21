@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import sys
-from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
 
@@ -12,11 +11,6 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "databricks-cli" / "scripts"))
 import run
-
-
-# ---------------------------------------------------------------------------
-# detect_language
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.parametrize(
@@ -29,18 +23,13 @@ import run
         (Path("query.sql"), None, "sql"),
         (Path("analysis.r"), None, "r"),
         (Path("app.scala"), None, "scala"),
-        (Path("data.csv"), None, "python"),  # unknown ext → python default
-        (None, None, "python"),  # no file, no explicit → python
-        (Path("query.sql"), "python", "python"),  # explicit overrides file ext
+        (Path("data.csv"), None, "python"),
+        (None, None, "python"),
+        (Path("query.sql"), "python", "python"),
     ],
 )
 def test_detect_language(file: Path | None, explicit: str | None, expected: str) -> None:
     assert run.detect_language(file, explicit) == expected
-
-
-# ---------------------------------------------------------------------------
-# print_result
-# ---------------------------------------------------------------------------
 
 
 def test_print_result_success_text(capsys: pytest.CaptureFixture[str]) -> None:
@@ -78,9 +67,70 @@ def test_print_result_empty_results(capsys: pytest.CaptureFixture[str]) -> None:
     assert exit_code == 0
 
 
-# ---------------------------------------------------------------------------
-# _cli (mocked subprocess)
-# ---------------------------------------------------------------------------
+def test_print_result_markdown_table(capsys: pytest.CaptureFixture[str]) -> None:
+    payload = json.dumps({"columns": ["id", "name"], "rows": [["1", "alice"], ["2", "bob"]]})
+    resp = {"results": {"resultType": "text", "data": f"__MD_TABLE_JSON__{payload}"}}
+    exit_code = run.print_result(resp, output_format="markdown")
+    assert exit_code == 0
+    out = capsys.readouterr().out
+    assert "| id | name  |" in out
+    assert "| 1  | alice |" in out
+    assert "| 2  | bob   |" in out
+
+
+def test_print_result_markdown_with_prefix(capsys: pytest.CaptureFixture[str]) -> None:
+    payload = json.dumps({"columns": ["x"], "rows": [["1"]]})
+    resp = {"results": {"resultType": "text", "data": f"some prefix output\n__MD_TABLE_JSON__{payload}"}}
+    exit_code = run.print_result(resp, output_format="markdown")
+    assert exit_code == 0
+    out = capsys.readouterr().out
+    assert "some prefix output" in out
+    assert "| x |" in out
+
+
+def test_print_result_text_mode_ignores_marker(capsys: pytest.CaptureFixture[str]) -> None:
+    payload = json.dumps({"columns": ["x"], "rows": [["1"]]})
+    data = f"__MD_TABLE_JSON__{payload}"
+    resp = {"results": {"resultType": "text", "data": data}}
+    exit_code = run.print_result(resp, output_format="text")
+    assert exit_code == 0
+    out = capsys.readouterr().out
+    assert "__MD_TABLE_JSON__" in out
+
+
+def test_format_markdown_table() -> None:
+    result = run.format_markdown_table(["id", "name"], [["1", "alice"], ["2", "bob"]])
+    lines = result.split("\n")
+    assert len(lines) == 4
+    assert lines[0].startswith("| id")
+    assert lines[1].startswith("|")
+    assert "---" in lines[1]
+    assert "alice" in lines[2]
+    assert "bob" in lines[3]
+
+
+def test_format_markdown_table_empty_rows() -> None:
+    result = run.format_markdown_table(["a", "b"], [])
+    lines = result.split("\n")
+    assert len(lines) == 2
+
+
+def test_format_markdown_table_wide_values() -> None:
+    result = run.format_markdown_table(["x"], [["a very long value"]])
+    assert "a very long value" in result
+
+
+def test_wrap_sql_as_json() -> None:
+    wrapped = run.wrap_sql_as_json("SELECT 1 as id")
+    assert "spark.sql" in wrapped
+    assert "SELECT 1 as id" in wrapped
+    assert "__MD_TABLE_JSON__" in wrapped
+    assert "import json" in wrapped
+
+
+def test_wrap_sql_escapes_quotes() -> None:
+    wrapped = run.wrap_sql_as_json('SELECT * FROM t WHERE name = "test"')
+    assert '\\"test\\"' in wrapped
 
 
 def test_cli_success() -> None:
@@ -100,11 +150,6 @@ def test_cli_failure() -> None:
         with pytest.raises(SystemExit) as exc_info:
             run._cli("bad_profile", "get", "/api/1.2/contexts/status", {})
         assert exc_info.value.code == 1
-
-
-# ---------------------------------------------------------------------------
-# ARGS injection
-# ---------------------------------------------------------------------------
 
 
 def test_args_injection_prepends_dict(tmp_path: Path) -> None:
