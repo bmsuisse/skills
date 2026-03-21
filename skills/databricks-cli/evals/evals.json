@@ -4,20 +4,81 @@
     {
       "id": 1,
       "prompt": "I need to run a quick SQL query on our Databricks cluster to see the top 10 rows from prod_catalog.sales.orders. We're on the premium profile. Can you do that for me?",
-      "expected_output": "The assistant uses scripts/run.py with --lang sql to execute the query on the cluster, shows the command used, and explains what the output means. It selects the correct profile and asks for or notes the cluster ID.",
-      "files": []
+      "expected_output": "The assistant uses scripts/run.py with --lang sql to execute the query on the cluster, shows the command used, and explains what the output means.",
+      "files": [],
+      "expectations": [
+        "Uses scripts/run.py (not raw API calls or databricks sql execute)",
+        "Passes --lang sql",
+        "Passes --profile premium",
+        "Asks for or looks up the cluster ID before running",
+        "The SQL query targets prod_catalog.sales.orders with LIMIT 10"
+      ]
     },
     {
       "id": 2,
       "prompt": "I wrote a migration script at /tmp/migrate_customers.py that needs to run on the Databricks cluster — specifically on the general-purpose cluster (not the GPU one). It reads from a ARGS dict so I need to pass catalog='prod' and dry_run=True to it. Profile is premium.",
-      "expected_output": "The assistant uses scripts/run.py with --file, --args JSON, --cluster-id for the general-purpose cluster, and --profile premium. It explains that ARGS will be injected as a Python dict. It looks up or asks for the general-purpose cluster ID.",
-      "files": []
+      "expected_output": "The assistant uses scripts/run.py with --file, --args JSON, --cluster-id for the general-purpose cluster, and --profile premium.",
+      "files": [],
+      "expectations": [
+        "Uses scripts/run.py with --file /tmp/migrate_customers.py",
+        "Passes --args with valid JSON containing catalog and dry_run keys",
+        "Uses the general-purpose cluster ID (not the GPU cluster 0303-075313-aono4t6a)",
+        "Passes --profile premium",
+        "Does NOT use the GPU cluster"
+      ]
     },
     {
       "id": 3,
       "prompt": "The notebook I uploaded to Databricks yesterday is failing. How do I check what the error was? The run ID is 194658749253431 and I think it's on the premium profile. Also how do I re-run it after fixing the error?",
-      "expected_output": "The assistant correctly uses the jobs runs get-output API call with the task run ID (not the job ID), reads error and error_trace fields, and explains the fix-and-retry cycle from the SKILL.md notebook runner section.",
-      "files": []
+      "expected_output": "The assistant uses the jobs runs get-output API to fetch the error and explains the fix-and-retry cycle.",
+      "files": [],
+      "expectations": [
+        "Uses databricks api get /api/2.1/jobs/runs/get-output with the task run ID",
+        "Explains the difference between the top-level run_id and the task run_id",
+        "Reads error and error_trace fields from the response",
+        "Explains the fix → re-upload → rerun cycle",
+        "Uses --profile premium"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "I have a notebook already uploaded at /Users/me@company.com/notebooks/train_model on Databricks. I want to run it as a one-time ad-hoc job on the GPU cluster with parameters sample=500 and epochs=3. Profile is premium.",
+      "expected_output": "The assistant uses databricks jobs submit with the correct tasks-array JSON structure, targeting the GPU cluster.",
+      "files": [],
+      "expectations": [
+        "Uses databricks jobs submit (not jobs run-now or scripts/run.py)",
+        "JSON body uses a tasks array with task_key, existing_cluster_id, and notebook_task",
+        "Does NOT put existing_cluster_id or notebook_task at the top level",
+        "Uses the GPU cluster ID 0303-075313-aono4t6a",
+        "Passes base_parameters with sample and epochs",
+        "Uses --profile premium"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "I want to check what Python and Spark versions are running on the GPU cluster. Can you quickly execute something to find out?",
+      "expected_output": "The assistant uses scripts/run.py with inline Python code that prints sys.version and spark.version.",
+      "files": [],
+      "expectations": [
+        "Uses scripts/run.py with --code (not --file)",
+        "The code imports sys and prints sys.version or sys.version_info",
+        "The code prints spark.version",
+        "Uses the GPU cluster ID 0303-075313-aono4t6a",
+        "Uses --lang python or lets it default"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "I need to run a local Python script /tmp/etl_pipeline.py on the general-purpose cluster. But I don't want the execution context destroyed after it runs because I need to inspect variables. Profile is premium.",
+      "expected_output": "The assistant uses scripts/run.py with --file and --no-destroy flags.",
+      "files": [],
+      "expectations": [
+        "Uses scripts/run.py with --file /tmp/etl_pipeline.py",
+        "Passes --no-destroy to keep the context open",
+        "Uses the general-purpose cluster (not GPU)",
+        "Passes --profile premium",
+        "Mentions that the context will remain open for further commands"
+      ]
     }
   ]
 }
