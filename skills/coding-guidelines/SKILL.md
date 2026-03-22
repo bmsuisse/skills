@@ -139,6 +139,18 @@ something is wrong. Do not re-validate the same thing deep inside a helper.
 No file exceeds 1000 lines. If a file approaches this, split by responsibility
 before adding more code.
 
+Use `scripts/loc.py` to check the current state of a repo:
+
+```bash
+# all files, sorted by size
+uv run python scripts/loc.py <repo-root>
+
+# filter by extension, show top 20
+uv run python scripts/loc.py <repo-root> -e py ts --top 20
+```
+
+Files over 1000 lines are flagged automatically.
+
 ---
 
 ## Python
