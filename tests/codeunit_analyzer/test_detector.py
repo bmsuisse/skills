@@ -236,3 +236,42 @@ def test_codeunit_metadata_present_in_bottleneck():
     assert bt["codeunit"]["object_name"] == "My CU"
     assert bt["codeunit"]["object_id"] == 99
     assert bt["codeunit"]["file"] == "mycodeunit.c-al"
+
+
+# ---------------------------------------------------------------------------
+# Index recommendations (codeunit-level)
+# ---------------------------------------------------------------------------
+
+
+def _read_op(table: str, op: str = "FINDSET") -> dict:
+    return {"operation": op, "inLoop": False, "isTemporary": False, "tableName": table, "line": f"{table}.{op}"}
+
+
+def _write_op(table: str, op: str = "MODIFY") -> dict:
+    return {"operation": op, "isTemporary": False, "tableName": table, "line": f"{table}.{op}"}
+
+
+def test_heavy_read_few_writes_suggests_index():
+    # 5 reads, 0 writes → reads >= 4× writes → missing_index_candidate
+    reads = [_read_op("Customer") for _ in range(5)]
+    assert "missing_index_candidate" in patterns(detect({"P": make_proc(reads=reads)}))
+
+
+def test_balanced_read_write_no_index_suggestion():
+    # 5 reads, 2 writes → ratio 2.5 < 4 → no suggestion
+    reads = [_read_op("Customer") for _ in range(5)]
+    writes = [_write_op("Customer") for _ in range(2)]
+    assert "missing_index_candidate" not in patterns(detect({"P": make_proc(reads=reads, writes=writes)}))
+
+
+def test_heavy_write_few_reads_warns_index_overhead():
+    # 5 writes, 0 reads → writes >= 4× reads → index_overhead
+    writes = [_write_op("Entry") for _ in range(5)]
+    assert "index_overhead" in patterns(detect({"P": make_proc(writes=writes)}))
+
+
+def test_balanced_write_read_no_overhead_warning():
+    # 5 writes, 2 reads → ratio 2.5 < 4 → no warning
+    reads = [_read_op("Entry") for _ in range(2)]
+    writes = [_write_op("Entry") for _ in range(5)]
+    assert "index_overhead" not in patterns(detect({"P": make_proc(reads=reads, writes=writes)}))

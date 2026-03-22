@@ -15,6 +15,8 @@ class BottleneckDetector:
         for proc_name, proc_data in raw_procedures.items():
             self._detect_procedure_bottlenecks(proc_name, proc_data)
 
+        self._detect_index_recommendations()
+
         return self.bottlenecks
 
     def _get_table_info(self, table_name: str) -> Dict[str, Any]:
@@ -372,3 +374,71 @@ class BottleneckDetector:
                     },
                 }
             )
+
+    def _detect_index_recommendations(self):
+        """Codeunit-level pass: aggregate reads/writes per table and emit index hints."""
+        READ_OPS = {"FINDSET", "FIND", "FINDFIRST", "FINDLAST", "GET"}
+        WRITE_OPS = {"INSERT", "MODIFY", "DELETE", "MODIFYALL", "DELETEALL"}
+        MIN_OPS = 5
+        RATIO = 4
+
+        reads_by_table: Dict[str, int] = {}
+        writes_by_table: Dict[str, int] = {}
+
+        for proc_data in self.data.get("procedures", {}).values():
+            for r in proc_data.get("reads", []):
+                if r.get("isTemporary") or r["operation"] not in READ_OPS:
+                    continue
+                table = r.get("tableName", "Unknown")
+                if table and table != "Unknown":
+                    reads_by_table[table] = reads_by_table.get(table, 0) + 1
+
+            for w in proc_data.get("writes", []):
+                if w.get("isTemporary") or w["operation"] not in WRITE_OPS:
+                    continue
+                table = w.get("tableName", "Unknown")
+                if table and table != "Unknown":
+                    writes_by_table[table] = writes_by_table.get(table, 0) + 1
+
+        all_tables = set(reads_by_table) | set(writes_by_table)
+        codeunit_ref = {
+            "file": self.file_path.name,
+            "object_name": self.data.get("object_name"),
+            "object_id": self.data.get("object_id"),
+        }
+
+        for table in sorted(all_tables):
+            reads = reads_by_table.get(table, 0)
+            writes = writes_by_table.get(table, 0)
+
+            if reads >= MIN_OPS and reads >= RATIO * max(writes, 1):
+                severity = "medium" if reads >= 10 else "low"
+                score = 30 + min(reads * 2, 20)
+                self.bottlenecks.append(
+                    {
+                        "pattern": "missing_index_candidate",
+                        "severity": severity,
+                        "score": score,
+                        "procedure": "(codeunit-level)",
+                        "explanation": f"Table '{table}' is read {reads}x but written only {writes}x in this codeunit. A missing index may cause repeated full-table scans.",
+                        "recommendation": f"Consider adding a covering index on the filter columns used when reading '{table}'. Verify with SQL Server DMVs (sys.dm_db_missing_index_details).",
+                        "example": f"// Check SETRANGE/SETFILTER fields before {table}.FINDSET\n// Add index: CREATE INDEX ON [{table}] (FilterCol1, FilterCol2)",
+                        "codeunit": codeunit_ref,
+                    }
+                )
+
+            elif writes >= MIN_OPS and writes >= RATIO * max(reads, 1):
+                severity = "low"
+                score = 25 + min(writes * 2, 15)
+                self.bottlenecks.append(
+                    {
+                        "pattern": "index_overhead",
+                        "severity": severity,
+                        "score": score,
+                        "procedure": "(codeunit-level)",
+                        "explanation": f"Table '{table}' is written {writes}x but read only {reads}x in this codeunit. Extra indexes slow down every INSERT/MODIFY/DELETE.",
+                        "recommendation": f"Review existing indexes on '{table}'. Drop or defer non-essential indexes if this codeunit is a high-frequency write path.",
+                        "example": f"// Audit indexes: SELECT * FROM sys.indexes WHERE object_id = OBJECT_ID('{table}')\n// DROP INDEX if rarely used for reads",
+                        "codeunit": codeunit_ref,
+                    }
+                )
