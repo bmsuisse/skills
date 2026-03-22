@@ -139,17 +139,30 @@ something is wrong. Do not re-validate the same thing deep inside a helper.
 No file exceeds 1000 lines. If a file approaches this, split by responsibility
 before adding more code.
 
-Use `scripts/loc.py` to check the current state of a repo:
+Use the scripts in `scripts/` to audit a repo before committing:
+
+**`loc.py`** — lines of code per file, flags anything over 1000
 
 ```bash
-# all files, sorted by size
 uv run python scripts/loc.py <repo-root>
-
-# filter by extension, show top 20
 uv run python scripts/loc.py <repo-root> -e py ts --top 20
 ```
 
-Files over 1000 lines are flagged automatically.
+**`long_functions.py`** — finds Python functions over N lines (default: 20)
+
+```bash
+uv run python scripts/long_functions.py <repo-root>
+uv run python scripts/long_functions.py <repo-root> --max-lines 30
+```
+
+**`smell_check.py`** — scans for guideline violations: `hasattr`, `isinstance`,
+broad `except Exception`, mutable defaults, `Optional[`, `dict[str, Any]`,
+`getattr` escapes, inline comments, TypeScript `any`
+
+```bash
+uv run python scripts/smell_check.py <repo-root>
+uv run python scripts/smell_check.py <repo-root> -e py --rule no-hasattr
+```
 
 ---
 
