@@ -1,8 +1,17 @@
-# Company Skills
+```ansi
+\u001b[38;5;51m ██████╗ ███╗   ███╗███████╗    ███████╗██╗  ██╗██╗██╗     ██╗     ███████╗\u001b[0m
+\u001b[38;5;45m ██╔══██╗████╗ ████║██╔════╝    ██╔════╝██║ ██╔╝██║██║     ██║     ██╔════╝\u001b[0m
+\u001b[38;5;39m ██████╔╝██╔████╔██║███████╗    ███████╗█████╔╝ ██║██║     ██║     ███████╗\u001b[0m
+\u001b[38;5;33m ██╔══██╗██║╚██╔╝██║╚════██║    ╚════██║██╔═██╗ ██║██║     ██║     ╚════██║\u001b[0m
+\u001b[38;5;27m ██████╔╝██║ ╚═╝ ██║███████║    ███████║██║  ██╗██║███████╗███████╗███████║\u001b[0m
+\u001b[38;5;21m ╚═════╝ ╚═╝     ╚═╝╚══════╝    ╚══════╝╚═╝  ╚═╝╚═╝╚══════╝╚══════╝╚══════╝\u001b[0m
+```
 
-Reusable AI agent skills for our engineering team — composable instructions that extend coding agents (Claude Code, Cursor, Codex CLI, etc.) with company-specific workflows and best practices.
+> Reusable AI agent skills for our engineering team — composable instructions that extend coding agents (Claude Code, Cursor, Codex CLI, etc.) with company-specific workflows and best practices.
 
-## Available Skills
+---
+
+## 📦 Available Skills
 
 <!-- SKILLS_TABLE_START -->
 | Skill | Description |
@@ -20,7 +29,9 @@ Reusable AI agent skills for our engineering team — composable instructions th
 | [sql-optimization](./skills/sql-optimization/) | "Universal SQL performance optimization assistant for comprehensive query tuning, indexing strategies, and database p… |
 <!-- SKILLS_TABLE_END -->
 
-## Installation
+---
+
+## 🚀 Installation
 
 The `skills` CLI reads directly from GitHub — no registration needed.
 
@@ -38,35 +49,39 @@ npx skills add https://github.com/bmsuisse/skills
 
 The CLI auto-detects your agent platform and installs into the right directory:
 
-| Platform    | Directory                             |
-| ----------- | ------------------------------------- |
+| Platform | Directory |
+|---|---|
+| Claude Code | `.claude/skills/` |
+| Cursor | `.cursor/rules/` |
+| Codex CLI | `~/.codex/skills/` |
 | Antigravity | `.agents/skills/` or `.agent/skills/` |
-| Claude Code | `.claude/skills/`                     |
-| Cursor      | `.cursor/rules/`                      |
-| Codex CLI   | `~/.codex/skills/`                    |
-| Gemini CLI  | auto-detected                         |
+| Gemini CLI | auto-detected |
 
-### Browse on skills.sh
+### 🔍 Browse on skills.sh
 
 ```
 https://skills.sh/bmsuisse/skills/<skill-name>
 ```
 
-> **Note:** Skills appear on the [skills.sh leaderboard](https://skills.sh) automatically based on install telemetry — no manual registration required.
+> Skills appear on the [skills.sh leaderboard](https://skills.sh) automatically based on install telemetry — no manual registration required.
 
-### Verify installation
+### ✅ Verify installation
 
 Start a new session and ask your agent something that should trigger the skill.
 
-## Adding a Skill
+---
 
-Use the **skill-creator** to guide you through the full skill development lifecycle — drafting, test case creation, evaluation, and iteration:
+## 🛠️ Adding a Skill
+
+Use **skill-creator** to guide you through the full lifecycle — drafting, test cases, evaluation, and iteration:
 
 ```bash
 npx skills add https://github.com/anthropics/skills --skill skill-creator
 ```
 
 Then ask your agent: *"Help me create a skill for X"* and it will walk you through intent capture, writing the `SKILL.md`, running test cases, reviewing results, and iterating until the skill is ready.
+
+### Structure
 
 Each skill lives in its own directory under `skills/`:
 
@@ -98,7 +113,9 @@ Instructions for the agent to follow...
 2. Create `skills/<skill-name>/SKILL.md`
 3. Merge to `main` — CI auto-updates the **Available Skills** table above
 
-## Repo Structure
+---
+
+## 🗂️ Repo Structure
 
 ```
 .
@@ -108,7 +125,6 @@ Instructions for the agent to follow...
 │       ├── scripts/
 │       └── references/
 ├── .agents/skills/           ← runtime: Antigravity (git-ignored)
-├── .agent/skills/            ← runtime: Antigravity alternate (git-ignored)
 ├── .claude/skills/           ← runtime: Claude Code (git-ignored)
 ├── scripts/update_readme.py  ← auto-generates the skills table in README.md
 └── .github/workflows/        ← CI: auto-updates README on push to main
@@ -116,7 +132,9 @@ Instructions for the agent to follow...
 
 > The `Available Skills` table is auto-generated by CI on every push to `main`. Never edit it manually.
 
-## Updating Third-Party Skills
+---
+
+## 🔄 Updating Third-Party Skills
 
 ```bash
 npx skills update
