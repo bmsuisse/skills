@@ -97,11 +97,11 @@ If this fails, do not proceed to Step 1 — surface the error to the user.
 
 ## Step 1 — Run the script
 
-The analyzer script lives at `.agents/skills/fabricks-sql-analyzer/sql_dependency_analyzer.py`.
-Run it from the **repository root** so that `ROOT = Path(__file__).parent.parent.parent.parent` resolves correctly.
+The analyzer script lives at `.agents/skills/fabricks-sql-analyzer/scripts/sql_dependency_analyzer.py`.
+Run it from the **repository root** so that `ROOT = Path(__file__).parent.parent.parent.parent.parent` resolves correctly.
 
 ```bash
-uv run python .agents/skills/fabricks-sql-analyzer/sql_dependency_analyzer.py \
+uv run python .agents/skills/fabricks-sql-analyzer/scripts/sql_dependency_analyzer.py \
     --top 20 \
     --row-counts \
     --json /tmp/fabricks_analysis.json
@@ -240,7 +240,7 @@ Ordered by expected impact (highest impact_score first):
 After (or instead of) the full Markdown report, you can produce an **interactive HTML network graph** with:
 
 ```bash
-uv run python .agents/skills/fabricks-sql-analyzer/sql_dependency_analyzer.py \
+uv run python .agents/skills/fabricks-sql-analyzer/scripts/sql_dependency_analyzer.py \
     --top 20 \
     --graph \
     --graph-output /tmp/fabricks_dependency_graph.html
