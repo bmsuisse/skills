@@ -22,7 +22,7 @@
       "expectations": [
         "Uses scripts/cli.py run with --file /tmp/migrate_customers.py",
         "Passes --args with valid JSON containing catalog and dry_run keys",
-        "Uses the general-purpose cluster ID (not the GPU cluster 0303-075313-aono4t6a)",
+        "Uses the general-purpose cluster ID (not the GPU cluster <gpu-cluster-id>)",
         "Passes --profile premium",
         "Does NOT use the GPU cluster"
       ]
@@ -49,7 +49,7 @@
         "Uses databricks jobs submit (not jobs run-now or scripts/run.py)",
         "JSON body uses a tasks array with task_key, existing_cluster_id, and notebook_task",
         "Does NOT put existing_cluster_id or notebook_task at the top level",
-        "Uses the GPU cluster ID 0303-075313-aono4t6a",
+        "Uses the GPU cluster ID <gpu-cluster-id>",
         "Passes base_parameters with sample and epochs",
         "Uses --profile premium"
       ]
@@ -63,7 +63,7 @@
         "Uses scripts/cli.py run with --code (not --file)",
         "The code imports sys and prints sys.version or sys.version_info",
         "The code prints spark.version",
-        "Uses the GPU cluster ID 0303-075313-aono4t6a",
+        "Uses the GPU cluster ID <gpu-cluster-id>",
         "Uses --lang python or lets it default"
       ]
     },
