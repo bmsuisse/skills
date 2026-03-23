@@ -55,7 +55,9 @@ SQL files live under `db/queries/<topic>/`. Every custom query gets its own file
 
 ## Connection & pool
 
-The env-var prefix (`POSTGRES_`) should be adjusted to match the project (e.g. `APP_POSTGRES_`, `MDM_POSTGRES_`):
+The env-var prefix (`POSTGRES_`) should be adjusted to match the project (e.g. `APP_POSTGRES_`, `MDM_POSTGRES_`).
+
+`_pool` is intentional module-level mutable state
 
 ```python
 # db/connection.py
@@ -110,8 +112,8 @@ class PostgresTableModel(BaseModel, ABC):
         ...
 
     @staticmethod
-    def get_primary_key() -> str | Sequence[str]:
-        """Return the PK column name(s)."""
+    def get_primary_key() -> Sequence[str]:
+        """Return the PK column name(s) as a sequence."""
         ...
 ```
 
@@ -132,8 +134,8 @@ class UserRow(PostgresTableModel):
         return ("public", "users")
 
     @staticmethod
-    def get_primary_key() -> str:
-        return "id"
+    def get_primary_key() -> Sequence[str]:
+        return ["id"]
 ```
 
 Models that represent partial results (e.g. from a JOIN) just extend `BaseModel` directly — they are not table models.
@@ -229,10 +231,7 @@ async def pg_update_dict(
 
 async def pg_update(con: AsyncConnection, data: T, data_type: type[T]) -> Any | None:
     """Update a typed model instance."""
-    pks = data_type.get_primary_key()
-    if isinstance(pks, str):
-        pks = [pks]
-    return await pg_update_dict(con, data_type.get_table_name(), data.model_dump(), pks)
+    return await pg_update_dict(con, data_type.get_table_name(), data.model_dump(), data_type.get_primary_key())
 
 
 async def pg_upsert_dict(
@@ -262,10 +261,7 @@ async def pg_upsert_dict(
 
 async def pg_upsert(con: AsyncConnection, data: T, data_type: type[T]):
     """Upsert a typed model instance."""
-    pks = data_type.get_primary_key()
-    if isinstance(pks, str):
-        pks = [pks]
-    return await pg_upsert_dict(con, data_type.get_table_name(), data.model_dump(), pks)
+    return await pg_upsert_dict(con, data_type.get_table_name(), data.model_dump(), data_type.get_primary_key())
 
 
 async def pg_upsert_many_dict(
@@ -293,30 +289,25 @@ async def pg_upsert_many_dict(
 
 
 async def pg_upsert_many(con: AsyncConnection, data: Sequence[T], data_type: type[T]) -> None:
-    pks = data_type.get_primary_key()
-    if isinstance(pks, str):
-        pks = [pks]
-    await pg_upsert_many_dict(con, data_type.get_table_name(), [d.model_dump() for d in data], pks)
+    await pg_upsert_many_dict(con, data_type.get_table_name(), [d.model_dump() for d in data], data_type.get_primary_key())
 
 
 async def pg_insert_many(
     con: AsyncConnection,
     table_name: tuple[str, str],
-    data: Sequence[dict | Any],
+    data: Sequence[dict],
 ) -> None:
     """Batch insert — no RETURNING, one round-trip via executemany."""
     if not data:
         return
-    first = data[0].model_dump() if hasattr(data[0], "model_dump") else data[0]
-    fields = list(first)
+    fields = list(data[0])
     query = SQL("INSERT INTO {tbl} ({cols}) VALUES ({vals})").format(
         tbl=Identifier(*table_name),
         cols=SQL(", ").join(Identifier(k) for k in fields),
         vals=SQL(", ").join(Placeholder(k) for k in fields),
     )
-    rows = [d.model_dump() if hasattr(d, "model_dump") else d for d in data]
     async with con.cursor() as cur:
-        await cur.executemany(query, rows)
+        await cur.executemany(query, data)
 
 
 async def pg_delete_dict(con: AsyncConnection, table_name: tuple[str, str], data: dict) -> dict | None:
@@ -337,12 +328,8 @@ async def pg_delete_dict(con: AsyncConnection, table_name: tuple[str, str], data
 
 async def pg_delete(con: AsyncConnection, data: T, data_type: type[T]) -> T | None:
     """Delete a typed model instance by its primary key(s)."""
-    schema, table = data_type.get_table_name()
-    pks = data_type.get_primary_key()
-    if isinstance(pks, str):
-        pks = [pks]
-    pk_dict = {pk: getattr(data, pk) for pk in pks}
-    row = await pg_delete_dict(con, (schema, table), pk_dict)
+    pk_dict = {pk: getattr(data, pk) for pk in data_type.get_primary_key()}
+    row = await pg_delete_dict(con, data_type.get_table_name(), pk_dict)
     return data_type.model_validate(row) if row else None
 ```
 
@@ -418,8 +405,8 @@ class UserRow(PostgresTableModel):
         return ("public", "users")
 
     @staticmethod
-    def get_primary_key() -> str:
-        return "id"
+    def get_primary_key() -> Sequence[str]:
+        return ["id"]
 
 class UserSummary(BaseModel):
     """Partial result — doesn't map to a single table."""
