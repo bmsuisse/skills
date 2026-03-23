@@ -1,6 +1,6 @@
 ---
 name: postgres-test-setup
-description: Set up a local PostgreSQL test database in Docker for integration/e2e tests. Use this skill when the user wants to add, configure, or troubleshoot a local test Postgres instance, pytest database fixtures, or SQL schema initialisation from files. Triggers on requests like "set up a test database", "add postgres fixtures", "init test DB", "local postgres for tests", or anything involving a Docker-backed test Postgres with schema loading.
+description: Set up and work with a local PostgreSQL test database in Docker for integration/e2e tests. Use this skill when the user wants to add, configure, or troubleshoot a local test Postgres instance, pytest database fixtures, SQL schema initialisation from files, or database schema changes. Triggers on requests like "set up a test database", "add postgres fixtures", "init test DB", "local postgres for tests", "add a column", "create a table", "change the schema", or anything involving the local test Postgres database.
 ---
 
 # Postgres Test Setup
@@ -71,6 +71,90 @@ uv run -m test_server.start_postgres
 # Full reset — drops and recreates the DB, re-inserts all test data
 uv run -m test_server.start_postgres --force-reset-db
 ```
+
+---
+
+## Making database changes
+
+**All schema changes live in SQL files. Never alter the production or shared database directly.**
+
+### Rules
+
+1. **Edit the `.sql` file** in `database/` — that is the source of truth.
+2. **Test the change on the local test DB only** using `run_sql.py` (see below).
+3. Never run `ALTER`, `DROP`, or `CREATE` against any database whose `TEST_POSTGRES_HOST` is not `localhost`.
+4. After verifying, a human applies the same SQL to production as a migration.
+
+### Workflow for a schema change
+
+```
+1. Edit / create the relevant .sql file in database/
+2. Run the file against the local test DB to verify it works:
+       uv run test_server/run_sql.py database/path/to/file.sql
+3. If the change is destructive (DROP, ALTER) and needs a clean slate:
+       uv run -m test_server.start_postgres --force-reset-db
+4. Run the tests to confirm nothing broke.
+```
+
+### Adding a new table
+
+1. Create `database/<schema>/tables/<table_name>.sql`.
+2. Optionally create `database/<schema>/tables/<table_name>.test_data.json` with seed rows.
+3. Run `uv run -m test_server.start_postgres` — the new file is picked up automatically.
+
+### Modifying an existing table
+
+- **Additive change** (new nullable column, new index): edit the `.sql` file and apply the matching `ALTER TABLE` via `run_sql.py`. The live test DB is updated without a full reset.
+- **Breaking change** (rename column, change type, drop column): edit the `.sql` file, then do a full reset:
+  `uv run -m test_server.start_postgres --force-reset-db`
+
+---
+
+## Executing SQL on the test database
+
+Copy [`scripts/run_sql.py`](scripts/run_sql.py) to `test_server/run_sql.py`.
+
+The script reads the same `TEST_POSTGRES_*` environment variables as `start_postgres.py` and **refuses to run if `TEST_POSTGRES_HOST` is not `localhost`**.
+
+### Run a SQL file
+
+```bash
+uv run test_server/run_sql.py database/1_dim/tables/user.sql
+```
+
+### Run inline SQL
+
+```bash
+uv run test_server/run_sql.py --sql "SELECT * FROM dim.user LIMIT 10"
+```
+
+### Run inline SQL and print results
+
+```bash
+uv run test_server/run_sql.py --sql "SELECT id, name FROM dim.user" --results
+```
+
+Results are printed as an ASCII table:
+```
++----+-------+
+| id | name  |
++----+-------+
+| 1  | Alice |
+| 2  | Bob   |
++----+-------+
+(2 rows)
+```
+
+### When to use `run_sql.py`
+
+| Task | Command |
+|------|---------|
+| Apply an additive migration to the live test DB | `run_sql.py database/.../alter.sql` |
+| Spot-check data after a change | `run_sql.py --sql "SELECT ..." --results` |
+| Re-apply a single function/view after editing it | `run_sql.py database/.../my_function.sql` |
+| Quick schema inspection | `run_sql.py --sql "\\d dim.user" --results` |
+
+> **Never** use `run_sql.py` to apply changes to production. It is locked to `localhost` by design.
 
 ---
 
