@@ -1,0 +1,81 @@
+{
+  "skill_name": "postgres-best-practices",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Write a repository function to fetch a single user by email from a users table. The table has columns: id (int), email (text), display_name (text), created_at (timestamptz). Show me all the files I need to create.",
+      "expected_output": "A .sql file with named %(email)s parameter, a Pydantic UserRow model in user_models.py, and a repository function that loads the SQL from file, executes it with a dict, and returns UserRow.model_validate(row). No inline SQL. sqlfmt formatting note.",
+      "files": [],
+      "assertions": [
+        {
+          "text": "SQL query is in a separate .sql file (not embedded as a Python string)",
+          "type": "qualitative"
+        },
+        {
+          "text": "Named parameter %(email)s style is used (not positional %s or f-string interpolation)",
+          "type": "qualitative"
+        },
+        {
+          "text": "A Pydantic model (e.g. UserRow) is defined in a file named user_models.py or similar topic_models.py",
+          "type": "qualitative"
+        },
+        {
+          "text": "Repository function returns UserRow | None (or Optional[UserRow]), not a raw dict or tuple",
+          "type": "qualitative"
+        },
+        {
+          "text": "SQL is loaded from file at runtime (e.g. Path.read_text or load_sql helper), not hardcoded inline",
+          "type": "qualitative"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I need to list all orders for a given user_id, sorted by created_at desc, with a configurable limit. Orders table: id, user_id (int), total_amount (numeric), status (text), created_at (timestamptz). Show me the SQL file and the repository method.",
+      "expected_output": "An orders SQL file using %(user_id)s and %(limit)s named params, an OrderRow pydantic model in order_models.py, a repository list method that returns list[OrderRow]. All SQL in .sql files, sqlfmt formatting.",
+      "files": [],
+      "assertions": [
+        {
+          "text": "SQL query is in a .sql file, not inline in Python",
+          "type": "qualitative"
+        },
+        {
+          "text": "Named parameters %(user_id)s and %(limit)s are used (not positional %s)",
+          "type": "qualitative"
+        },
+        {
+          "text": "A Pydantic model (e.g. OrderRow) is defined in a file named order_models.py or similar topic_models.py",
+          "type": "qualitative"
+        },
+        {
+          "text": "Repository method returns list[OrderRow] (typed), not a raw list of dicts or tuples",
+          "type": "qualitative"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "We need to search users by a dynamically chosen column — it could be either 'email' or 'display_name' depending on a runtime parameter. How should I implement this safely with psycopg? We're on Python 3.13.",
+      "expected_output": "Uses psycopg.sql (not t-strings, since Python < 3.14). sql.Identifier for the column name, %(value)s for the search value. Explains why f-strings are dangerous here. Shows the Python code.",
+      "files": [],
+      "assertions": [
+        {
+          "text": "Uses psycopg.sql.Identifier for the dynamic column name (not f-string or string concatenation)",
+          "type": "qualitative"
+        },
+        {
+          "text": "Correctly identifies that Python 3.13 means t-string templates are NOT available (requires 3.14+)",
+          "type": "qualitative"
+        },
+        {
+          "text": "The search value is still passed as a named parameter %(value)s or similar, not interpolated directly",
+          "type": "qualitative"
+        },
+        {
+          "text": "Mentions the risk/reason why f-strings or string concatenation would be dangerous (SQL injection)",
+          "type": "qualitative"
+        }
+      ]
+    }
+  ]
+}
