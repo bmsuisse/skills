@@ -1,0 +1,47 @@
+{
+  "skill_name": "fastapi-guideline",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I need to add a real-time streaming chat endpoint to my FastAPI app. It should accept a POST request with a prompt, then stream back tokens one by one as server-sent events. The client will be a browser using EventSource. Show me how to implement this properly.",
+      "expected_output": "An SSE endpoint using FastAPI's native EventSourceResponse from fastapi.sse (not sse-starlette), with an async generator function, yielding ServerSentEvent objects with event types for tokens and a done signal. Should use POST method and note that browser EventSource doesn't support POST (so fetch is needed client-side).",
+      "files": [],
+      "expectations": [
+        "Uses `from fastapi.sse import EventSourceResponse, ServerSentEvent` (not sse-starlette or custom implementation)",
+        "Endpoint is defined with `async def` (not regular def)",
+        "Uses `response_class=EventSourceResponse` on the route decorator",
+        "Returns `AsyncIterable[ServerSentEvent]` or yields ServerSentEvent objects",
+        "Uses POST method for the chat endpoint",
+        "Mentions or handles the [DONE] sentinel or end-of-stream signal"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "How should I run my FastAPI app? I want to run it in development with auto-reload and also for production. What server should I use and what commands do I run?",
+      "expected_output": "Should recommend Granian (not uvicorn) with `uv add granian` and `uv run granian --interface asgi main:app` commands, showing both dev (--reload) and production (--workers N) variants. Should NOT recommend uvicorn or fastapi dev.",
+      "files": [],
+      "expectations": [
+        "Recommends Granian as the server (not uvicorn, not `fastapi dev`)",
+        "Shows `uv add granian` for installation",
+        "Shows `--interface asgi` flag in the command",
+        "Shows `--reload` flag for development",
+        "Shows `--workers` flag for production",
+        "Does not recommend uvicorn as an alternative"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Create a complete async CRUD API for a `Product` resource using FastAPI. It should have endpoints to list, get, create, and delete products. Show me the database setup, the model, schemas, repository, and routes.",
+      "expected_output": "Full async implementation using psycopg (no ORM): AsyncConnectionPool with get_pg_connection(), PostgresTableModel for the model, pg_* helpers for CRUD, repository methods all async, Pydantic schemas for request/response, route handlers all async def WITHOUT Depends(get_db) since repos manage their own connections.",
+      "files": [],
+      "expectations": [
+        "All route handlers use `async def` (no sync def routes)",
+        "Uses psycopg (AsyncConnectionPool or get_pg_connection) — NOT SQLAlchemy",
+        "Repository methods are all `async def` and call `get_pg_connection()` directly",
+        "Route handlers do NOT take a `db` session as a Depends parameter",
+        "Pydantic schemas or models defined for request/response",
+        "Uses pg_* helpers (pg_insert, pg_retrieve, pg_delete) or psycopg cursor for queries"
+      ]
+    }
+  ]
+}
