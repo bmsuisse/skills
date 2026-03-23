@@ -60,6 +60,14 @@ Start a new session and ask your agent something that should trigger the skill.
 
 ## Adding a Skill
 
+Use the **skill-creator** to guide you through the full skill development lifecycle — drafting, test case creation, evaluation, and iteration:
+
+```bash
+npx skills add https://github.com/anthropics/skills --skill skill-creator
+```
+
+Then ask your agent: *"Help me create a skill for X"* and it will walk you through intent capture, writing the `SKILL.md`, running test cases, reviewing results, and iterating until the skill is ready.
+
 Each skill lives in its own directory under `skills/`:
 
 ```
