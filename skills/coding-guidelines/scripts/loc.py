@@ -55,9 +55,9 @@ def print_table(stats: list[FileStats], root: Path, limit: int | None) -> None:
     print("-" * (width + 8))
     print(f"{'Total':<{width}}  {total:>6}  ({len(stats)} files)")
 
-    over_limit = [s for s in stats if s.lines > 1000]
+    over_limit = [s for s in stats if s.lines > 500]
     if over_limit:
-        print(f"\n⚠️  {len(over_limit)} file(s) exceed 1000 lines:")
+        print(f"\n⚠️  {len(over_limit)} file(s) exceed 500 lines:")
         for s in over_limit:
             print(f"  {s.path.relative_to(root)}  ({s.lines} lines)")
 
