@@ -1,0 +1,68 @@
+{
+  "skill_name": "postgres-test-setup",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I want to add integration tests for my FastAPI app. Set up a local test PostgreSQL database using Docker so I can run tests against a real database.",
+      "expected_output": "The assistant copies start_postgres.py and run_sql.py into test_server/, adds the pytest dependencies (psycopg, sqlglot, docker, pytest-env), configures [tool.pytest_env] in pyproject.toml with TEST_POSTGRES_* variables, and adds a session-scoped autouse fixture in conftest.py that calls start_postgres() and setup_database().",
+      "files": [],
+      "expectations": [
+        "start_postgres.py is placed in test_server/",
+        "run_sql.py is placed in test_server/",
+        "pyproject.toml gets [tool.pytest_env] with TEST_POSTGRES_* entries (or the detected prefix)",
+        "A session-scoped autouse pytest_asyncio fixture is added to conftest.py",
+        "The fixture calls start_postgres() and await setup_database()",
+        "Dependencies include psycopg, sqlglot, docker, pytest-env"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Add a new `orders` table to the database. It should have id (serial PK), user_id (FK to dim.user), total_amount (numeric), and created_at (timestamptz defaulting to now()).",
+      "expected_output": "The assistant creates database/<schema>/tables/orders.sql with the CREATE TABLE statement and optionally a orders.test_data.json. It then applies the file with run_sql.py and does NOT do a full reset since this is an additive change.",
+      "files": [],
+      "expectations": [
+        "A new .sql file is created under the correct database/ subdirectory",
+        "The SQL uses CREATE TABLE IF NOT EXISTS or equivalent",
+        "The assistant runs the file with: uv run test_server/run_sql.py <path-to-sql>",
+        "The assistant does NOT run --force-reset-db (additive change only)",
+        "No direct psql or docker exec commands are used"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "I need to rename the `name` column to `full_name` in the dim.user table.",
+      "expected_output": "The assistant edits the existing users.sql file to use full_name, writes an ALTER TABLE statement via run_sql.py to apply it to the live test DB, and explains that production will need the same migration applied by a human. Does NOT auto-apply to production.",
+      "files": [],
+      "expectations": [
+        "The .sql source file is updated to use full_name",
+        "An ALTER TABLE ... RENAME COLUMN statement is run via run_sql.py --sql",
+        "The assistant notes that production requires a human-applied migration",
+        "No changes are made to any non-localhost database",
+        "If a full reset is suggested instead, --force-reset-db is used via start_postgres.py, not raw SQL"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "How do I check what's currently in the dim.user table in my test database?",
+      "expected_output": "The assistant runs: uv run test_server/run_sql.py --sql \"SELECT * FROM dim.user LIMIT 20\" --results",
+      "files": [],
+      "expectations": [
+        "run_sql.py is used with --sql and --results flags",
+        "The command targets localhost (test DB only)",
+        "No direct psql, pgcli, or docker exec commands are suggested as the primary approach"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "I dropped a column from a table in production by mistake and now my local test schema is out of sync. How do I reset the test database to match the current SQL files?",
+      "expected_output": "The assistant runs a full reset: uv run -m test_server.start_postgres --force-reset-db. It explains this drops and recreates the test DB, re-runs all SQL files in dependency order, and re-inserts test data from .test_data.json files. It does NOT touch production.",
+      "files": [],
+      "expectations": [
+        "The --force-reset-db flag is used with start_postgres.py",
+        "The assistant confirms this only affects the local test DB (localhost)",
+        "No production database commands are issued",
+        "The assistant explains that test data is re-seeded from .test_data.json files"
+      ]
+    }
+  ]
+}

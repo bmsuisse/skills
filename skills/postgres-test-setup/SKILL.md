@@ -1,6 +1,13 @@
 ---
 name: postgres-test-setup
-description: Set up and work with a local PostgreSQL test database in Docker for integration/e2e tests. Use this skill when the user wants to add, configure, or troubleshoot a local test Postgres instance, pytest database fixtures, SQL schema initialisation from files, or database schema changes. Triggers on requests like "set up a test database", "add postgres fixtures", "init test DB", "local postgres for tests", "add a column", "create a table", "change the schema", or anything involving the local test Postgres database.
+description: >
+  Set up and work with a local PostgreSQL test database in Docker for
+  integration/e2e tests. Use this skill when the user wants to add, configure,
+  or troubleshoot a local test Postgres instance, pytest database fixtures, SQL
+  schema initialisation from files, or database schema changes. Triggers on
+  requests like "set up a test database", "add postgres fixtures", "init test
+  DB", "local postgres for tests", "add a column", "create a table", "change
+  the schema", or anything involving the local test Postgres database.
 ---
 
 # Postgres Test Setup
