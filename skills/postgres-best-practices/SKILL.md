@@ -512,7 +512,6 @@ line_length = 119
 sqlfmt enforces lowercase keywords, trailing commas, and consistent indentation.
 
 ---
----
 
 ## Quick checklist
 
