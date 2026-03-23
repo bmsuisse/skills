@@ -15,13 +15,14 @@ Spins up a **Docker-based PostgreSQL** instance, applies all SQL schema files fr
 
 Place [`scripts/start_postgres.py`](scripts/start_postgres.py) at `test_server/start_postgres.py` in the project.
 
-Adjust the three constants at the top of the file:
+Adjust the two constants at the top of the file:
 
 ```python
-ENV_PREFIX   = "TEST_"                        # prefix for all env vars
 DOCKER_IMAGE = "pgvector/pgvector:pg18-trixie" # or "postgres:17" without pgvector
-DATABASE_DIR = "database"                     # folder with .sql files (relative to cwd)
+DATABASE_DIR = "database"                       # folder with .sql files (relative to cwd)
 ```
+
+`ENV_PREFIX` is **auto-detected** from `[tool.pytest_env]` in `pyproject.toml` by scanning for a key ending in `POSTGRES_HOST` (e.g. `MDM_POSTGRES_HOST` → prefix `MDM_`). Falls back to `TEST_` if no match is found or the file is absent. No manual change needed once `pyproject.toml` is configured.
 
 ### 2. Add pytest dependencies
 
@@ -114,7 +115,7 @@ uv run -m test_server.start_postgres --force-reset-db
 
 Copy [`scripts/run_sql.py`](scripts/run_sql.py) to `test_server/run_sql.py`.
 
-The script reads the same `TEST_POSTGRES_*` environment variables as `start_postgres.py` and **refuses to run if `TEST_POSTGRES_HOST` is not `localhost`**.
+The script auto-detects the env-var prefix from `pyproject.toml` (same logic as `start_postgres.py`) and **refuses to run if `<PREFIX>POSTGRES_HOST` is not `localhost`**.
 
 ### Run a SQL file
 

@@ -1,12 +1,15 @@
 """
 Generic test-postgres setup script.
 
-Environment variables (all prefixed with TEST_):
-  TEST_POSTGRES_PASSWORD  - default: testpwd
-  TEST_POSTGRES_DB        - default: app_test
-  TEST_POSTGRES_USER      - default: postgres
-  TEST_POSTGRES_PORT      - default: 54324
-  TEST_POSTGRES_HOST      - default: localhost
+The env-var prefix (e.g. TEST_ or MDM_) is auto-detected from [tool.pytest_env]
+in pyproject.toml by looking for a key ending in POSTGRES_HOST. Falls back to TEST_.
+
+Environment variables (all prefixed with <PREFIX>):
+  <PREFIX>POSTGRES_PASSWORD  - default: testpwd
+  <PREFIX>POSTGRES_DB        - default: app_test
+  <PREFIX>POSTGRES_USER      - default: postgres
+  <PREFIX>POSTGRES_PORT      - default: 54324
+  <PREFIX>POSTGRES_HOST      - default: localhost
 
 Set SKIP_START_POSTGRES=1 to skip container startup (e.g. CI with a service container).
 
@@ -32,7 +35,32 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 logging.getLogger("sqlglot").setLevel(logging.ERROR)
 
-ENV_PREFIX = "TEST_"
+
+def _detect_env_prefix() -> str:
+    """Detect env-var prefix from [tool.pytest_env] in pyproject.toml.
+
+    Searches upward from cwd for the first pyproject.toml, then looks for a key
+    ending in POSTGRES_HOST inside [tool.pytest_env]. Falls back to 'TEST_'.
+    """
+    try:
+        try:
+            import tomllib
+        except ImportError:
+            import tomli as tomllib  # type: ignore[no-redef]
+        for directory in [Path.cwd(), *Path.cwd().parents]:
+            candidate = directory / "pyproject.toml"
+            if candidate.exists():
+                data = tomllib.loads(candidate.read_text(encoding="utf-8"))
+                for key in data.get("tool", {}).get("pytest_env", {}):
+                    if key.endswith("POSTGRES_HOST"):
+                        return key[: -len("POSTGRES_HOST")]
+                break  # found pyproject.toml but no matching key — stop searching
+    except Exception:
+        pass
+    return "TEST_"
+
+
+ENV_PREFIX = _detect_env_prefix()
 DOCKER_IMAGE = "pgvector/pgvector:pg18-trixie"  # change to e.g. postgres:17 if pgvector not needed
 DATABASE_DIR = "database"  # directory containing .sql files, relative to cwd
 

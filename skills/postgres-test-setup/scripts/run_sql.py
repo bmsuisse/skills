@@ -1,7 +1,10 @@
 """
 Execute a SQL file or inline SQL against the local test database.
 
-Safety: refuses to run if TEST_POSTGRES_HOST != "localhost".
+The env-var prefix (e.g. TEST_ or MDM_) is auto-detected from [tool.pytest_env]
+in pyproject.toml by looking for a key ending in POSTGRES_HOST. Falls back to TEST_.
+
+Safety: refuses to run if <PREFIX>POSTGRES_HOST != "localhost".
 
 Usage:
   # run a file
@@ -23,7 +26,32 @@ from pathlib import Path
 import psycopg
 from psycopg.rows import dict_row
 
-ENV_PREFIX = "TEST_"  # must match start_postgres.py
+
+def _detect_env_prefix() -> str:
+    """Detect env-var prefix from [tool.pytest_env] in pyproject.toml.
+
+    Searches upward from cwd for the first pyproject.toml, then looks for a key
+    ending in POSTGRES_HOST inside [tool.pytest_env]. Falls back to 'TEST_'.
+    """
+    try:
+        try:
+            import tomllib
+        except ImportError:
+            import tomli as tomllib  # type: ignore[no-redef]
+        for directory in [Path.cwd(), *Path.cwd().parents]:
+            candidate = directory / "pyproject.toml"
+            if candidate.exists():
+                data = tomllib.loads(candidate.read_text(encoding="utf-8"))
+                for key in data.get("tool", {}).get("pytest_env", {}):
+                    if key.endswith("POSTGRES_HOST"):
+                        return key[: -len("POSTGRES_HOST")]
+                break  # found pyproject.toml but no matching key — stop searching
+    except Exception:
+        pass
+    return "TEST_"
+
+
+ENV_PREFIX = _detect_env_prefix()
 
 # Default env — same as postgres_test_env in start_postgres.py
 _defaults = {
