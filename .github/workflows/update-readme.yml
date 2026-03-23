@@ -6,6 +6,8 @@ on:
     paths: [skills/**/SKILL.md, scripts/update_readme.py]
 permissions:
   contents: write
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 jobs:
   update-readme:
     runs-on: ubuntu-latest

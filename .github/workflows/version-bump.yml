@@ -5,6 +5,8 @@ on:
     branches: [main]
 permissions:
   contents: write
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 jobs:
   version:
     runs-on: ubuntu-latest
@@ -15,13 +17,13 @@ jobs:
       - name: Bump minor version tag
         run: |-
           git fetch --tags
-          LATEST=$(git tag --sort=-v:refname | grep -E '^[0-9]+\.[0-9]+$' | head -1)
+          LATEST=$(git tag --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -1)
           if [ -z "$LATEST" ]; then
-            NEW_TAG="0.1"
+            NEW_TAG="v0.1.0"
           else
-            MAJOR=$(echo "$LATEST" | cut -d. -f1)
-            MINOR=$(echo "$LATEST" | cut -d. -f2)
-            NEW_TAG="${MAJOR}.$((MINOR + 1))"
+            MAJOR=$(echo "$LATEST" | sed 's/^v//' | cut -d. -f1)
+            MINOR=$(echo "$LATEST" | sed 's/^v//' | cut -d. -f2)
+            NEW_TAG="v${MAJOR}.$((MINOR + 1)).0"
           fi
           echo "Creating tag: $NEW_TAG"
           git config user.name  "github-actions[bot]"
