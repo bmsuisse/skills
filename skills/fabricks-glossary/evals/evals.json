@@ -1,0 +1,71 @@
+{
+  "skill_name": "fabricks-glossary",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "What does SPT and GBM stand for in this project? And what's the difference between them?",
+      "expected_output": "SPT = Sanitary Business Unit, GBM = Building Material Business Unit. Both are business unit divisions.",
+      "files": [],
+      "expectations": [
+        "SPT is correctly identified as Sanitary Business Unit (not Shop Point or Shop Region)",
+        "GBM is correctly identified as Building Material Business Unit",
+        "The answer distinguishes the two as separate product divisions"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I'm adding a new table for article pricing tiers. Should it be named dim_article_pricing or fact_article_pricing? Also what schema should it go in — transf or core? And do I need a __identity column?",
+      "expected_output": "Pricing tiers are measures/facts so fact_ prefix. If it needs surrogate keys and is enterprise-level it goes in core, otherwise transf. __identity only belongs in core schema.",
+      "files": [],
+      "expectations": [
+        "Correctly applies dim_ vs fact_ distinction",
+        "Correctly states __identity surrogate key belongs only in core schema",
+        "Correctly notes transf must not reference core tables"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Can you explain how IVP adjusts the margin on a sales order, and how that feeds into the commission calculation for the sales agent?",
+      "expected_output": "IVP adds supplier bonus, article bonus factor and slow mover bonus on top of standard margin. Commission system accumulates monthly sales, compares to tier targets, calculates bonus, and integrates IVP bonuses.",
+      "files": [],
+      "expectations": [
+        "IVP is explained as layering supplier and article bonuses on standard margin",
+        "Commission system is described as tier-based with IVP integration",
+        "The connection between IVP margin and commission is made clear"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "In our Fabricks pipeline I want a Silver step that keeps full history of customer changes. Which mode and CDC strategy should I use, and what system columns will be added automatically?",
+      "expected_output": "Use mode=update with change_data_capture=scd2. System columns added: __valid_from, __valid_to, __is_current. Gold consumers need __key, __timestamp, __operation.",
+      "files": [],
+      "expectations": [
+        "Correctly identifies scd2 as the CDC strategy for full history",
+        "Correctly identifies update as the appropriate mode",
+        "Lists __valid_from, __valid_to, __is_current as the SCD2 system columns"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "What is CASHP and how does it differ from COMEX?",
+      "expected_output": "CASHP is the internal bonus system / CRM. COMEX stands for Commercial Excellence and manages campaigns and promotions.",
+      "files": [],
+      "expectations": [
+        "CASHP is correctly described as the bonus system / CRM",
+        "COMEX is correctly identified as Commercial Excellence (not Commercial Execution)",
+        "The two are clearly distinguished"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "I need to write a Gold job that fully overwrites its output table every run. Which Fabricks mode should I use and when would I use update instead?",
+      "expected_output": "Use mode=complete for full refresh/overwrite. Use mode=update for merge/upsert when you want idempotent incremental updates without rewriting the whole table.",
+      "files": [],
+      "expectations": [
+        "Correctly identifies complete mode for full overwrite",
+        "Correctly explains update mode as merge/upsert for incremental loads",
+        "Distinguishes the two modes clearly"
+      ]
+    }
+  ]
+}
