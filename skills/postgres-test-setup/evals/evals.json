@@ -6,13 +6,31 @@
       "prompt": "I want to add integration tests for my FastAPI app. Set up a local test PostgreSQL database using Docker so I can run tests against a real database.",
       "expected_output": "The assistant copies start_postgres.py and run_sql.py into test_server/, adds the pytest dependencies (psycopg, sqlglot, docker, pytest-env), configures [tool.pytest_env] in pyproject.toml with TEST_POSTGRES_* variables, and adds a session-scoped autouse fixture in conftest.py that calls start_postgres() and setup_database().",
       "files": [],
-      "expectations": [
-        "start_postgres.py is placed in test_server/",
-        "run_sql.py is placed in test_server/",
-        "pyproject.toml gets [tool.pytest_env] with TEST_POSTGRES_* entries (or the detected prefix)",
-        "A session-scoped autouse pytest_asyncio fixture is added to conftest.py",
-        "The fixture calls start_postgres() and await setup_database()",
-        "Dependencies include psycopg, sqlglot, docker, pytest-env"
+      "assertions": [
+        {
+          "id": "mentions_start_postgres_copy",
+          "description": "Instructs copying start_postgres.py to test_server/"
+        },
+        {
+          "id": "mentions_run_sql_copy",
+          "description": "Instructs copying run_sql.py to test_server/"
+        },
+        {
+          "id": "provides_pytest_env_config",
+          "description": "Provides [tool.pytest_env] section for pyproject.toml with TEST_POSTGRES_* variables"
+        },
+        {
+          "id": "provides_conftest_fixture",
+          "description": "Provides a session-scoped autouse pytest fixture in conftest.py"
+        },
+        {
+          "id": "fixture_calls_start_and_setup",
+          "description": "Fixture calls both start_postgres() and setup_database() (or await setup_database())"
+        },
+        {
+          "id": "mentions_correct_dependencies",
+          "description": "Mentions psycopg, sqlglot, docker, and pytest-env as dependencies"
+        }
       ]
     },
     {
@@ -20,25 +38,47 @@
       "prompt": "Add a new `orders` table to the database. It should have id (serial PK), user_id (FK to dim.user), total_amount (numeric), and created_at (timestamptz defaulting to now()).",
       "expected_output": "The assistant creates database/<schema>/tables/orders.sql with the CREATE TABLE statement and optionally a orders.test_data.json. It then applies the file with run_sql.py and does NOT do a full reset since this is an additive change.",
       "files": [],
-      "expectations": [
-        "A new .sql file is created under the correct database/ subdirectory",
-        "The SQL uses CREATE TABLE IF NOT EXISTS or equivalent",
-        "The assistant runs the file with: uv run test_server/run_sql.py <path-to-sql>",
-        "The assistant does NOT run --force-reset-db (additive change only)",
-        "No direct psql or docker exec commands are used"
+      "assertions": [
+        {
+          "id": "creates_sql_file",
+          "description": "Creates a .sql file under a database/ subdirectory with the correct CREATE TABLE statement"
+        },
+        {
+          "id": "sql_has_correct_columns",
+          "description": "SQL includes id (PK), user_id (FK), total_amount (numeric), and created_at (timestamptz with default)"
+        },
+        {
+          "id": "uses_run_sql_to_apply",
+          "description": "Runs the file via: uv run test_server/run_sql.py <path>, not psql or docker exec"
+        },
+        {
+          "id": "no_force_reset",
+          "description": "Does NOT suggest --force-reset-db (this is an additive change — reset is not needed)"
+        }
       ]
     },
     {
       "id": 3,
       "prompt": "I need to rename the `name` column to `full_name` in the dim.user table.",
-      "expected_output": "The assistant edits the existing users.sql file to use full_name, writes an ALTER TABLE statement via run_sql.py to apply it to the live test DB, and explains that production will need the same migration applied by a human. Does NOT auto-apply to production.",
+      "expected_output": "The assistant edits the existing users.sql file to use full_name, writes an ALTER TABLE statement via run_sql.py to apply it to the live test DB, and explains that production will need the same migration applied by a human.",
       "files": [],
-      "expectations": [
-        "The .sql source file is updated to use full_name",
-        "An ALTER TABLE ... RENAME COLUMN statement is run via run_sql.py --sql",
-        "The assistant notes that production requires a human-applied migration",
-        "No changes are made to any non-localhost database",
-        "If a full reset is suggested instead, --force-reset-db is used via start_postgres.py, not raw SQL"
+      "assertions": [
+        {
+          "id": "updates_sql_source_file",
+          "description": "Updates the .sql source file to use full_name instead of name"
+        },
+        {
+          "id": "provides_alter_table",
+          "description": "Provides an ALTER TABLE ... RENAME COLUMN statement to apply to the live test DB"
+        },
+        {
+          "id": "uses_run_sql_or_force_reset",
+          "description": "Uses run_sql.py --sql or --force-reset-db, NOT raw psql or docker exec"
+        },
+        {
+          "id": "warns_about_production",
+          "description": "Notes that production needs the same migration applied by a human"
+        }
       ]
     },
     {
@@ -46,22 +86,43 @@
       "prompt": "How do I check what's currently in the dim.user table in my test database?",
       "expected_output": "The assistant runs: uv run test_server/run_sql.py --sql \"SELECT * FROM dim.user LIMIT 20\" --results",
       "files": [],
-      "expectations": [
-        "run_sql.py is used with --sql and --results flags",
-        "The command targets localhost (test DB only)",
-        "No direct psql, pgcli, or docker exec commands are suggested as the primary approach"
+      "assertions": [
+        {
+          "id": "uses_run_sql_with_results",
+          "description": "Recommends run_sql.py with --sql and --results flags"
+        },
+        {
+          "id": "correct_command_format",
+          "description": "Provides a command using uv run test_server/run_sql.py --sql ... --results"
+        },
+        {
+          "id": "no_psql_or_docker_exec",
+          "description": "Does NOT suggest psql, pgcli, or docker exec as the primary approach"
+        }
       ]
     },
     {
       "id": 5,
       "prompt": "I dropped a column from a table in production by mistake and now my local test schema is out of sync. How do I reset the test database to match the current SQL files?",
-      "expected_output": "The assistant runs a full reset: uv run -m test_server.start_postgres --force-reset-db. It explains this drops and recreates the test DB, re-runs all SQL files in dependency order, and re-inserts test data from .test_data.json files. It does NOT touch production.",
+      "expected_output": "The assistant runs a full reset: uv run -m test_server.start_postgres --force-reset-db. It explains this drops and recreates the test DB, re-runs all SQL files in dependency order, and re-inserts test data from .test_data.json files.",
       "files": [],
-      "expectations": [
-        "The --force-reset-db flag is used with start_postgres.py",
-        "The assistant confirms this only affects the local test DB (localhost)",
-        "No production database commands are issued",
-        "The assistant explains that test data is re-seeded from .test_data.json files"
+      "assertions": [
+        {
+          "id": "recommends_force_reset_db",
+          "description": "Recommends: uv run -m test_server.start_postgres --force-reset-db"
+        },
+        {
+          "id": "clarifies_local_only",
+          "description": "Clarifies this only affects the local test database (localhost), NOT production"
+        },
+        {
+          "id": "explains_test_data_reseeded",
+          "description": "Explains that test data from .test_data.json files will be re-inserted"
+        },
+        {
+          "id": "no_production_commands",
+          "description": "Issues no commands that would affect production"
+        }
       ]
     }
   ]

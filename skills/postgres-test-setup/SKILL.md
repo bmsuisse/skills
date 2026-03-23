@@ -2,34 +2,51 @@
 name: postgres-test-setup
 description: >
   Set up and work with a local PostgreSQL test database in Docker for
-  integration/e2e tests. Use this skill when the user wants to add, configure,
-  or troubleshoot a local test Postgres instance, pytest database fixtures, SQL
-  schema initialisation from files, or database schema changes. Triggers on
-  requests like "set up a test database", "add postgres fixtures", "init test
-  DB", "local postgres for tests", "add a column", "create a table", "change
-  the schema", or anything involving the local test Postgres database.
+  integration/e2e tests. Use this skill whenever the user wants to add,
+  configure, troubleshoot, or run queries against a local test Postgres
+  instance — even if they don't say "postgres" explicitly. Triggers on things
+  like "set up a test database", "add postgres fixtures", "init test DB",
+  "local postgres for tests", "add a column", "create a table", "change the
+  schema", "run a SQL query on my test DB", "reset the database", "database is
+  out of sync", "test data", or anything involving the local test Postgres
+  database. Also use this skill when the user asks how to inspect the test DB,
+  seed rows, or apply a migration to the local environment.
 ---
 
 # Postgres Test Setup
 
-Spins up a **Docker-based PostgreSQL** instance, applies all SQL schema files from a `database/` directory in dependency order, and seeds it with test data from `.test_data.json` sidecar files.
+Spins up a **Docker-based PostgreSQL** instance, applies all SQL schema files from a `database/` directory in dependency order, and seeds test data from `.test_data.json` sidecar files.
 
 ---
 
-## Quick start
+## Quick reference
 
-### 1. Copy the script
+| What do you need? | Command |
+|---|---|
+| First-time setup | Follow steps 1–5 below |
+| Add a new table | Create `.sql` + optional `.test_data.json`, then `uv run -m test_server.start_postgres` |
+| Additive change (new column/index) | Edit `.sql`, apply via `run_sql.py`, no reset needed |
+| Breaking change (rename/drop column) | Edit `.sql`, then `uv run -m test_server.start_postgres --force-reset-db` |
+| Inspect test DB data | `uv run test_server/run_sql.py --sql "SELECT ..." --results` |
+| Re-apply a function/view | `uv run test_server/run_sql.py database/path/to/file.sql` |
+| Reset to clean slate | `uv run -m test_server.start_postgres --force-reset-db` |
 
-Place [`scripts/start_postgres.py`](scripts/start_postgres.py) at `test_server/start_postgres.py` in the project.
+---
 
-Adjust the two constants at the top of the file:
+## Initial setup
+
+### 1. Copy the scripts
+
+Place [`scripts/start_postgres.py`](scripts/start_postgres.py) at `test_server/start_postgres.py` and [`scripts/run_sql.py`](scripts/run_sql.py) at `test_server/run_sql.py` in the project.
+
+Adjust the two constants at the top of `start_postgres.py`:
 
 ```python
-DOCKER_IMAGE = "pgvector/pgvector:pg18-trixie" # or "postgres:17" without pgvector
-DATABASE_DIR = "database"                       # folder with .sql files (relative to cwd)
+DOCKER_IMAGE = "pgvector/pgvector:pg18-trixie"  # or "postgres:17" without pgvector
+DATABASE_DIR = "database"                        # folder with .sql files (relative to cwd)
 ```
 
-`ENV_PREFIX` is **auto-detected** from `[tool.pytest_env]` in `pyproject.toml` by scanning for a key ending in `POSTGRES_HOST` (e.g. `MDM_POSTGRES_HOST` → prefix `MDM_`). Falls back to `TEST_` if no match is found or the file is absent. No manual change needed once `pyproject.toml` is configured.
+`ENV_PREFIX` is **auto-detected** from `[tool.pytest_env]` in `pyproject.toml` by scanning for a key ending in `POSTGRES_HOST` (e.g. `MDM_POSTGRES_HOST` → prefix `MDM_`). Falls back to `TEST_` if no match is found.
 
 ### 2. Add pytest dependencies
 
@@ -82,27 +99,29 @@ uv run -m test_server.start_postgres --force-reset-db
 
 ---
 
-## Making database changes
+## Making schema changes
 
 **All schema changes live in SQL files. Never alter the production or shared database directly.**
 
-### Rules
+### When to reset vs. apply incrementally
 
-1. **Edit the `.sql` file** in `database/` — that is the source of truth.
-2. **Test the change on the local test DB only** using `run_sql.py` (see below).
-3. Never run `ALTER`, `DROP`, or `CREATE` against any database whose `TEST_POSTGRES_HOST` is not `localhost`.
-4. After verifying, a human applies the same SQL to production as a migration.
+| Change type | Approach |
+|---|---|
+| New table or view | `uv run -m test_server.start_postgres` (picks up new files automatically) |
+| New nullable column, new index | Edit `.sql`, apply via `run_sql.py`, no reset needed |
+| Rename column, change type, drop column | Edit `.sql`, then run `--force-reset-db` |
 
-### Workflow for a schema change
+### Workflow
 
 ```
 1. Edit / create the relevant .sql file in database/
-2. Run the file against the local test DB to verify it works:
-       uv run test_server/run_sql.py database/path/to/file.sql
-3. If the change is destructive (DROP, ALTER) and needs a clean slate:
-       uv run -m test_server.start_postgres --force-reset-db
-4. Run the tests to confirm nothing broke.
+2. Apply to the local test DB:
+   - Additive:  uv run test_server/run_sql.py database/path/to/file.sql
+   - Breaking:  uv run -m test_server.start_postgres --force-reset-db
+3. Run the tests to confirm nothing broke.
 ```
+
+After verifying locally, a human applies the same SQL to production as a migration.
 
 ### Adding a new table
 
@@ -110,39 +129,24 @@ uv run -m test_server.start_postgres --force-reset-db
 2. Optionally create `database/<schema>/tables/<table_name>.test_data.json` with seed rows.
 3. Run `uv run -m test_server.start_postgres` — the new file is picked up automatically.
 
-### Modifying an existing table
-
-- **Additive change** (new nullable column, new index): edit the `.sql` file and apply the matching `ALTER TABLE` via `run_sql.py`. The live test DB is updated without a full reset.
-- **Breaking change** (rename column, change type, drop column): edit the `.sql` file, then do a full reset:
-  `uv run -m test_server.start_postgres --force-reset-db`
-
 ---
 
 ## Executing SQL on the test database
 
-Copy [`scripts/run_sql.py`](scripts/run_sql.py) to `test_server/run_sql.py`.
-
-The script auto-detects the env-var prefix from `pyproject.toml` (same logic as `start_postgres.py`) and **refuses to run if `<PREFIX>POSTGRES_HOST` is not `localhost`**.
-
-### Run a SQL file
+`run_sql.py` auto-detects the env-var prefix from `pyproject.toml` and **refuses to run if `<PREFIX>POSTGRES_HOST` is not `localhost`**.
 
 ```bash
+# Run a SQL file
 uv run test_server/run_sql.py database/1_dim/tables/user.sql
-```
 
-### Run inline SQL
-
-```bash
+# Run inline SQL
 uv run test_server/run_sql.py --sql "SELECT * FROM dim.user LIMIT 10"
-```
 
-### Run inline SQL and print results
-
-```bash
+# Run inline SQL and print results as an ASCII table
 uv run test_server/run_sql.py --sql "SELECT id, name FROM dim.user" --results
 ```
 
-Results are printed as an ASCII table:
+Results look like:
 ```
 +----+-------+
 | id | name  |
@@ -153,16 +157,7 @@ Results are printed as an ASCII table:
 (2 rows)
 ```
 
-### When to use `run_sql.py`
-
-| Task | Command |
-|------|---------|
-| Apply an additive migration to the live test DB | `run_sql.py database/.../alter.sql` |
-| Spot-check data after a change | `run_sql.py --sql "SELECT ..." --results` |
-| Re-apply a single function/view after editing it | `run_sql.py database/.../my_function.sql` |
-| Quick schema inspection | `run_sql.py --sql "\\d dim.user" --results` |
-
-> **Never** use `run_sql.py` to apply changes to production. It is locked to `localhost` by design.
+**Never** use `run_sql.py` to apply changes to production — it is locked to `localhost` by design.
 
 ---
 
@@ -170,22 +165,22 @@ Results are printed as an ASCII table:
 
 The script walks `database/` and executes `.sql` files in this order:
 
-| Priority | Directory/filename pattern | Object type        |
-|----------|----------------------------|--------------------|
-| 1        | `schema`                   | `CREATE SCHEMA`    |
-| 2        | `types`                    | Custom types/enums |
-| 3        | `tables`                   | Tables             |
-| 4        | `scalar_functions`         | Scalar functions   |
-| 5        | `functions`                | Functions          |
-| 6        | `views`                    | Views              |
-| 7        | `table_functions`          | Table functions    |
-| 8        | `procedures`               | Procedures         |
-| 100      | `permissions`              | Grants             |
-| 101      | `indexes`                  | Indexes            |
+| Priority | Directory/filename pattern | Object type |
+|---|---|---|
+| 1 | `schema` | `CREATE SCHEMA` |
+| 2 | `types` | Custom types/enums |
+| 3 | `tables` | Tables |
+| 4 | `scalar_functions` | Scalar functions |
+| 5 | `functions` | Functions |
+| 6 | `views` | Views |
+| 7 | `table_functions` | Table functions |
+| 8 | `procedures` | Procedures |
+| 100 | `permissions` | Grants |
+| 101 | `indexes` | Indexes |
 
-Files named `all.sql`, `100_permissions.sql`, or containing `.prod` are skipped. Migrations folders are skipped.
+Files named `all.sql`, `100_permissions.sql`, or containing `.prod` are skipped. Migration folders are skipped.
 
-Cross-file foreign key dependencies are resolved automatically via `sqlglot` — delayed files are retried until all deps are met.
+Cross-file foreign key dependencies are resolved automatically via `sqlglot`.
 
 **Recommended structure:**
 
@@ -206,7 +201,7 @@ database/
 
 ## Test data files
 
-Place a `.test_data.json` file next to any table `.sql` file. It must be a JSON array of row objects:
+Place a `.test_data.json` file next to any table `.sql` file — a JSON array of row objects:
 
 ```json
 [
@@ -215,28 +210,28 @@ Place a `.test_data.json` file next to any table `.sql` file. It must be a JSON 
 ]
 ```
 
-- Nested dicts/lists are automatically serialised to JSON strings (suitable for `jsonb` columns).
-- Rows are deleted before re-insertion on each `--force-reset-db` run.
+- Nested dicts/lists are automatically serialised to JSON strings (for `jsonb` columns).
+- On `--force-reset-db`, rows are deleted and re-inserted.
 - On a normal run, a table is skipped if its row count already matches the JSON file.
 
 ---
 
-## Environment variables reference
+## Environment variables
 
-| Variable                  | Default    | Description                        |
-|---------------------------|------------|------------------------------------|
-| `TEST_POSTGRES_HOST`      | `localhost` | Postgres host                     |
-| `TEST_POSTGRES_PORT`      | `54324`     | Host port (avoids conflict w/ 5432)|
-| `TEST_POSTGRES_DB`        | `app_test`  | Database name                     |
-| `TEST_POSTGRES_USER`      | `postgres`  | Superuser                         |
-| `TEST_POSTGRES_PASSWORD`  | `testpwd`   | Password                          |
-| `SKIP_START_POSTGRES`     | —           | Set to `1` to skip Docker startup (e.g. CI service containers) |
+| Variable | Default | Description |
+|---|---|---|
+| `TEST_POSTGRES_HOST` | `localhost` | Postgres host |
+| `TEST_POSTGRES_PORT` | `54324` | Host port (avoids conflict with 5432) |
+| `TEST_POSTGRES_DB` | `app_test` | Database name |
+| `TEST_POSTGRES_USER` | `postgres` | Superuser |
+| `TEST_POSTGRES_PASSWORD` | `testpwd` | Password |
+| `SKIP_START_POSTGRES` | — | Set to `1` to skip Docker startup (e.g. CI service containers) |
 
 ---
 
 ## CI / GitHub Actions
 
-Skip the Docker startup and point at a service container instead:
+Skip Docker startup and point at a service container instead:
 
 ```yaml
 services:
@@ -262,4 +257,4 @@ env:
 
 ## Adapting for complex Postgres types
 
-The included script handles simple columns and JSONB. If the project uses **PostgreSQL composite types or custom enums** that need psycopg adaptation (e.g. via `psycopg.adapt`), extend `insert_test_data` with a helper that registers the types before inserting. In the original MDMApp project this was done via a `ComplexHelper` class — port that pattern here if needed.
+The included script handles simple columns and JSONB. If the project uses **PostgreSQL composite types or custom enums** that need psycopg adaptation, use the `ComplexHelper` class in [`references/complex_helper.py`](references/complex_helper.py). Read that file for the full implementation and usage instructions — it shows how to extend `insert_test_data` to register custom types before inserting.
