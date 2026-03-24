@@ -23,7 +23,7 @@ def get_project_dirs():
         return data_dir / "codeunits", data_dir / "tables", data_dir / "pages"
 
 
-def _parse_codeunit_file(file, table_metadata=None):
+def _parse_codeunit_file(file, source_type="unknown", table_metadata=None):
     try:
         parser = CodeunitParser(file, table_metadata=table_metadata)
         data = parser.parse()
@@ -32,41 +32,49 @@ def _parse_codeunit_file(file, table_metadata=None):
             "name": file.name,
             "object_name": data.get("object_name", "Unknown"),
             "object_id": data.get("object_id", "N/A"),
+            "source_type": source_type,
         }
 
     except Exception:
-        return {"path": file, "name": file.name, "object_name": "Error parsing", "object_id": "N/A"}
+        return {"path": file, "name": file.name, "object_name": "Error parsing", "object_id": "N/A", "source_type": source_type}
 
 
 def list_codeunits():
     codeunits_dir, tables_dir, pages_dir = get_project_dirs()
 
-    files = []
+    tagged_files = []
     if codeunits_dir.exists():
-        files.extend(list(codeunits_dir.glob("*.cs")) + list(codeunits_dir.glob("*.c-al")))
+        for f in list(codeunits_dir.rglob("*.cs")) + list(codeunits_dir.rglob("*.c-al")):
+            tagged_files.append((f, "codeunit"))
     if tables_dir.exists():
-        files.extend(list(tables_dir.glob("*.cs")) + list(tables_dir.glob("*.c-al")))
+        for f in list(tables_dir.rglob("*.cs")) + list(tables_dir.rglob("*.c-al")):
+            tagged_files.append((f, "table"))
     if pages_dir.exists():
-        files.extend(list(pages_dir.glob("*.cs")) + list(pages_dir.glob("*.c-al")))
+        for f in list(pages_dir.rglob("*.cs")) + list(pages_dir.rglob("*.c-al")):
+            tagged_files.append((f, "page"))
 
-    if not files:
+    if not tagged_files:
         return []
 
     table_metadata = TableMetadataLoader.load_metadata()
-    results = run_in_processpool(_parse_codeunit_file, ((f, table_metadata) for f in files), desc="Listing")
+    results = run_in_processpool(_parse_codeunit_file, ((f, st, table_metadata) for f, st in tagged_files), desc="Listing")
     return sorted(results, key=lambda x: x["name"])
 
 
 def analyze_codeunit(filename, table_metadata=None):
     codeunits_dir, tables_dir, pages_dir = get_project_dirs()
-    file_path = codeunits_dir / filename
+    file_path = Path(filename)
     if not file_path.exists():
-        file_path = tables_dir / filename
-    if not file_path.exists():
-        file_path = pages_dir / filename
-
-    if not file_path.exists():
-        raise FileNotFoundError(f"File not found: {filename}")
+        found = False
+        for search_dir in [codeunits_dir, tables_dir, pages_dir]:
+            if search_dir.exists():
+                matches = list(search_dir.rglob(str(filename)))
+                if matches:
+                    file_path = matches[0]
+                    found = True
+                    break
+        if not found:
+            raise FileNotFoundError(f"File not found: {filename}")
 
     if table_metadata is None:
         table_metadata = TableMetadataLoader.load_metadata()
@@ -82,7 +90,8 @@ def analyze_codeunit(filename, table_metadata=None):
 
 def _analyze_codeunit_for_scan(file_info, table_metadata):
     try:
-        result = analyze_codeunit(file_info["name"], table_metadata=table_metadata)
+        # Pass the absolute path to analyze_codeunit so it doesn't need to re-rglob it
+        result = analyze_codeunit(file_info["path"], table_metadata=table_metadata)
         bottlenecks = []
 
         for b in result["bottlenecks"]:
