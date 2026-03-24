@@ -1,17 +1,17 @@
 ---
 name: codeunit-analyzer
 description: >
-  Comprehensive C-AL codeunit analysis tool for the OneTrade/Navision project.
+  Comprehensive C-AL codeunit and table analysis tool for the OneTrade/Navision project.
   Zero-dependency Python script with three sub-commands: analyze (deep dive),
   scan (project-wide bottleneck detection), and optimize (refactoring suggestions).
   Works with Python standard library only - no packages to install! Use when the
-  user asks about analyzing codeunits, finding performance issues, or optimizing
-  Navision code. Trigger: "/codeunit-analyzer", "analyze codeunit", "scan bottlenecks".
+  user asks about analyzing codeunits, tables, or pages, finding performance issues, or optimizing
+  Navision code. Trigger: "/codeunit-analyzer", "analyze codeunit", "analyze table", "scan bottlenecks".
 ---
 
-# Codeunit Analyzer
+# Codeunit, Table & Page Analyzer
 
-**Zero-dependency** C-AL codeunit analysis tool using only Python standard library.
+**Zero-dependency** C-AL analysis tool using only Python standard library. Applies seamlessly to both codeunits, tables, and pages.
 
 ## ✨ Key Features
 
@@ -43,7 +43,7 @@ Get actionable refactoring suggestions with code examples.
 
 ## Pre-Flight Setup (Run This First, Every Time)
 
-**Before any command**, resolve two things: the Python executable and the codeunits directory. Do both in one shot:
+**Before any command**, resolve two things: the Python executable and the codeunits, tables, or pages directories. Do both in one shot:
 
 ```bash
 # 1. Find Python
@@ -51,9 +51,9 @@ PYTHON=$(command -v python3 || command -v python || echo "uv run python")
 $PYTHON --version || { echo "Python not found. Install via: brew install python  OR  uv python install 3.12"; exit 1; }
 
 # 2. Find the SKILL path
-SKILL="$(dirname "$(find . -path '*codeunit-analyzer/analyze.py' | head -1)")"
+SKILL="$(dirname "$(dirname "$(find . -path '*codeunit-analyzer/scripts/analyze.py' | head -1)")")"
 
-# 3. Find the codeunits directory — check common locations
+# 3. Find the codeunits, tables, or pages directories — check common locations
 CODEUNITS_DIR=$(
   for candidate in codeunits data/codeunits src/codeunits .agents/data/codeunits; do
     [ -d "$candidate" ] && { echo "$candidate"; break; }
@@ -68,7 +68,7 @@ fi
 # 5. Export so the script picks it up automatically
 export CODEUNITS_DIR
 echo "Python : $PYTHON"
-echo "Skill  : $SKILL/analyze.py"
+echo "Skill  : $SKILL/scripts/analyze.py"
 echo "Codeunits: $CODEUNITS_DIR"
 ```
 
@@ -78,9 +78,9 @@ echo "Codeunits: $CODEUNITS_DIR"
 With those three variables set, all commands become:
 
 ```bash
-$PYTHON $SKILL/analyze.py list
-$PYTHON $SKILL/analyze.py scan
-$PYTHON $SKILL/analyze.py analyze <file>
+$PYTHON $SKILL/scripts/scripts/analyze.py list
+$PYTHON $SKILL/scripts/scripts/analyze.py scan
+$PYTHON $SKILL/scripts/scripts/analyze.py analyze <file>
 ```
 
 ---
@@ -91,37 +91,37 @@ $PYTHON $SKILL/analyze.py analyze <file>
 
 ```bash
 # List all available codeunits
-$PYTHON $SKILL/analyze.py list
+$PYTHON $SKILL/scripts/scripts/analyze.py list
 
 # Analyze a specific codeunit
-$PYTHON $SKILL/analyze.py analyze 1.cs
+$PYTHON $SKILL/scripts/scripts/analyze.py analyze 1.cs
 
 # Scan all codeunits for bottlenecks
-$PYTHON $SKILL/analyze.py scan
+$PYTHON $SKILL/scripts/scripts/analyze.py scan
 
 # Save scan results to file
-$PYTHON $SKILL/analyze.py scan -o bottlenecks.json
+$PYTHON $SKILL/scripts/scripts/analyze.py scan -o bottlenecks.json
 
 # Get optimization suggestions
-$PYTHON $SKILL/analyze.py optimize 80.cs
+$PYTHON $SKILL/scripts/scripts/analyze.py optimize 80.cs
 ```
 
 ---
 
 ## Usage Patterns
 
-### Pattern 1: List Codeunits
+### Pattern 1: List Files
 
 **User says:**
 
 - "List all codeunits"
 - "Show me available files"
-- "What codeunits can I analyze?"
+- "What codeunits, tables, or pages can I analyze?"
 
 **Action:**
 
 ```bash
-python .skills/codeunit-analyzer/analyze.py list
+python .skills/codeunit-analyzer/scripts/scripts/analyze.py list
 ```
 
 **Output:**
@@ -129,18 +129,19 @@ Table showing: File name | Object name | ID
 
 ---
 
-### Pattern 2: Analyze Specific Codeunit
+### Pattern 2: Analyze Specific Codeunit or Table
 
 **User says:**
 
 - "Analyze codeunit 80"
 - "Explain what codeunit 1.cs does"
+- "Analyze table 18"
 - "Analyze <filename>"
 
 **Action:**
 
 ```bash
-python .skills/codeunit-analyzer/analyze.py analyze <filename>
+python .skills/codeunit-analyzer/scripts/scripts/analyze.py analyze <filename>
 ```
 
 **Steps:**
@@ -172,13 +173,13 @@ python .skills/codeunit-analyzer/analyze.py analyze <filename>
 **Action:**
 
 ```bash
-python .skills/codeunit-analyzer/analyze.py scan
+python .skills/codeunit-analyzer/scripts/scripts/analyze.py scan
 ```
 
 **Save to JSON:**
 
 ```bash
-python .skills/codeunit-analyzer/analyze.py scan -o bottlenecks_$(date +%Y%m%d).json
+python .skills/codeunit-analyzer/scripts/scripts/analyze.py scan -o bottlenecks_$(date +%Y%m%d).json
 ```
 
 **Steps:**
@@ -211,7 +212,7 @@ python .skills/codeunit-analyzer/analyze.py scan -o bottlenecks_$(date +%Y%m%d).
 **Action:**
 
 ```bash
-python .skills/codeunit-analyzer/analyze.py optimize <filename>
+python .skills/codeunit-analyzer/scripts/scripts/analyze.py optimize <filename>
 ```
 
 **Steps:**
@@ -238,7 +239,7 @@ python .skills/codeunit-analyzer/analyze.py optimize <filename>
 
 ```
 User: /codeunit-analyzer list
-→ Run: python .skills/codeunit-analyzer/analyze.py list
+→ Run: python .skills/codeunit-analyzer/scripts/scripts/analyze.py list
 → Show table of all codeunits
 ```
 
@@ -249,14 +250,14 @@ User: /codeunit-analyzer analyze
 → Run list first to show options
 → Ask: "Which file would you like to analyze?"
 → User selects file
-→ Run: python .skills/codeunit-analyzer/analyze.py analyze <selected_file>
+→ Run: python .skills/codeunit-analyzer/scripts/scripts/analyze.py analyze <selected_file>
 ```
 
 **Scenario 3: User provides filename directly**
 
 ```
 User: /codeunit-analyzer analyze 1.cs
-→ Run: python .skills/codeunit-analyzer/analyze.py analyze 1.cs
+→ Run: python .skills/codeunit-analyzer/scripts/scripts/analyze.py analyze 1.cs
 → Display results immediately
 ```
 
@@ -265,7 +266,7 @@ User: /codeunit-analyzer analyze 1.cs
 ```
 User: "Find performance issues"
 → Infer command: scan
-→ Run: python .skills/codeunit-analyzer/analyze.py scan
+→ Run: python .skills/codeunit-analyzer/scripts/scripts/analyze.py scan
 ```
 
 ---
@@ -441,7 +442,7 @@ Expected directory: c:\Users\...\data\codeunits
 Error: FileNotFoundError: '80.cs'
 ```
 
-**Solution:** Run `python .skills/codeunit-analyzer/analyze.py list` to see available files.
+**Solution:** Run `python .skills/codeunit-analyzer/scripts/scripts/analyze.py list` to see available files.
 
 **3. No bottlenecks detected**
 
@@ -450,6 +451,15 @@ Error: FileNotFoundError: '80.cs'
 ```
 
 **Solution:** Great news! No action needed.
+
+---
+
+## AL-Perf Integrated Anti-Patterns
+
+The analyzer incorporates advanced source-correlated checks natively adopted from `al-perf`:
+- **Missing SetLoadFields** (Medium): Flags `FINDSET/FINDFIRST` executed without `SETLOADFIELDS()`. Navision defaults to `SELECT *` across the network, bloating the buffer.
+- **Unfiltered FindSet** (High): Flags `FINDSET` operations lacking `SETRANGE` or `SETFILTER`, severely impacting SQL Server memory caching by pulling entire tables.
+- **Event Subscriber Hotspots** (Critical): Flags `[EventSubscriber]` procedures containing data-loops or heavy read operations. Because Navision Event Subscribers run globally and synchronously, any blocked loop here degrades the entire ERP execution context.
 
 ---
 
@@ -466,7 +476,7 @@ python --version  # Should be 3.10+
 **Run from project root:**
 
 ```bash
-python .skills/codeunit-analyzer/analyze.py list
+python .skills/codeunit-analyzer/scripts/scripts/analyze.py list
 ```
 
 ### No files listed
@@ -483,7 +493,7 @@ If empty, add your C-AL files to `data/codeunits/`.
 
 ```bash
 chmod +x scripts/analyze.py
-python .skills/codeunit-analyzer/analyze.py list
+python .skills/codeunit-analyzer/scripts/scripts/analyze.py list
 ```
 
 ---
@@ -504,7 +514,7 @@ python .skills/codeunit-analyzer/analyze.py list
 ### Example 1: Quick list
 
 ```bash
-python .skills/codeunit-analyzer/analyze.py list
+python .skills/codeunit-analyzer/scripts/scripts/analyze.py list
 ```
 
 Output:
@@ -522,7 +532,7 @@ File                 Object Name                                        ID
 ### Example 2: Analyze specific file
 
 ```bash
-python .skills/codeunit-analyzer/analyze.py analyze 80.cs
+python .skills/codeunit-analyzer/scripts/scripts/analyze.py analyze 80.cs
 ```
 
 Output:
@@ -549,7 +559,7 @@ Medium: 1
 ### Example 3: Full scan
 
 ```bash
-python .skills/codeunit-analyzer/analyze.py scan -o scan_results.json
+python .skills/codeunit-analyzer/scripts/scripts/analyze.py scan -o scan_results.json
 ```
 
 Output:
@@ -630,3 +640,8 @@ For production use, consider the full analysis service with Pydantic schemas and
 ---
 
 **Ready to use!** No installation, no dependencies, just Python. 🚀
+
+### 5. **Page Navigation Trigger Abuse** (High/Critical)
+Heavy queries (GET >= 3), nested database writes (MODIFY), or `PAGE.RUN` calls inside `OnAfterGetRecord` and similar UI rendering triggers.
+
+**Recommendation:** Cache records inside Temp tables or run heavy logic exclusively via user-explicit `OnAction` events.

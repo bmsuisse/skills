@@ -53,6 +53,18 @@ class BottleneckDetector:
         self._detect_read_heavy_procedure(proc_name, proc_data)
         self._detect_compound_antipatterns(proc_name, proc_data, has_commit)
         self._detect_bulk_delete_operations(proc_name, proc_data, writes)
+        self._detect_validate_in_loop(proc_name, proc_data)
+        self._detect_modify_in_onmodify(proc_name, proc_data)
+        self._detect_multi_get_onvalidate(proc_name, proc_data)
+        self._detect_commit_in_page_trigger(proc_name, proc_data, has_commit)
+        self._detect_heavy_get_in_hot_trigger(proc_name, proc_data)
+        self._detect_calcfields_in_hot_trigger(proc_name, proc_data)
+        self._detect_modify_in_hot_trigger(proc_name, proc_data)
+        self._detect_page_run_in_hot_trigger(proc_name, proc_data)
+        self._detect_heavy_onclosepage(proc_name, proc_data)
+        self._detect_missing_setloadfields(proc_name, proc_data)
+        self._detect_unfiltered_findset(proc_name, proc_data)
+        self._detect_event_subscriber_hotspot(proc_name, proc_data)
 
     def _detect_large_transaction(self, proc_name: str, proc_data: dict, has_commit: bool):
         if not has_commit:
@@ -374,6 +386,216 @@ class BottleneckDetector:
                     },
                 }
             )
+
+    def _detect_validate_in_loop(self, proc_name: str, proc_data: dict):
+        validates = [
+            w for w in proc_data.get("writes", []) if w["operation"] == "VALIDATE" and w.get("inLoop")
+        ]
+        if validates:
+            self.bottlenecks.append({
+                "pattern": "validate_in_loop",
+                "severity": "high",
+                "score": 130,
+                "procedure": proc_name,
+                "explanation": "VALIDATE called inside a loop. Firing field triggers repeatedly inside loops multiplies database load exponentially.",
+                "recommendation": "Assign values directly if triggers are not required, or cache logic outside the loop.",
+                "example": "// Assign without firing trigger:\nTable.Field := Value;\n// Then call Table.MODIFY(TRUE); after the loop",
+                "codeunit": {
+                    "file": self.file_path.name,
+                    "object_name": self.data.get("object_name"),
+                    "object_id": self.data.get("object_id"),
+                },
+            })
+
+    def _detect_modify_in_onmodify(self, proc_name: str, proc_data: dict):
+        if "modify" not in proc_name.lower():
+            return
+        modifies = [
+            w for w in proc_data.get("writes", []) if w["operation"] == "MODIFY"
+        ]
+        if modifies:
+            self.bottlenecks.append({
+                "pattern": "modify_in_onmodify",
+                "severity": "critical",
+                "score": 200,
+                "procedure": proc_name,
+                "explanation": "Calling MODIFY inside an OnModify trigger causes a recursive loop risk.",
+                "recommendation": "Do not explicitly call MODIFY inside OnModify (or use a different table instance if necessary).",
+                "example": "Remove the explicitly bare MODIFY call inside OnModify.",
+                "codeunit": {
+                    "file": self.file_path.name,
+                    "object_name": self.data.get("object_name"),
+                    "object_id": self.data.get("object_id"),
+                },
+            })
+
+    def _detect_multi_get_onvalidate(self, proc_name: str, proc_data: dict):
+        if "validate" not in proc_name.lower():
+            return
+        gets = [
+            r for r in proc_data.get("reads", []) if r["operation"] == "GET"
+        ]
+        if len(gets) >= 3:
+            self.bottlenecks.append({
+                "pattern": "multi_get_in_onvalidate",
+                "severity": "medium",
+                "score": 70,
+                "procedure": proc_name,
+                "explanation": f"Multiple GET calls ({len(gets)}) in a single OnValidate. Makes field entry feel sluggish.",
+                "recommendation": "Cache frequently fetched records or simplify validation checks to minimize lookups.",
+                "example": "Use Temp Tables, Cache Data Codeunits, or check if the record is already loaded.",
+                "codeunit": {
+                    "file": self.file_path.name,
+                    "object_name": self.data.get("object_name"),
+                    "object_id": self.data.get("object_id"),
+                },
+            })
+
+
+    def _is_hot_trigger(self, proc_name: str) -> bool:
+        lower_name = proc_name.lower()
+        return any(ht in lower_name for ht in ["onaftergetrecord", "onaftergetcurrrecord", "onfindrecord", "onnextrecord"])
+
+    def _detect_commit_in_page_trigger(self, proc_name: str, proc_data: dict, has_commit: bool):
+        if not has_commit: return
+        page_triggers = ["oninit", "onopenpage", "onclosepage", "onaftergetrecord", "onaftergetcurrrecord", "onnewrecord", "oninsertrecord", "onmodifyrecord", "ondeleterecord", "onqueryclosepage", "onfindrecord", "onnextrecord", "onaction", "ondrilldown", "onassistedit", "onlookup"]
+        lower_name = proc_name.lower()
+        if any(pt in lower_name for pt in page_triggers):
+            self.bottlenecks.append({
+                "pattern": "commit_in_page_trigger",
+                "severity": "critical",
+                "score": 180,
+                "procedure": proc_name,
+                "explanation": "COMMIT inside a page trigger breaks transaction rollback and can corrupt partial writes.",
+                "recommendation": "Remove COMMIT from page triggers to ensure UI actions can be rolled back on error.",
+                "example": "Remove the COMMIT statement.",
+                "codeunit": {"file": self.file_path.name, "object_name": self.data.get("object_name"), "object_id": self.data.get("object_id")}
+            })
+
+    def _detect_heavy_get_in_hot_trigger(self, proc_name: str, proc_data: dict):
+        if not self._is_hot_trigger(proc_name): return
+        gets = [r for r in proc_data.get("reads", []) if r["operation"] == "GET"]
+        if len(gets) >= 3:
+            self.bottlenecks.append({
+                "pattern": "heavy_get_in_hot_trigger",
+                "severity": "critical",
+                "score": 160,
+                "procedure": proc_name,
+                "explanation": f"Multiple GETs ({len(gets)}) in hot trigger. Fires on every record scroll, causing 1 DB round-trip per GET.",
+                "recommendation": "Use FlowFields, cache records in memory, or use a temporary table.",
+                "example": "Cache records outside the scrolling logic.",
+                "codeunit": {"file": self.file_path.name, "object_name": self.data.get("object_name"), "object_id": self.data.get("object_id")}
+            })
+
+    def _detect_calcfields_in_hot_trigger(self, proc_name: str, proc_data: dict):
+        if not self._is_hot_trigger(proc_name): return
+        calcs = [r for r in proc_data.get("reads", []) if r["operation"] in ["CALCFIELDS", "CALCSUMS"] and not r.get("inLoop")]
+        if len(calcs) >= 2:
+            self.bottlenecks.append({
+                "pattern": "calcfields_in_hot_trigger",
+                "severity": "high",
+                "score": 110,
+                "procedure": proc_name,
+                "explanation": f"Multiple CALCFIELDS ({len(calcs)}) in hot trigger (outside loops). Expensive per navigation.",
+                "recommendation": "Calculate once before opening if possible, or only on drill-down.",
+                "example": "Change UI to calculate on demand.",
+                "codeunit": {"file": self.file_path.name, "object_name": self.data.get("object_name"), "object_id": self.data.get("object_id")}
+            })
+
+    def _detect_modify_in_hot_trigger(self, proc_name: str, proc_data: dict):
+        if not self._is_hot_trigger(proc_name): return
+        writes = [w for w in proc_data.get("writes", []) if w["operation"] in ["MODIFY", "INSERT", "DELETE"] and not w.get("isTemporary")]
+        if writes:
+            self.bottlenecks.append({
+                "pattern": "db_write_in_hot_trigger",
+                "severity": "high",
+                "score": 120,
+                "procedure": proc_name,
+                "explanation": "Database write during a navigation/hot trigger causes unexpected saves and performance issues.",
+                "recommendation": "Move writes to OnAction or explicit save functions.",
+                "example": "Do not write during OnAfterGetRecord.",
+                "codeunit": {"file": self.file_path.name, "object_name": self.data.get("object_name"), "object_id": self.data.get("object_id")}
+            })
+
+    def _detect_page_run_in_hot_trigger(self, proc_name: str, proc_data: dict):
+        if not self._is_hot_trigger(proc_name): return
+        calls = proc_data.get("calls", [])
+        if any(c.upper() in ["PAGE.RUN", "PAGE.RUNMODAL"] for c in calls):
+            self.bottlenecks.append({
+                "pattern": "page_run_in_hot_trigger",
+                "severity": "high",
+                "score": 100,
+                "procedure": proc_name,
+                "explanation": "Opening a page from within a navigation trigger can cause recursive page loads.",
+                "recommendation": "Trigger PAGE.RUN from an explicit user action (OnAction).",
+                "example": "Move PAGE.RUN to an action.",
+                "codeunit": {"file": self.file_path.name, "object_name": self.data.get("object_name"), "object_id": self.data.get("object_id")}
+            })
+
+    def _detect_heavy_onclosepage(self, proc_name: str, proc_data: dict):
+        if "onclosepage" not in proc_name.lower(): return
+        writes = [w for w in proc_data.get("writes", []) if w["operation"] in ["MODIFY", "INSERT", "DELETE", "DELETEALL", "MODIFYALL"] and not w.get("isTemporary")]
+        if len(writes) >= 2:
+            self.bottlenecks.append({
+                "pattern": "heavy_onclosepage",
+                "severity": "medium",
+                "score": 70,
+                "procedure": proc_name,
+                "explanation": f"Multiple DB Writes ({len(writes)}) in OnClosePage. OnClosePage is not transactional; failures are swallowed.",
+                "recommendation": "Perform heavy writes on an explicit 'Save' or 'Post' action, not silently on close.",
+                "example": "Move writes out of OnClosePage.",
+                "codeunit": {"file": self.file_path.name, "object_name": self.data.get("object_name"), "object_id": self.data.get("object_id")}
+            })
+
+    def _detect_missing_setloadfields(self, proc_name: str, proc_data: dict):
+        reads = [r for r in proc_data.get("reads", []) if r["operation"] in ["FINDSET", "FINDFIRST", "FIND"] and not r.get("isTemporary")]
+        for read in reads:
+            if not read.get("hasLoadFields"):
+                self.bottlenecks.append({
+                    "pattern": "missing_setloadfields",
+                    "severity": "medium",
+                    "score": 60,
+                    "procedure": proc_name,
+                    "explanation": f"Missing SetLoadFields before {read['operation']} for table {read.get('tableName', 'Unknown')}. This causes NAV to fetch all fields (SELECT *) across the network.",
+                    "recommendation": "Use SetLoadFields to specify exactly which fields you need before executing the read.",
+                    "example": "Table.SETLOADFIELDS(Field1, Field2);\\nIF Table.FINDSET THEN...",
+                    "codeunit": {"file": self.file_path.name, "object_name": self.data.get("object_name"), "object_id": self.data.get("object_id")}
+                })
+
+    def _detect_unfiltered_findset(self, proc_name: str, proc_data: dict):
+        reads = [r for r in proc_data.get("reads", []) if r["operation"] == "FINDSET" and not r.get("isTemporary")]
+        for read in reads:
+            if not read.get("hasFilter"):
+                self.bottlenecks.append({
+                    "pattern": "unfiltered_findset",
+                    "severity": "high",
+                    "score": 110,
+                    "procedure": proc_name,
+                    "explanation": f"Unfiltered FINDSET detected for table {read.get('tableName', 'Unknown')}. This will pull the entire table into memory.",
+                    "recommendation": "Always apply SETRANGE or SETFILTER before FINDSET.",
+                    "example": "Table.SETRANGE(Status, Status::Active);\\nIF Table.FINDSET THEN...",
+                    "codeunit": {"file": self.file_path.name, "object_name": self.data.get("object_name"), "object_id": self.data.get("object_id")}
+                })
+
+    def _detect_event_subscriber_hotspot(self, proc_name: str, proc_data: dict):
+        if not proc_data.get("is_event_subscriber"): return
+        
+        has_loop = proc_data.get("max_loop_depth", 0) > 0
+        heavy_reads = [r for r in proc_data.get("reads", []) if r["operation"] in ["FINDSET", "CALCFIELDS"]]
+        
+        if has_loop or heavy_reads:
+            score = 150 if has_loop else 120
+            severity = "critical" if has_loop else "high"
+            self.bottlenecks.append({
+                "pattern": "event_subscriber_hotspot",
+                "severity": severity,
+                "score": score,
+                "procedure": proc_name,
+                "explanation": "Event Subscribers run synchronously and globally. Found loops or heavy DB operations (FINDSET/CALCFIELDS) inside a subscriber, which drastically degrades entire ERP performance.",
+                "recommendation": "Offload heavy processing to background tasks via JobQueue or process asynchronously. Event subscribers should exit as fast as possible.",
+                "example": "IF JobQueue.ScheduleTask(...) THEN EXIT;",
+                "codeunit": {"file": self.file_path.name, "object_name": self.data.get("object_name"), "object_id": self.data.get("object_id")}
+            })
 
     def _detect_index_recommendations(self):
         """Codeunit-level pass: aggregate reads/writes per table and emit index hints."""

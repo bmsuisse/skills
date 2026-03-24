@@ -4,7 +4,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from scripts.helpers import run_in_threadpool
+from helpers import run_in_processpool
 
 
 class TableMetadataLoader:
@@ -62,7 +62,7 @@ class TableMetadataLoader:
         if not json_files:
             return {}
 
-        results = run_in_threadpool(TableMetadataLoader._load_single_json, ((f,) for f in json_files))
+        results = run_in_processpool(TableMetadataLoader._load_single_json, ((f,) for f in json_files))
 
         metadata = {}
         for result in results:

@@ -3,38 +3,57 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "Scan all codeunits for performance bottlenecks and show me the top offenders.",
-      "expected_output": "The assistant runs the pre-flight setup to locate Python and the CODEUNITS_DIR, then runs `analyze.py scan`, displaying the top 10 worst codeunits by score with severity breakdown (Critical/High/Medium/Low).",
+      "prompt": "Scan all codeunits for performance bottlenecks and show me the top 3 offenders.",
+      "expected_output": "The assistant runs the pre-flight setup to locate Python and the CODEUNITS_DIR, then runs `scripts/analyze.py scan`, displaying the top 3 worst codeunits by score with severity breakdown (Critical/High/Medium/Low).",
       "files": [],
       "expectations": [
         "The assistant runs the pre-flight setup block to resolve PYTHON and CODEUNITS_DIR",
-        "The assistant runs analyze.py scan (not analyze or list)",
+        "The assistant runs scripts/analyze.py scan (not analyze or list)",
         "The output includes a ranked list of codeunits sorted by score",
         "Severity levels (Critical/High/Medium/Low) are reported"
       ]
     },
     {
       "id": 2,
-      "prompt": "Analyze codeunit 80.cs and tell me what performance issues it has.",
-      "expected_output": "The assistant runs analyze.py analyze 80.cs and reports bottlenecks with their severity, procedure names, and recommendations. If critical issues are found it suggests running optimize.",
+      "prompt": "Analyze codeunit 80.cs. Can you improve it and give me code change suggestions?",
+      "expected_output": "The assistant runs scripts/analyze.py optimize 80.cs and reports bottlenecks with actionable code change suggestions.",
       "files": [],
       "expectations": [
-        "The assistant runs analyze.py analyze with 80.cs as the argument",
+        "The assistant runs scripts/analyze.py optimize with 80.cs as the argument",
         "Output includes bottleneck names and severity levels",
-        "Output includes the procedure name where each issue was found",
-        "If critical issues exist, the assistant suggests running optimize"
+        "Output provides code change suggestions to improve the bottlenecks"
       ]
     },
     {
       "id": 3,
       "prompt": "Give me optimization suggestions for codeunit 80.cs so I can fix the performance issues.",
-      "expected_output": "The assistant runs analyze.py optimize 80.cs, producing a phased remediation plan (Phase 1 Critical, Phase 2 High, Phase 3 Medium) with code examples showing before/after patterns.",
+      "expected_output": "The assistant runs scripts/analyze.py optimize 80.cs, producing a phased remediation plan (Phase 1 Critical, Phase 2 High, Phase 3 Medium) with code examples showing before/after patterns.",
       "files": [],
       "expectations": [
-        "The assistant runs analyze.py optimize (not analyze or scan)",
+        "The assistant runs scripts/analyze.py optimize (not analyze or scan)",
         "Output is organized by phase/severity",
         "Concrete code examples (CAL before/after) are provided",
         "Estimated performance impact or recommendations summary is included"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Analyze the table customer.c-al for performance issues and give me code change suggestions.",
+      "expected_output": "The assistant runs scripts/analyze.py optimize on customer.c-al and reports table-specific issues.",
+      "files": [],
+      "expectations": [
+        "The assistant runs scripts/analyze.py optimize with customer.c-al as the argument",
+        "Output includes bottleneck names and severity levels, including table-specific bottlenecks like validate_in_loop or modify_in_onmodify"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Analyze the page customer_card.c-al for issues and give code change suggestions.",
+      "expected_output": "The assistant runs scripts/analyze.py optimize on customer_card.c-al and reports page-specific bottlenecks.",
+      "files": [],
+      "expectations": [
+        "The assistant runs scripts/analyze.py optimize with customer_card.c-al",
+        "Output includes page-specific bottlenecks like commit_in_page_trigger or page_run_in_hot_trigger"
       ]
     }
   ]

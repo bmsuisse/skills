@@ -5,14 +5,22 @@ import json
 import sys
 from pathlib import Path
 
-from scripts.detector import BottleneckDetector
-from scripts.helpers import run_in_threadpool
-from scripts.parser import CodeunitParser
-from scripts.table_metadata import TableMetadataLoader
+from detector import BottleneckDetector
+from helpers import run_in_processpool
+from parser import CodeunitParser
+from table_metadata import TableMetadataLoader
 
 
-def get_data_dir():
-    return Path(__file__).parent.parent.parent / "data"
+def get_project_dirs():
+    import os
+    env_dir = os.environ.get("CODEUNITS_DIR")
+    if env_dir:
+        base_dir = Path(env_dir).parent
+        return Path(env_dir), base_dir / "tables", base_dir / "pages"
+    else:
+        # __file__ is in scripts/analyze.py
+        data_dir = Path(__file__).parent.parent.parent.parent / "data"
+        return data_dir / "codeunits", data_dir / "tables", data_dir / "pages"
 
 
 def _parse_codeunit_file(file, table_metadata=None):
@@ -31,28 +39,34 @@ def _parse_codeunit_file(file, table_metadata=None):
 
 
 def list_codeunits():
-    data_dir = get_data_dir()
-    codeunits_dir = data_dir / "codeunits"
+    codeunits_dir, tables_dir, pages_dir = get_project_dirs()
 
-    if not codeunits_dir.exists():
-        return []
-
-    files = sorted(list(codeunits_dir.glob("*.cs")) + list(codeunits_dir.glob("*.c-al")))
+    files = []
+    if codeunits_dir.exists():
+        files.extend(list(codeunits_dir.glob("*.cs")) + list(codeunits_dir.glob("*.c-al")))
+    if tables_dir.exists():
+        files.extend(list(tables_dir.glob("*.cs")) + list(tables_dir.glob("*.c-al")))
+    if pages_dir.exists():
+        files.extend(list(pages_dir.glob("*.cs")) + list(pages_dir.glob("*.c-al")))
 
     if not files:
         return []
 
     table_metadata = TableMetadataLoader.load_metadata()
-    results = run_in_threadpool(_parse_codeunit_file, ((f, table_metadata) for f in files), desc="Listing")
+    results = run_in_processpool(_parse_codeunit_file, ((f, table_metadata) for f in files), desc="Listing")
     return sorted(results, key=lambda x: x["name"])
 
 
 def analyze_codeunit(filename, table_metadata=None):
-    data_dir = get_data_dir()
-    file_path = data_dir / "codeunits" / filename
+    codeunits_dir, tables_dir, pages_dir = get_project_dirs()
+    file_path = codeunits_dir / filename
+    if not file_path.exists():
+        file_path = tables_dir / filename
+    if not file_path.exists():
+        file_path = pages_dir / filename
 
     if not file_path.exists():
-        raise FileNotFoundError(f"File not found: {file_path}")
+        raise FileNotFoundError(f"File not found: {filename}")
 
     if table_metadata is None:
         table_metadata = TableMetadataLoader.load_metadata()
@@ -85,7 +99,7 @@ def _analyze_codeunit_for_scan(file_info, table_metadata):
 def scan_all_bottlenecks():
     files = list_codeunits()
     table_metadata = TableMetadataLoader.load_metadata()
-    results = run_in_threadpool(_analyze_codeunit_for_scan, ((f, table_metadata) for f in files), desc="Scanning")
+    results = run_in_processpool(_analyze_codeunit_for_scan, ((f, table_metadata) for f in files), desc="Scanning")
     all_bottlenecks = [b for bottlenecks in results for b in bottlenecks]
     all_bottlenecks.sort(key=lambda x: x.get("score", 0), reverse=True)
     return all_bottlenecks
@@ -134,8 +148,9 @@ def cmd_list():
     files = list_codeunits()
 
     if not files:
-        print("No codeunits found.")
-        print(f"Expected directory: {get_data_dir()}")
+        codeunits_dir, tables_dir, pages_dir = get_project_dirs()
+        print("No codeunits, tables, or pages found.")
+        print(f"Expected directories: {codeunits_dir}, {tables_dir}, or {pages_dir}")
         return 1
 
     print(f"Found {len(files)} codeunits:\n")
@@ -222,7 +237,7 @@ def cmd_scan(output_file=None, limit: int | None = 25):
     files = list_codeunits()
 
     if not files:
-        print("No codeunits found.")
+        print("No codeunits or tables found.")
         return 1
 
     print(f"Analyzing {len(files)} codeunits...\n")
@@ -246,9 +261,9 @@ def cmd_scan(output_file=None, limit: int | None = 25):
 
     by_codeunit = {}
     for b in all_bottlenecks:
-        file = b.get("codeunit", {}).get("file", "Unknown")
-        name = b.get("codeunit", {}).get("object_name", file)
-        obj_id = b.get("codeunit", {}).get("object_id", "N/A")
+        file = b.get("codeunit", {}).get("file") or "Unknown"
+        name = b.get("codeunit", {}).get("object_name") or file
+        obj_id = b.get("codeunit", {}).get("object_id") or "N/A"
 
         if file not in by_codeunit:
             by_codeunit[file] = {
@@ -288,8 +303,9 @@ def cmd_scan(output_file=None, limit: int | None = 25):
     print("|------|---------------|------|-----------|-------------|--------|----------|------|--------|-----|")
 
     for idx, (file, data) in enumerate(sorted_codeunits, 1):
-        name = data["name"][:40] + "..." if len(data["name"]) > 40 else data["name"]
-        file_display = file[:25] + "..." if len(file) > 25 else file
+        name_str = str(data["name"])
+        name = name_str[:40] + "..." if len(name_str) > 40 else name_str
+        file_display = str(file)[:25] + "..." if len(str(file)) > 25 else str(file)
         obj_id = str(data["object_id"])
         total_score = data["total_score"]
         total_issues = len(data["bottlenecks"])

@@ -238,21 +238,42 @@ class CodeunitParser:
         return processed
 
     def _parse_procedures(self, lines: List[str]):
+        self.pending_subscriber = False
         for line in lines:
             stripped = line.strip()
             if not stripped:
+                continue
+
+            if stripped.startswith("[EventSubscriber"):
+                self.pending_subscriber = True
                 continue
 
             if not line.startswith((" ", "\t")):
                 proc_match = self._match_procedure_definition(stripped)
                 if proc_match:
                     self._start_new_procedure(proc_match)
+                    self.procedures[self.current_procedure]["is_event_subscriber"] = self.pending_subscriber
+                    self.pending_subscriber = False
                     continue
 
             if self.current_procedure:
                 self._analyze_line(stripped)
 
     def _match_procedure_definition(self, line: str) -> Optional[Dict[str, Any]]:
+        # Match standard events/triggers (with or without parens)
+        trigger_pattern = r"^(OnInsert|OnModify|OnDelete|OnRename|OnValidate|OnLookup|On[A-Za-z0-9_]*)(?:\(\))?$"
+        match = re.match(trigger_pattern, line, re.IGNORECASE)
+        if match:
+            return {"name": match.group(1), "params": "", "return_type": None}
+            
+        # Match UI control triggers (e.g. "ActionName - OnAction()")
+        ui_trigger_pattern = r"^(.*?-\s*On(?:Action|DrillDown|AssistEdit|Lookup|Validate))(?:\(\))?$"
+        match = re.match(ui_trigger_pattern, line, re.IGNORECASE)
+        if match:
+            # Clean up name: remove space padding
+            name = match.group(1).replace(" - ", "-").strip()
+            return {"name": name, "params": "", "return_type": None}
+
         proc_pattern = r"^([A-Za-z][A-Za-z0-9_]*)\s*\((.*?)\)(?:\s*:\s*(.+))?$"
         match = re.match(proc_pattern, line)
 
@@ -293,12 +314,14 @@ class CodeunitParser:
             "reads": [],
             "guards": [],
             "is_event": proc_name.startswith("On"),
+            "is_event_subscriber": False,
             "complexity": 1,
             "lines": [],
             "nesting_depth": 0,
             "max_loop_depth": 0,
             "variables": {},
         }
+        self.loadfields_vars = set()
 
     def _analyze_line(self, line: str):
         if not self.current_procedure:
@@ -359,6 +382,12 @@ class CodeunitParser:
         match = re.search(reset_pattern, upper_line)
         if match:
             self.filtered_vars.discard(match.group(1))
+            self.loadfields_vars.discard(match.group(1))
+
+        load_pattern = r"([A-Za-z0-9_]+)\.SETLOADFIELDS\s*\("
+        match = re.search(load_pattern, upper_line)
+        if match:
+            self.loadfields_vars.add(match.group(1))
 
     def _update_complexity(self, upper_line: str, proc_data: dict):
         if re.search(r"\bIF\b", upper_line):
@@ -485,6 +514,7 @@ class CodeunitParser:
                     "inLoop": self.in_loop,
                     "loopDepth": self.loop_depth,
                     "hasFilter": has_filter,
+                    "hasLoadFields": table_var in getattr(self, "loadfields_vars", set()),
                     "line": line.strip(),
                 }
                 proc_data["reads"].append(op_entry)
@@ -503,6 +533,7 @@ class CodeunitParser:
             "MODIFYALL": r"([A-Za-z0-9_]+)\.MODIFYALL\s*\(",
             "DELETEALL": r"([A-Za-z0-9_]+)\.DELETEALL",
             "COMMIT": r"\bCOMMIT\b",
+            "VALIDATE": r"([A-Za-z0-9_]+)\.VALIDATE\s*\(",
         }
 
         for op, pattern in write_ops.items():
@@ -516,6 +547,8 @@ class CodeunitParser:
                         "isTemporary": False,
                         "guard": None,
                         "runTrigger": False,
+                        "inLoop": self.in_loop,
+                        "loopDepth": self.loop_depth,
                         "line": line.strip(),
                     }
                     proc_data["writes"].append(op_entry)
@@ -540,6 +573,8 @@ class CodeunitParser:
                     "isTemporary": is_temp,
                     "guard": guard,
                     "runTrigger": run_trigger,
+                    "inLoop": self.in_loop,
+                    "loopDepth": self.loop_depth,
                     "line": line.strip(),
                 }
                 proc_data["writes"].append(op_entry)

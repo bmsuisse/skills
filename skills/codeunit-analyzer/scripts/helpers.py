@@ -1,14 +1,18 @@
+import os
 import sys
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
 
-def run_in_threadpool(func, iterable, max_workers=32, desc=None):
+def run_in_processpool(func, iterable, max_workers=None, desc=None):
     results = []
     items = list(iterable)
     total = len(items)
     label = f"{desc}: " if desc else ""
 
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+    if max_workers is None:
+        max_workers = os.cpu_count() or 4
+
+    with ProcessPoolExecutor(max_workers=max_workers) as executor:
         futures = {executor.submit(func, *args): args for args in items}
 
         completed = 0
