@@ -16,7 +16,7 @@
 <!-- SKILLS_TABLE_START -->
 | Skill | Description |
 |---|---|
-| [codeunit-analyzer](./skills/codeunit-analyzer/) | Comprehensive C-AL codeunit analysis tool for the OneTrade/Navision project. Zero-dependency Python script with three… |
+| [codeunit-analyzer](./skills/codeunit-analyzer/) | Comprehensive C-AL codeunit and table analysis tool for the OneTrade/Navision project. Zero-dependency Python script… |
 | [coding-guidelines](./skills/coding-guidelines/) | Apply and enforce project coding standards during any code generation, review, or refactoring session. Use this skill… |
 | [coding-guidelines-python](./skills/coding-guidelines-python/) | Apply and enforce Python-specific coding standards. Use alongside coding-guidelines for any Python file — covers typi… |
 | [coding-guidelines-typescript](./skills/coding-guidelines-typescript/) | Apply and enforce TypeScript-specific coding standards. Use alongside coding-guidelines for any TypeScript file — cov… |
