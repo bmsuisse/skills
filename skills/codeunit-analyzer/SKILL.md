@@ -21,6 +21,26 @@ description: >
 - ✅ **Windows compatible** - No Unicode issues
 - ✅ **Offline capable** - No API server required
 
+## ⛔ Read-Only Rule — Never Modify Source Files
+
+> [!CAUTION]
+> This skill is **strictly read-only**. It must **never** write to, overwrite, or modify
+> any codeunit, table, or page source file (`.cs`, `.c-al`, or any other AL file).
+>
+> **Allowed actions:**
+> - Print a report to the console.
+> - Save findings to a separate output/report file (JSON, Markdown, etc.).
+> - If the user explicitly asks to apply a fix, **copy the file first** (e.g., `<name>.patched.cs`)
+>   and modify only the copy — never the original.
+>
+> If a user asks to "fix" or "update" a codeunit, always confirm whether they want:
+> 1. A **report with suggested code changes** (default), or
+> 2. A **copy** of the file with the fix applied.
+>
+> Never silently change source files.
+
+---
+
 ## Sub-Commands
 
 ### 1. **list** - Show All Codeunits
