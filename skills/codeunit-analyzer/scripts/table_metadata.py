@@ -16,6 +16,15 @@ class TableMetadataLoader:
         "very_large": {"max": float("inf"), "multiplier": 2.5, "severity": "250% of baseline (critical concern)"},
     }
 
+    # Column-width categories used by SETLOADFIELDS severity scoring.
+    # A wider table means more bytes wasted on every SELECT * when SETLOADFIELDS is missing.
+    COLUMN_WIDTH_CATEGORIES: Dict[str, Dict[str, Any]] = {
+        "narrow":    {"max": 10,            "multiplier": 0.5,  "label": "narrow (≤10 fields)"},
+        "medium":    {"max": 30,            "multiplier": 1.0,  "label": "medium (11-30 fields)"},
+        "wide":      {"max": 60,            "multiplier": 1.5,  "label": "wide (31-60 fields)"},
+        "very_wide": {"max": float("inf"), "multiplier": 2.0,  "label": "very wide (>60 fields)"},
+    }
+
     @staticmethod
     def _load_single_json(json_file: Path) -> Optional[tuple[str, Dict[str, Any]]]:
         try:
@@ -32,6 +41,11 @@ class TableMetadataLoader:
             size_category, category_info = TableMetadataLoader._categorize_size(row_count)
             normalized_name = table_name.lower().strip()
 
+            # Column-count fields are optional — if not present in JSON, defaults are safe neutrals
+            field_count: int = int(data.get("field_count", 0))
+            has_flow_fields: bool = bool(data.get("has_flow_fields", False))
+            col_category, col_multiplier = TableMetadataLoader._categorize_column_width(field_count)
+
             metadata = {
                 "name": table_name,
                 "id": table_id,
@@ -41,6 +55,11 @@ class TableMetadataLoader:
                 "impactMultiplier": category_info["multiplier"],
                 "friendlySize": TableMetadataLoader._get_friendly_size(row_count),
                 "severityAdjustment": category_info["severity"],
+                # Column-width fields (used by SETLOADFIELDS analyzer)
+                "fieldCount": field_count,
+                "hasFlowFields": has_flow_fields,
+                "columnWidthCategory": col_category,
+                "columnWidthMultiplier": col_multiplier,
             }
 
             return (normalized_name, metadata)
@@ -87,3 +106,17 @@ class TableMetadataLoader:
         label = labels[bisect.bisect_right(thresholds, row_count) - 1]
 
         return f"{row_count:,} rows ({label})" if row_count else "empty"
+
+    @staticmethod
+    def _categorize_column_width(field_count: int) -> tuple[str, float]:
+        """Return (category_name, column_width_multiplier) based on how many fields the table has.
+
+        When field_count is unknown (0 / not in JSON), we return a neutral multiplier of 1.0
+        so it doesn't artificially inflate or deflate SETLOADFIELDS urgency scores.
+        """
+        if field_count <= 0:
+            return "unknown", 1.0
+        for category, info in TableMetadataLoader.COLUMN_WIDTH_CATEGORIES.items():
+            if field_count < info["max"]:
+                return category, info["multiplier"]
+        return "very_wide", TableMetadataLoader.COLUMN_WIDTH_CATEGORIES["very_wide"]["multiplier"]

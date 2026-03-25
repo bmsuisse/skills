@@ -55,6 +55,41 @@
         "The assistant runs scripts/analyze.py optimize with customer_card.c-al",
         "Output includes page-specific bottlenecks like commit_in_page_trigger or page_run_in_hot_trigger"
       ]
+    },
+    {
+      "id": 6,
+      "prompt": "I want to find all the places in our codebase where we're missing SETLOADFIELDS. Which tables are the worst offenders?",
+      "expected_output": "The assistant runs scripts/analyze.py setloadfields (no filename) for a project-wide scan and presents a ranked table of missing SETLOADFIELDS by urgency, with columns for table name, urgency score, occurrences, loop count, field count, and column width category.",
+      "files": [],
+      "expectations": [
+        "The assistant runs scripts/analyze.py setloadfields without a filename argument",
+        "Output is ranked by urgency score (not alphabetically)",
+        "Loop occurrences are highlighted separately",
+        "Column width category (narrow/medium/wide/very_wide) is reported"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "Run a SETLOADFIELDS audit on 80.cs and show me which specific reads are missing it and why they're a bottleneck.",
+      "expected_output": "The assistant runs scripts/analyze.py setloadfields 80.cs and prints per-read findings with urgency scores, explaining the reasons (loop, FlowFields, wide table) and showing a code fix example for each.",
+      "files": [],
+      "expectations": [
+        "The assistant runs scripts/analyze.py setloadfields with 80.cs as the argument",
+        "Each finding includes the table name, operation (FINDSET/GET/etc.), and urgency score",
+        "Reasons for urgency are shown (loop, FlowFields, field count)",
+        "A code fix example with SETLOADFIELDS is provided for each finding"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "We have wide tables with 80+ columns and I'm pretty sure we're doing SELECT * everywhere. Can you rank which tables are costing us the most without SETLOADFIELDS?",
+      "expected_output": "The assistant understands this is a SETLOADFIELDS/column-width concern, runs scripts/analyze.py setloadfields, and explains how the urgency score combines column width multiplier with row count and loop detection.",
+      "files": [],
+      "expectations": [
+        "The assistant runs scripts/analyze.py setloadfields",
+        "The explanation mentions that wide tables (many columns) score higher because more bytes are fetched per row",
+        "Tables with high field counts appear near the top of the ranking"
+      ]
     }
   ]
 }

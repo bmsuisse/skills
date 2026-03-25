@@ -1,9 +1,19 @@
 #!/usr/bin/env python3
+"""C-AL codeunit, table, and page analyzer.
+
+Sub-commands:
+  list                 – list all available .cs/.c-al files
+  analyze <file>       – deep-dive into one file
+  scan                 – project-wide bottleneck scan
+  optimize <file>      – phased optimization suggestions
+  setloadfields        – dedicated SETLOADFIELDS / SELECT-* audit
+"""
 
 import argparse
 import json
 import sys
 from pathlib import Path
+from typing import Any, Dict, List
 
 from detector import BottleneckDetector
 from helpers import run_in_processpool
@@ -475,6 +485,257 @@ def cmd_optimize(filename):
     return 0
 
 
+# ---------------------------------------------------------------------------
+# SETLOADFIELDS sub-command
+# ---------------------------------------------------------------------------
+
+def _compute_setloadfields_urgency(read: Dict[str, Any], table_info: Dict[str, Any]) -> int:
+    """Compute a per-read urgency score for a missing SETLOADFIELDS.
+
+    Factors:
+      - Base                    40 pts   (any read without SETLOADFIELDS costs something)
+      - Loop penalty           +20 pts   (fired once per iteration → N× cost)
+      - Row impact multiplier  ×row_mult (large tables → more data on wire)
+      - Column width multiplier×col_mult (wide tables → more bytes per row)
+      - FlowField bonus        +15 pts   (without SETLOADFIELDS BC calculates ALL FlowFields)
+    """
+    base = 40
+    loop_bonus = 20 if read.get("inLoop") else 0
+    flow_bonus = 15 if table_info.get("hasFlowFields") else 0
+
+    row_mult = table_info.get("impactMultiplier", 1.0)
+    col_mult = table_info.get("columnWidthMultiplier", 1.0)
+
+    score = int((base + loop_bonus) * row_mult * col_mult + flow_bonus)
+    return score
+
+
+def _audit_setloadfields_in_file(file_path: Path, table_metadata: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Parse one file and return a list of SETLOADFIELDS audit findings."""
+    try:
+        parser = CodeunitParser(file_path, table_metadata=table_metadata)
+        data = parser.parse()
+    except Exception as e:
+        return []
+
+    READ_OPS = {"FINDSET", "FINDFIRST", "FIND", "FINDLAST", "GET"}
+    findings: List[Dict[str, Any]] = []
+
+    for proc_name, proc_data in data.get("procedures", {}).items():
+        for read in proc_data.get("reads", []):
+            if read.get("isTemporary"):
+                continue
+            if read.get("operation") not in READ_OPS:
+                continue
+            if read.get("hasLoadFields"):
+                continue  # already has SETLOADFIELDS — no issue
+
+            table_name = read.get("tableName", "Unknown")
+            normalized = table_name.lower().strip()
+            table_info = table_metadata.get(normalized, {})
+
+            urgency = _compute_setloadfields_urgency(read, table_info)
+
+            field_count = table_info.get("fieldCount", 0)
+            col_category = table_info.get("columnWidthCategory", "unknown")
+            row_info = table_info.get("friendlySize", "unknown size")
+            in_loop = read.get("inLoop", False)
+            has_ff = table_info.get("hasFlowFields", False)
+
+            reasons: List[str] = []
+            if in_loop:
+                reasons.append("inside loop (×N cost)")
+            if has_ff:
+                reasons.append("table has FlowFields (BC calculates ALL on SELECT *)")
+            if field_count > 30:
+                reasons.append(f"wide table ({field_count} fields, {col_category})")
+            if not reasons:
+                reasons.append("unnecessary SELECT * overhead")
+
+            # Build a concrete fix example with field placeholders
+            example = (
+                f"// Before (loads ALL {field_count or '?'} columns):\n"
+                f"// {read['operation']} on {table_name}\n\n"
+                f"// After (load only what you need):\n"
+                f"{table_name}.SETLOADFIELDS(Field1, Field2);\n"
+                f"IF {table_name}.{read['operation']} THEN ..."
+            )
+
+            findings.append({
+                "pattern": "missing_setloadfields",
+                "urgency": urgency,
+                "procedure": proc_name,
+                "operation": read["operation"],
+                "table_name": table_name,
+                "in_loop": in_loop,
+                "has_flow_fields": has_ff,
+                "field_count": field_count,
+                "column_category": col_category,
+                "row_info": row_info,
+                "reasons": reasons,
+                "example": example,
+                "line": read.get("line"),
+                "codeunit": {
+                    "file": file_path.name,
+                    "object_name": data.get("object_name"),
+                    "object_id": data.get("object_id"),
+                },
+            })
+
+    return findings
+
+
+def _audit_file_wrapper(file_info: Dict[str, Any], table_metadata: Dict[str, Any]) -> List[Dict[str, Any]]:
+    findings = _audit_setloadfields_in_file(file_info["path"], table_metadata)
+    for f in findings:
+        f["codeunit"]["file"] = file_info["name"]
+    return findings
+
+
+def _aggregate_by_table(findings: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Group findings by table name and compute aggregate urgency per table."""
+    by_table: Dict[str, Dict[str, Any]] = {}
+    for f in findings:
+        table = f["table_name"]
+        if table not in by_table:
+            by_table[table] = {
+                "table_name": table,
+                "total_urgency": 0,
+                "occurrences": 0,
+                "in_loop_count": 0,
+                "has_flow_fields": f["has_flow_fields"],
+                "field_count": f["field_count"],
+                "column_category": f["column_category"],
+                "row_info": f["row_info"],
+                "affected_files": set(),
+                "affected_procedures": [],
+            }
+        by_table[table]["total_urgency"] += f["urgency"]
+        by_table[table]["occurrences"] += 1
+        if f["in_loop"]:
+            by_table[table]["in_loop_count"] += 1
+        by_table[table]["affected_files"].add(f["codeunit"]["file"])
+        by_table[table]["affected_procedures"].append(f"{f['codeunit']['file']}::{f['procedure']}")
+
+    # Convert sets to sorted lists for JSON serialisation
+    result = []
+    for entry in by_table.values():
+        entry["affected_files"] = sorted(entry["affected_files"])
+        result.append(entry)
+
+    result.sort(key=lambda x: x["total_urgency"], reverse=True)
+    return result
+
+
+def _print_setloadfields_report(findings: List[Dict[str, Any]], top: int | None) -> None:
+    """Print a human-readable SETLOADFIELDS audit report."""
+    if not findings:
+        print("\n[OK] No missing SETLOADFIELDS detected!")
+        return
+
+    by_table = _aggregate_by_table(findings)
+    if top:
+        by_table = by_table[:top]
+
+    total_score = sum(f["urgency"] for f in findings)
+    loop_issues = sum(1 for f in findings if f["in_loop"])
+    ff_issues = sum(1 for f in findings if f["has_flow_fields"])
+
+    print("=" * 80)
+    print("SETLOADFIELDS AUDIT — SELECT * OVERHEAD REPORT")
+    print("=" * 80)
+    print(f"Total missing SETLOADFIELDS : {len(findings)}")
+    print(f"  Inside loops              : {loop_issues}  (highest priority — fired once per row)")
+    print(f"  On FlowField tables       : {ff_issues}  (BC calculates all FlowFields without SETLOADFIELDS)")
+    print(f"Total urgency score         : {total_score}")
+    print()
+
+    print("=" * 80)
+    print(f"TABLES RANKED BY URGENCY (showing top {len(by_table)})")
+    print("=" * 80)
+    print()
+    print(f"{'Rank':<5} {'Table':<35} {'Urgency':>8} {'Occ':>5} {'InLoop':>7} {'Fields':>7} {'Width':<12} {'Rows'}")
+    print("-" * 110)
+
+    for rank, entry in enumerate(by_table, 1):
+        table = entry["table_name"][:33]
+        urgency = entry["total_urgency"]
+        occ = entry["occurrences"]
+        in_loop = entry["in_loop_count"]
+        fields = entry["field_count"] or "?"
+        col_cat = entry["column_category"][:10]
+        rows = entry["row_info"][:30]
+        print(f"{rank:<5} {table:<35} {urgency:>8} {occ:>5} {in_loop:>7} {str(fields):>7} {col_cat:<12} {rows}")
+
+    print()
+    print("=" * 80)
+    print("TOP INDIVIDUAL FINDINGS (sorted by urgency)")
+    print("=" * 80)
+
+    top_findings = sorted(findings, key=lambda x: x["urgency"], reverse=True)[:10]
+    for idx, f in enumerate(top_findings, 1):
+        line_info = f" (line {f['line']})" if f.get("line") else ""
+        print(f"\n[{idx}] Urgency {f['urgency']} — {f['table_name']} · {f['operation']}{line_info}")
+        print(f"     File      : {f['codeunit']['file']}")
+        print(f"     Procedure : {f['procedure']}")
+        print(f"     Why urgent: {', '.join(f['reasons'])}")
+        print(f"     Fix:")
+        for line in f["example"].split("\n"):
+            print(f"       {line}")
+
+
+def cmd_setloadfields(filename: str | None, top: int | None, output_file: str | None, as_json: bool) -> int:
+    """Run the SETLOADFIELDS / SELECT-* audit.
+
+    When *filename* is given, audit only that file.
+    Otherwise scan the entire project.
+    """
+    table_metadata = TableMetadataLoader.load_metadata()
+
+    if filename:
+        # Single-file mode
+        print(f"SETLOADFIELDS audit for {filename}...\n")
+        codeunits_dir, tables_dir, pages_dir = get_project_dirs()
+        file_path = Path(filename)
+        if not file_path.exists():
+            for search_dir in [codeunits_dir, tables_dir, pages_dir]:
+                if search_dir.exists():
+                    matches = list(search_dir.rglob(str(filename)))
+                    if matches:
+                        file_path = matches[0]
+                        break
+        if not file_path.exists():
+            print(f"Error: File not found: {filename}")
+            return 1
+
+        findings = _audit_setloadfields_in_file(file_path, table_metadata)
+
+    else:
+        # Project-wide scan
+        print("Scanning all codeunits for missing SETLOADFIELDS...\n")
+        files = list_codeunits()
+        if not files:
+            print("No codeunits or tables found.")
+            return 1
+        print(f"Auditing {len(files)} files...\n")
+        results = run_in_processpool(_audit_file_wrapper, ((f, table_metadata) for f in files), desc="SETLOADFIELDS audit")
+        findings = [item for sublist in results for item in sublist]
+
+    findings.sort(key=lambda x: x["urgency"], reverse=True)
+
+    if as_json:
+        print(json.dumps(findings, indent=2))
+    else:
+        _print_setloadfields_report(findings, top)
+
+    if output_file:
+        with open(output_file, "w") as fh:
+            json.dump(findings, fh, indent=2)
+        print(f"\nFull findings saved to: {output_file}")
+
+    return 0
+
+
 def main():
     parser = argparse.ArgumentParser(description="Analyze C-AL codeunits for performance issues")
     subparsers = parser.add_subparsers(dest="command", help="Command to run")
@@ -491,6 +752,37 @@ def main():
     optimize_parser = subparsers.add_parser("optimize", help="Generate optimization suggestions")
     optimize_parser.add_argument("filename", help="Codeunit filename (e.g., 1.cs)")
 
+    # --- SETLOADFIELDS sub-command ---
+    slf_parser = subparsers.add_parser(
+        "setloadfields",
+        help="Dedicated SETLOADFIELDS / SELECT-* audit: finds every read without SETLOADFIELDS, "
+             "ranks tables by urgency (wide tables with many columns and FlowFields score highest).",
+    )
+    slf_parser.add_argument(
+        "filename",
+        nargs="?",
+        default=None,
+        help="Optional: limit audit to a single codeunit/table/page file. Omit to scan all files.",
+    )
+    slf_parser.add_argument(
+        "--top",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Show only the top N tables by urgency score (default: all).",
+    )
+    slf_parser.add_argument(
+        "--json",
+        dest="as_json",
+        action="store_true",
+        help="Output raw JSON instead of human-readable report.",
+    )
+    slf_parser.add_argument(
+        "-o", "--output",
+        help="Save full findings to a JSON file.",
+        metavar="FILE",
+    )
+
     args = parser.parse_args()
 
     if not args.command:
@@ -505,6 +797,13 @@ def main():
         return cmd_scan(output_file=args.output, limit=args.limit)
     elif args.command == "optimize":
         return cmd_optimize(args.filename)
+    elif args.command == "setloadfields":
+        return cmd_setloadfields(
+            filename=args.filename,
+            top=args.top,
+            output_file=args.output,
+            as_json=args.as_json,
+        )
 
 
 if __name__ == "__main__":

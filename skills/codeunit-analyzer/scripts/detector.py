@@ -548,19 +548,71 @@ class BottleneckDetector:
             })
 
     def _detect_missing_setloadfields(self, proc_name: str, proc_data: dict):
-        reads = [r for r in proc_data.get("reads", []) if r["operation"] in ["FINDSET", "FINDFIRST", "FIND"] and not r.get("isTemporary")]
+        """Flag every FINDSET/FINDFIRST/FIND that lacks SETLOADFIELDS.
+
+        Score is weighted by:
+          - Base 40 pts for any missing SETLOADFIELDS (unnecessary SELECT *)
+          - +20 pts if the read is inside a loop (cost multiplied per row)
+          - x row-impact multiplier from table row count
+          - x column-width multiplier (wider tables = more wasted bytes per row)
+          - +15 pts if the table has FlowFields (BC calculates ALL without SETLOADFIELDS)
+        """
+        reads = [
+            r for r in proc_data.get("reads", [])
+            if r["operation"] in ["FINDSET", "FINDFIRST", "FIND"] and not r.get("isTemporary")
+        ]
         for read in reads:
-            if not read.get("hasLoadFields"):
-                self.bottlenecks.append({
-                    "pattern": "missing_setloadfields",
-                    "severity": "medium",
-                    "score": 60,
-                    "procedure": proc_name,
-                    "explanation": f"Missing SetLoadFields before {read['operation']} for table {read.get('tableName', 'Unknown')}. This causes NAV to fetch all fields (SELECT *) across the network.",
-                    "recommendation": "Use SetLoadFields to specify exactly which fields you need before executing the read.",
-                    "example": "Table.SETLOADFIELDS(Field1, Field2);\\nIF Table.FINDSET THEN...",
-                    "codeunit": {"file": self.file_path.name, "object_name": self.data.get("object_name"), "object_id": self.data.get("object_id")}
-                })
+            if read.get("hasLoadFields"):
+                continue
+
+            table_name = read.get("tableName", "Unknown")
+            table_info = self._get_table_info(table_name)
+
+            row_mult: float = table_info.get("impactMultiplier", 1.0)
+            col_mult: float = table_info.get("columnWidthMultiplier", 1.0)
+            field_count: int = table_info.get("fieldCount", 0)
+            has_ff: bool = table_info.get("hasFlowFields", False)
+            in_loop: bool = bool(read.get("inLoop"))
+
+            base = 40
+            loop_bonus = 20 if in_loop else 0
+            ff_bonus = 15 if has_ff else 0
+            score = int((base + loop_bonus) * row_mult * col_mult) + ff_bonus
+
+            # Derive severity from final score
+            if score >= 100:
+                severity = "high"
+            elif score >= 60:
+                severity = "medium"
+            else:
+                severity = "low"
+
+            extras: list = []
+            if in_loop:
+                extras.append("inside loop")
+            if has_ff:
+                extras.append("table has FlowFields")
+            if field_count > 30:
+                extras.append(f"{field_count} fields")
+            extra_str = f" ({", ".join(extras)})" if extras else ""
+
+            self.bottlenecks.append({
+                "pattern": "missing_setloadfields",
+                "severity": severity,
+                "score": score,
+                "procedure": proc_name,
+                "explanation": (
+                    f"Missing SetLoadFields before {read['operation']} for table '{table_name}'{extra_str}. "
+                    f"Without SETLOADFIELDS, BC fetches ALL columns (SELECT *) across the network — "
+                    f"including BLOBs and triggering FlowField calculations on every row."
+                ),
+                "recommendation": (
+                    f"Add {table_name}.SETLOADFIELDS(Field1, Field2, ...) immediately before the "
+                    f"{read['operation']} call. Use only the fields actually needed in this procedure."
+                ),
+                "example": f"{table_name}.SETLOADFIELDS(Field1, Field2);\nIF {table_name}.{read['operation']} THEN ...",
+                "codeunit": {"file": self.file_path.name, "object_name": self.data.get("object_name"), "object_id": self.data.get("object_id")}
+            })
 
     def _detect_unfiltered_findset(self, proc_name: str, proc_data: dict):
         reads = [r for r in proc_data.get("reads", []) if r["operation"] == "FINDSET" and not r.get("isTemporary")]

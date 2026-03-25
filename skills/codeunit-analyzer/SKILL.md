@@ -39,6 +39,20 @@ Scan all codeunits for performance issues and generate ranked report.
 
 Get actionable refactoring suggestions with code examples.
 
+### 5. **setloadfields** - SETLOADFIELDS / SELECT-* Audit
+
+Dedicated audit that finds every `FINDSET`, `FINDFIRST`, `FIND`, `FINDLAST`, or `GET` without
+`SETLOADFIELDS` and ranks them by **urgency score** — combining:
+
+- **Column-width multiplier** — wider tables (more fields) waste more network bytes per row.
+- **Row-count multiplier** — large tables amplify the cost of every unnecessary column.
+- **Loop penalty** — reads inside loops are fired N times, so the cost is multiplied.
+- **FlowField bonus** — Business Central calculates *all* FlowFields on a `SELECT *`; pinning
+  fields with `SETLOADFIELDS` skips those expensive sub-queries entirely.
+
+The table metadata JSON files can optionally include `field_count` (int) and `has_flow_fields`
+(bool) to enable precise scoring. If absent, the analyzer falls back to neutral multipliers.
+
 ---
 
 ## Pre-Flight Setup (Run This First, Every Time)
@@ -104,6 +118,15 @@ $PYTHON $SKILL/scripts/scripts/analyze.py scan -o bottlenecks.json
 
 # Get optimization suggestions
 $PYTHON $SKILL/scripts/scripts/analyze.py optimize 80.cs
+
+# SETLOADFIELDS audit — project-wide (ranked by urgency)
+$PYTHON $SKILL/scripts/analyze.py setloadfields
+
+# SETLOADFIELDS audit — single file
+$PYTHON $SKILL/scripts/analyze.py setloadfields 80.cs
+
+# SETLOADFIELDS audit — save JSON, show top 10 tables
+$PYTHON $SKILL/scripts/analyze.py setloadfields --top 10 -o slf_report.json
 ```
 
 ---
@@ -230,6 +253,41 @@ python .skills/codeunit-analyzer/scripts/scripts/analyze.py optimize <filename>
 - Phase 3: Medium priority backlog
 - Recommendations summary
 - Estimated performance gains
+
+---
+
+### Pattern 5: SETLOADFIELDS Audit
+
+**User says:**
+
+- "Find all missing SETLOADFIELDS"
+- "Which tables are we doing SELECT * on?"
+- "We have wide tables — are we loading all columns everywhere?"
+- "SETLOADFIELDS performance audit"
+- "Where are we fetching all fields without filtering?"
+
+**Action (project-wide):**
+
+```bash
+python .skills/codeunit-analyzer/scripts/analyze.py setloadfields
+```
+
+**Action (single file):**
+
+```bash
+python .skills/codeunit-analyzer/scripts/analyze.py setloadfields <filename>
+```
+
+**Flags:**
+- `--top N` — show only the N most urgent tables
+- `--json` — output raw JSON
+- `-o <file>` — save findings to a JSON file
+
+**Output includes:**
+
+- Summary: total missing SETLOADFIELDS, loop occurrences, FlowField tables
+- Table ranked by combined urgency score (column-width × row-count × loop penalty)
+- Per-read findings with code fix examples
 
 ---
 
