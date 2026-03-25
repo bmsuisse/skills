@@ -708,6 +708,30 @@ For production use, consider the full analysis service with Pydantic schemas and
 
 ---
 
+## 📄 Exporting Reports as PDF or DOCX
+
+When the user asks for a **PDF** or **Word document** of the analysis results, use the
+dedicated community skills instead of building your own export:
+
+| Format | Skill | Install |
+|--------|-------|---------|
+| Word (.docx) | `docx` | `https://skills.sh/anthropics/skills/docx` |
+| PDF (.pdf) | `pdf` | `https://skills.sh/anthropics/skills/pdf` |
+
+**Workflow:**
+
+1. Run the analyzer and capture the output (use `--json` or pipe to a file).
+2. Hand the structured findings to the `docx` or `pdf` skill to format and export.
+
+**Trigger phrases** that should prompt you to suggest / use these skills:
+
+- "export the report as a PDF"
+- "save this as a Word document"
+- "give me a .docx of the bottleneck report"
+- "I need a PDF of the scan results"
+
+---
+
 ## Related Files
 
 - **Main Script:** [analyze.py](./analyze.py)
