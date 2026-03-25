@@ -21,8 +21,6 @@ uv.lock
 # Skill eval workspaces (generated output, not part of the skill package)
 *-workspace/
 
-
 skills-lock.json
-
 
 tmp_alperf
