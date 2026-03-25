@@ -62,9 +62,14 @@ class BottleneckDetector:
         self._detect_modify_in_hot_trigger(proc_name, proc_data)
         self._detect_page_run_in_hot_trigger(proc_name, proc_data)
         self._detect_heavy_onclosepage(proc_name, proc_data)
-        self._detect_missing_setloadfields(proc_name, proc_data)
+        # NOTE: SETLOADFIELDS is Business Central only — not available in Classic NAV.
+        # Use 'python analyze.py setloadfields' explicitly only when targeting BC.
         self._detect_unfiltered_findset(proc_name, proc_data)
         self._detect_event_subscriber_hotspot(proc_name, proc_data)
+        # Classic NAV specific
+        self._detect_locktable_overuse(proc_name, proc_data)
+        self._detect_flowfield_overuse(proc_name, proc_data)
+        self._detect_key_misalignment_hint(proc_name, proc_data)
 
     def _detect_large_transaction(self, proc_name: str, proc_data: dict, has_commit: bool):
         if not has_commit:
@@ -648,6 +653,203 @@ class BottleneckDetector:
                 "example": "IF JobQueue.ScheduleTask(...) THEN EXIT;",
                 "codeunit": {"file": self.file_path.name, "object_name": self.data.get("object_name"), "object_id": self.data.get("object_id")}
             })
+
+    # ----------------------------------------------------------------
+    # Classic NAV — Locking / Blocking
+    # ----------------------------------------------------------------
+
+    def _detect_locktable_overuse(self, proc_name: str, proc_data: dict):
+        """Flag excessive or unconditional LOCKTABLE calls.
+
+        In Classic NAV, LOCKTABLE escalates to a full table lock held for the
+        entire transaction. Called inside loops or on large tables it causes
+        severe blocking across concurrent users.
+        """
+        lock_calls = [
+            w for w in proc_data.get("writes", [])
+            if w.get("operation") == "LOCKTABLE"
+        ]
+        if not lock_calls:
+            return
+
+        in_loop_locks = [w for w in lock_calls if w.get("inLoop")]
+        locked_tables = list({w.get('tableName', 'Unknown') for w in lock_calls})
+        max_impact = max(
+            (self._get_table_impact_multiplier(t) for t in locked_tables if t and t != 'Unknown'),
+            default=1.0,
+        )
+
+        # Lock inside a loop is critical — held for N iterations
+        if in_loop_locks:
+            score = int(180 * max_impact)
+            severity = "critical"
+            explanation = (
+                f"LOCKTABLE called {len(in_loop_locks)}x inside a loop on tables: {', '.join(locked_tables)}. "
+                "In Classic NAV this holds a full table lock for every iteration, blocking all concurrent users."
+            )
+        elif len(lock_calls) > 2:
+            score = int(90 * max_impact)
+            severity = "high"
+            explanation = (
+                f"LOCKTABLE called {len(lock_calls)} times on tables: {', '.join(locked_tables)}. "
+                "Multiple independent LOCKTABLEs widen the lock footprint unnecessarily."
+            )
+        else:
+            score = int(50 * max_impact)
+            severity = "medium"
+            explanation = (
+                f"LOCKTABLE on {', '.join(locked_tables)}. Verify it is necessary — Classic NAV locks entire pages/extents. "
+                "Consider locking as late and briefly as possible."
+            )
+
+        self.bottlenecks.append({
+            "pattern": "locktable_overuse",
+            "severity": severity,
+            "score": score,
+            "procedure": proc_name,
+            "explanation": explanation,
+            "recommendation": (
+                "Move LOCKTABLE as close to the MODIFY/INSERT/DELETE as possible. "
+                "Avoid inside loops — lock the table once before the loop if required. "
+                "Consider whether pessimistic locking is truly needed or if optimistic retry is viable."
+            ),
+            "example": (
+                "// BAD: lock inside loop\n"
+                "REPEAT\n"
+                "  Table.LOCKTABLE;  // holds lock for entire loop!\n"
+                "  Table.MODIFY;\n"
+                "UNTIL Table.NEXT = 0;\n\n"
+                "// GOOD: lock once, loop inside\n"
+                "Table.LOCKTABLE;\n"
+                "IF Table.FINDSET THEN\n"
+                "  REPEAT Table.MODIFY; UNTIL Table.NEXT = 0;"
+            ),
+            "codeunit": {"file": self.file_path.name, "object_name": self.data.get("object_name"), "object_id": self.data.get("object_id")}
+        })
+
+    # ----------------------------------------------------------------
+    # Classic NAV — FlowField Overuse (global, not just in loops)
+    # ----------------------------------------------------------------
+
+    def _detect_flowfield_overuse(self, proc_name: str, proc_data: dict):
+        """Flag procedures with many CALCFIELDS calls — even outside loops.
+
+        In Classic NAV, CALCFIELDS issues a separate SQL sub-query for each call.
+        A procedure that calls CALCFIELDS 4+ times in a row is a sign that
+        denormalisation or caching should be considered.
+        """
+        all_calcs = [
+            r for r in proc_data.get("reads", [])
+            if r["operation"] in ["CALCFIELDS", "CALCSUMS"]
+        ]
+        # Already flagged by calcfields_in_loop — only catch the non-loop excess here
+        non_loop_calcs = [r for r in all_calcs if not r.get("inLoop")]
+        if len(non_loop_calcs) < 4:
+            return
+
+        calc_tables = list({r.get('tableName', 'Unknown') for r in non_loop_calcs if r.get('tableName')})
+        max_impact = max(
+            (self._get_table_impact_multiplier(t) for t in calc_tables if t and t != 'Unknown'),
+            default=1.0,
+        )
+        score = int((40 + len(non_loop_calcs) * 8) * max_impact)
+        severity = "high" if score >= 100 else "medium"
+
+        self.bottlenecks.append({
+            "pattern": "flowfield_overuse",
+            "severity": severity,
+            "score": score,
+            "procedure": proc_name,
+            "explanation": (
+                f"{len(non_loop_calcs)} CALCFIELDS/CALCSUMS calls outside loops in one procedure "
+                f"(tables: {', '.join(calc_tables)}). Each fires a separate SQL sub-query in Classic NAV."
+            ),
+            "recommendation": (
+                "Cache calculated values in local variables. "
+                "If the same FlowField is read multiple times, calculate once and reuse the variable. "
+                "Consider storing high-traffic FlowField values as regular fields (maintained by triggers) "
+                "on very large tables."
+            ),
+            "example": (
+                "// BAD: calculate on every use\n"
+                "Cust.CALCFIELDS(Balance, 'Sales (LCY)');\n"
+                "Cust.CALCFIELDS('Profit (LCY)');\n"
+                "Cust.CALCFIELDS('Balance Due');\n\n"
+                "// GOOD: batch & cache\n"
+                "Cust.CALCFIELDS(Balance, 'Sales (LCY)', 'Profit (LCY)', 'Balance Due');\n"
+                "BalanceDue := Cust.'Balance Due';  // use variable, not re-CALCFIELDS"
+            ),
+            "codeunit": {"file": self.file_path.name, "object_name": self.data.get("object_name"), "object_id": self.data.get("object_id")}
+        })
+
+    # ----------------------------------------------------------------
+    # Classic NAV — Key / Index Alignment
+    # ----------------------------------------------------------------
+
+    def _detect_key_misalignment_hint(self, proc_name: str, proc_data: dict):
+        """Hint when SETRANGE is used on filters that may not align with a key.
+
+        Classic NAV queries must follow the defined key order exactly.
+        Using SETRANGE/SETFILTER on non-leading key fields forces a full table scan
+        even when an index exists on those columns.
+        """
+        reads = [
+            r for r in proc_data.get("reads", [])
+            if r["operation"] in ["FINDSET", "FIND", "FINDFIRST", "FINDLAST"]
+            and not r.get("isTemporary")
+            and r.get("hasFilter")
+            and not r.get("hasLoadFields")  # already flagged elsewhere if missing
+        ]
+        # Collect reads where the filter field order *might* skip leading key fields.
+        # We can only heuristically flag this: if the parser recorded filterFields and
+        # the number of filter fields is 1 while the table is large, it may skip keys.
+        suspicious = []
+        for r in reads:
+            filter_fields = r.get("filterFields", [])
+            table_name = r.get("tableName", "Unknown")
+            row_count = self._get_table_row_count(table_name)
+            # Flag: single-field filter on a large table — high chance of key mismatch
+            if len(filter_fields) == 1 and row_count > 10000:
+                suspicious.append((r, table_name, filter_fields))
+
+        if not suspicious:
+            return
+
+        tables_str = ", ".join({t for _, t, _ in suspicious})
+        # score: how many suspicious reads, weighted by table size
+        max_impact = max(
+            (self._get_table_impact_multiplier(t) for _, t, _ in suspicious),
+            default=1.0,
+        )
+        score = int(min(30 + len(suspicious) * 20, 90) * max_impact)
+        severity = "high" if score >= 80 else "medium"
+
+        self.bottlenecks.append({
+            "pattern": "key_misalignment_hint",
+            "severity": severity,
+            "score": score,
+            "procedure": proc_name,
+            "explanation": (
+                f"{len(suspicious)} FINDSET/FIND on large table(s) ({tables_str}) with single-field filters. "
+                "In Classic NAV, filters must align with a defined key from the leading field. "
+                "A non-leading-field filter causes a full extent scan even when statistics look healthy."
+            ),
+            "recommendation": (
+                "Review the key definitions for each filtered table. "
+                "Ensure your SETRANGE fields appear in the same order as a defined key (including the primary key prefix). "
+                "Add a secondary key if needed — but weigh the write overhead on high-volume tables."
+            ),
+            "example": (
+                "// If key is: 'Document Type, No., Line No.'\n"
+                "// BAD: filter skips leading key field\n"
+                "Line.SETRANGE('No.', DocNo);  // skips 'Document Type' -> full scan\n\n"
+                "// GOOD: include all leading key fields\n"
+                "Line.SETRANGE('Document Type', DocType);\n"
+                "Line.SETRANGE('No.', DocNo);\n"
+                "IF Line.FINDSET THEN ..."
+            ),
+            "codeunit": {"file": self.file_path.name, "object_name": self.data.get("object_name"), "object_id": self.data.get("object_id")}
+        })
 
     def _detect_index_recommendations(self):
         """Codeunit-level pass: aggregate reads/writes per table and emit index hints."""

@@ -1,17 +1,23 @@
 ---
 name: codeunit-analyzer
 description: >
-  Comprehensive C-AL codeunit and table analysis tool for the OneTrade/Navision project.
-  Zero-dependency Python script with three sub-commands: analyze (deep dive),
-  scan (project-wide bottleneck detection), and optimize (refactoring suggestions).
-  Works with Python standard library only - no packages to install! Use when the
-  user asks about analyzing codeunits, tables, or pages, finding performance issues, or optimizing
-  Navision code. Trigger: "/codeunit-analyzer", "analyze codeunit", "analyze table", "scan bottlenecks".
+  Comprehensive C-AL performance analyzer for Classic Microsoft Dynamics NAV (Navision).
+  Targets Classic NAV anti-patterns: N+1 queries, LOCKTABLE overuse, FlowField overuse,
+  key/index misalignment, heavy transactions, and page trigger abuse.
+  Zero-dependency Python — no packages required. Use when the user asks about analyzing
+  codeunits, tables, or pages, finding performance bottlenecks, locking/blocking issues,
+  or optimizing Classic NAV / C-AL code.
+  Trigger: "/codeunit-analyzer", "analyze codeunit", "scan bottlenecks", "performance issues".
 ---
 
-# Codeunit, Table & Page Analyzer
+# Classic NAV C-AL Performance Analyzer
 
-**Zero-dependency** C-AL analysis tool using only Python standard library. Applies seamlessly to both codeunits, tables, and pages.
+> [!IMPORTANT]
+> This tool targets **Classic Microsoft Dynamics NAV (C-AL)**. It is NOT for Business Central AL.
+> `SETLOADFIELDS` does not exist in Classic NAV — use the `setloadfields` sub-command only if you
+> have explicitly migrated to Business Central.
+
+**Zero-dependency** C-AL analysis tool using only Python standard library. Focuses on Classic NAV performance patterns.
 
 ## ✨ Key Features
 
@@ -351,7 +357,11 @@ User: "Find performance issues"
 
 ## Detected Bottleneck Patterns
 
-The script detects these performance anti-patterns:
+The script detects these Classic NAV performance anti-patterns:
+
+> [!NOTE]
+> Patterns are grouped by how they manifest in Classic NAV.
+> `SETLOADFIELDS` (Business Central only) is intentionally excluded from the main scan.
 
 ### 1. **N+1 Query** (Critical - 150 points)
 
@@ -421,6 +431,67 @@ UNTIL SalesLine.NEXT = 0;
 Too many individual write operations (>10 per codeunit).
 
 **Recommendation:** Batch operations or use MODIFYALL/DELETEALL.
+
+---
+
+### 5. **N+1 Queries Inside Loops** (Critical)
+
+Too many database calls inside `REPEAT...UNTIL` blocks — the single biggest
+Classic NAV performance killer.
+
+### 6. **LOCKTABLE Overuse** (Critical / High)
+
+Classic NAV uses page-level locking. `LOCKTABLE` inside a loop holds the lock
+for every iteration, blocking all concurrent users.
+
+**Example:**
+```cal
+// ❌ Bad: lock held for entire loop
+REPEAT
+  Table.LOCKTABLE;
+  Table.MODIFY;
+UNTIL Table.NEXT = 0;
+
+// ✅ Good: acquire once
+Table.LOCKTABLE;
+IF Table.FINDSET THEN
+  REPEAT Table.MODIFY; UNTIL Table.NEXT = 0;
+```
+
+### 7. **FlowField Overuse** (High)
+
+Each `CALCFIELDS` issues a separate SQL sub-query. 4+ calls in one procedure
+without caching is a Classic NAV sign of denormalisation or missing local variables.
+
+**Example:**
+```cal
+// ❌ Bad: 4 separate sub-queries
+Cust.CALCFIELDS(Balance);
+Cust.CALCFIELDS('Sales (LCY)');
+Cust.CALCFIELDS('Profit (LCY)');
+Cust.CALCFIELDS('Balance Due');
+
+// ✅ Good: one batched call + cache in variables
+Cust.CALCFIELDS(Balance, 'Sales (LCY)', 'Profit (LCY)', 'Balance Due');
+BalanceDue := Cust.'Balance Due';
+```
+
+### 8. **Key / Index Misalignment** (High / Medium)
+
+Classic NAV table reads must follow the defined key order. Filtering on a
+non-leading key field causes a full table scan. The detector flags single-field
+SETRANGE filters on large tables as potential key misalignments.
+
+**Example:**
+```cal
+// ❌ Bad: key is 'Document Type, No.' but we skip the first field
+Line.SETRANGE('No.', DocNo);  // full scan!
+
+// ✅ Good: lead with the primary key field
+Line.SETRANGE('Document Type', DocType);
+Line.SETRANGE('No.', DocNo);
+IF Line.FINDSET THEN ...
+```
 
 ---
 
@@ -535,7 +606,7 @@ Error: FileNotFoundError: '80.cs'
 ## AL-Perf Integrated Anti-Patterns
 
 The analyzer incorporates advanced source-correlated checks natively adopted from `al-perf`:
-- **Missing SetLoadFields** (Medium): Flags `FINDSET/FINDFIRST` executed without `SETLOADFIELDS()`. Navision defaults to `SELECT *` across the network, bloating the buffer.
+- **Missing SetLoadFields** *(Business Central only — not Classic NAV)*: Available via the `setloadfields` sub-command when explicitly targeting BC. Not triggered in the standard scan. Navision defaults to `SELECT *` across the network, bloating the buffer.
 - **Unfiltered FindSet** (High): Flags `FINDSET` operations lacking `SETRANGE` or `SETFILTER`, severely impacting SQL Server memory caching by pulling entire tables.
 - **Event Subscriber Hotspots** (Critical): Flags `[EventSubscriber]` procedures containing data-loops or heavy read operations. Because Navision Event Subscribers run globally and synchronously, any blocked loop here degrades the entire ERP execution context.
 
