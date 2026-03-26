@@ -118,9 +118,9 @@ echo "Codeunits: $CODEUNITS_DIR"
 With those three variables set, all commands become:
 
 ```bash
-$PYTHON $SKILL/scripts/scripts/analyze.py list
-$PYTHON $SKILL/scripts/scripts/analyze.py scan
-$PYTHON $SKILL/scripts/scripts/analyze.py analyze <file>
+$PYTHON $SKILL/scripts/analyze.py list
+$PYTHON $SKILL/scripts/analyze.py scan
+$PYTHON $SKILL/scripts/analyze.py analyze <file>
 ```
 
 ---
@@ -131,19 +131,19 @@ $PYTHON $SKILL/scripts/scripts/analyze.py analyze <file>
 
 ```bash
 # List all available codeunits
-$PYTHON $SKILL/scripts/scripts/analyze.py list
+$PYTHON $SKILL/scripts/analyze.py list
 
 # Analyze a specific codeunit
-$PYTHON $SKILL/scripts/scripts/analyze.py analyze 1.cs
+$PYTHON $SKILL/scripts/analyze.py analyze 1.cs
 
 # Scan all codeunits for bottlenecks
-$PYTHON $SKILL/scripts/scripts/analyze.py scan
+$PYTHON $SKILL/scripts/analyze.py scan
 
 # Save scan results to file
-$PYTHON $SKILL/scripts/scripts/analyze.py scan -o bottlenecks.json
+$PYTHON $SKILL/scripts/analyze.py scan -o bottlenecks.json
 
 # Get optimization suggestions
-$PYTHON $SKILL/scripts/scripts/analyze.py optimize 80.cs
+$PYTHON $SKILL/scripts/analyze.py optimize 80.cs
 
 # SETLOADFIELDS audit — project-wide (ranked by urgency)
 $PYTHON $SKILL/scripts/analyze.py setloadfields
@@ -170,7 +170,7 @@ $PYTHON $SKILL/scripts/analyze.py setloadfields --top 10 -o slf_report.json
 **Action:**
 
 ```bash
-python .skills/codeunit-analyzer/scripts/scripts/analyze.py list
+$PYTHON $SKILL/scripts/analyze.py list
 ```
 
 **Output:**
@@ -190,7 +190,7 @@ Table showing: File name | Object name | ID
 **Action:**
 
 ```bash
-python .skills/codeunit-analyzer/scripts/scripts/analyze.py analyze <filename>
+$PYTHON $SKILL/scripts/analyze.py analyze <filename>
 ```
 
 **Steps:**
@@ -222,13 +222,13 @@ python .skills/codeunit-analyzer/scripts/scripts/analyze.py analyze <filename>
 **Action:**
 
 ```bash
-python .skills/codeunit-analyzer/scripts/scripts/analyze.py scan
+$PYTHON $SKILL/scripts/analyze.py scan
 ```
 
 **Save to JSON:**
 
 ```bash
-python .skills/codeunit-analyzer/scripts/scripts/analyze.py scan -o bottlenecks_$(date +%Y%m%d).json
+$PYTHON $SKILL/scripts/analyze.py scan -o bottlenecks_$(date +%Y%m%d).json
 ```
 
 **Steps:**
@@ -261,7 +261,7 @@ python .skills/codeunit-analyzer/scripts/scripts/analyze.py scan -o bottlenecks_
 **Action:**
 
 ```bash
-python .skills/codeunit-analyzer/scripts/scripts/analyze.py optimize <filename>
+$PYTHON $SKILL/scripts/analyze.py optimize <filename>
 ```
 
 **Steps:**
@@ -323,7 +323,7 @@ python .skills/codeunit-analyzer/scripts/analyze.py setloadfields <filename>
 
 ```
 User: /codeunit-analyzer list
-→ Run: python .skills/codeunit-analyzer/scripts/scripts/analyze.py list
+→ Run: $PYTHON $SKILL/scripts/analyze.py list
 → Show table of all codeunits
 ```
 
@@ -334,14 +334,14 @@ User: /codeunit-analyzer analyze
 → Run list first to show options
 → Ask: "Which file would you like to analyze?"
 → User selects file
-→ Run: python .skills/codeunit-analyzer/scripts/scripts/analyze.py analyze <selected_file>
+→ Run: $PYTHON $SKILL/scripts/analyze.py analyze <selected_file>
 ```
 
 **Scenario 3: User provides filename directly**
 
 ```
 User: /codeunit-analyzer analyze 1.cs
-→ Run: python .skills/codeunit-analyzer/scripts/scripts/analyze.py analyze 1.cs
+→ Run: $PYTHON $SKILL/scripts/analyze.py analyze 1.cs
 → Display results immediately
 ```
 
@@ -350,7 +350,7 @@ User: /codeunit-analyzer analyze 1.cs
 ```
 User: "Find performance issues"
 → Infer command: scan
-→ Run: python .skills/codeunit-analyzer/scripts/scripts/analyze.py scan
+→ Run: $PYTHON $SKILL/scripts/analyze.py scan
 ```
 
 ---
@@ -591,7 +591,7 @@ Expected directory: c:\Users\...\data\codeunits
 Error: FileNotFoundError: '80.cs'
 ```
 
-**Solution:** Run `python .skills/codeunit-analyzer/scripts/scripts/analyze.py list` to see available files.
+**Solution:** Run `$PYTHON $SKILL/scripts/analyze.py list` to see available files.
 
 **3. No bottlenecks detected**
 
@@ -625,7 +625,7 @@ python --version  # Should be 3.10+
 **Run from project root:**
 
 ```bash
-python .skills/codeunit-analyzer/scripts/scripts/analyze.py list
+$PYTHON $SKILL/scripts/analyze.py list
 ```
 
 ### No files listed
@@ -642,7 +642,7 @@ If empty, add your C-AL files to `data/codeunits/`.
 
 ```bash
 chmod +x scripts/analyze.py
-python .skills/codeunit-analyzer/scripts/scripts/analyze.py list
+$PYTHON $SKILL/scripts/analyze.py list
 ```
 
 ---
@@ -681,7 +681,7 @@ File                 Object Name                                        ID
 ### Example 2: Analyze specific file
 
 ```bash
-python .skills/codeunit-analyzer/scripts/scripts/analyze.py analyze 80.cs
+$PYTHON $SKILL/scripts/analyze.py analyze 80.cs
 ```
 
 Output:
@@ -708,7 +708,7 @@ Medium: 1
 ### Example 3: Full scan
 
 ```bash
-python .skills/codeunit-analyzer/scripts/scripts/analyze.py scan -o scan_results.json
+$PYTHON $SKILL/scripts/analyze.py scan -o scan_results.json
 ```
 
 Output:

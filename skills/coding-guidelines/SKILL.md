@@ -194,6 +194,6 @@ Before committing, verify all of the following:
 - [ ] No module-level mutable variables
 - [ ] All Python types present; `pyright` passes with zero errors
 - [ ] No TypeScript `any` or undocumented `!`
-- [ ] No file exceeds 1000 lines
+- [ ] No file exceeds 500 lines
 - [ ] `uv run pytest` passes (Python)
 - [ ] `npm run check` passes (TypeScript)

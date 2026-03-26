@@ -90,7 +90,7 @@ def main() -> None:
 
     be.mkdir(exist_ok=True)
     run(["uv", "init", "."], be, "uv init")
-    run(["uv", "add", "fastapi[standard]"], be, "uv add fastapi[standard]")
+    run(["uv", "add", "fastapi", "granian"], be, "uv add fastapi granian")
 
     write(
         be / "main.py",
@@ -120,7 +120,7 @@ def main() -> None:
     if pyproject.exists():
         content = pyproject.read_text(encoding="utf-8")
         if "[tool.uv.scripts]" not in content:
-            content += '\n[tool.uv.scripts]\ndev = "fastapi dev main.py"\n'
+            content += '\n[tool.uv.scripts]\ndev = "granian --interface asgi main:app --reload"\nstart = "granian --interface asgi main:app --workers 4"\n'
             pyproject.write_text(content, encoding="utf-8")
 
     print("✅ Backend ready")

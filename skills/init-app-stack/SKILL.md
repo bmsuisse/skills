@@ -24,7 +24,7 @@ The script (works on Mac, Linux, Windows):
 2. Installs `@nuxt/ui tailwindcss`, configures `nuxt.config.ts`, `assets/css/main.css`, and `app.vue`
 3. Runs `uv init` + `uv add "fastapi[standard]"` in `backend/`
 4. Writes a minimal `main.py` with CORS configured for `localhost:3000`
-5. Adds `dev = "fastapi dev main.py"` to `pyproject.toml`
+5. Adds `dev = "granian --interface asgi main:app --reload"` and `start = "granian --interface asgi main:app --workers 4"` to `pyproject.toml`
 6. Writes a root `.gitignore`
 
 After running:
@@ -65,7 +65,8 @@ Installs into `.agents/skills/`, `.agent/skills/`, and `.claude/skills/`:
 
 - Always use **bun** (not npm/yarn/pnpm) for the frontend.
 - Always use **uv** (not pip/poetry/pipenv) for the backend.
-- Use `fastapi[standard]` — this bundles uvicorn, do not add it separately.
+- Use `fastapi` + `granian` — do **not** use `fastapi[standard]` (bundles uvicorn, which conflicts with Granian).
+- Run the backend dev server with `uv run dev` (which calls `granian --interface asgi main:app --reload`).
 - Nuxt UI v4 uses TailwindCSS v4 — do not install `@tailwindcss/vite` or tweak Vite config manually.
 - Use semantic color utilities (`text-default`, `bg-elevated`, `border-muted`) — not raw Tailwind palette colors.
 - CORS is pre-configured for `http://localhost:3000` (Nuxt default). Update for production.
