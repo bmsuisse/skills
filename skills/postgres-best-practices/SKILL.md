@@ -19,7 +19,7 @@ description: >
 Core rules for every piece of database code in this project:
 
 - **No ORM** — use [psycopg](https://www.psycopg.org/psycopg3/) directly.
-- **No inline SQL** — every custom query lives in its own `.sql` file.
+- **Inline SQL** — trivial queries of **4 lines or fewer** may be written inline in Python. Anything with JOINs, subqueries, CTEs, aggregations, or multiple conditions must live in its own `.sql` file.
 - **Named parameters** — always `%(name)s` style, never positional `%s`.
 - **SQL formatting** — all `.sql` files are formatted with [shandy-sqlfmt](https://sqlfmt.com/).
 - **Dynamic SQL** — check `pyproject.toml` for the Python version; use psycopg t-string templates on 3.14+, otherwise `psycopg.sql`.
@@ -50,6 +50,25 @@ app/
 ```
 
 SQL files live under `db/queries/<topic>/`. Every custom query gets its own file — no multi-statement files that lump unrelated queries together.
+
+Inline SQL example (acceptable — simple, ≤ 4 lines):
+
+```python
+await cur.execute("SELECT id, name FROM users WHERE id = %(id)s", {"id": user_id})
+```
+
+Not acceptable inline (use a `.sql` file):
+
+```python
+# Too complex — JOIN + condition + ORDER BY
+await cur.execute("""
+    SELECT u.id, u.name, o.total
+    FROM users u
+    JOIN orders o ON o.user_id = u.id
+    WHERE u.active = true
+    ORDER BY o.created_at DESC
+""")
+```
 
 ---
 
@@ -456,11 +475,73 @@ Avoid dynamic SQL whenever possible — a static `.sql` file is always clearer. 
 
 ### Python 3.14+ — t-string templates
 
-```python
+T-strings look like f-strings but are evaluated by psycopg, not Python — values are always sent as bound parameters, never interpolated.
 
-column = "email"  # dynamic — comes from caller
+**Basic parameter (default `s` specifier):**
+
+```python
+await cur.execute(t"SELECT * FROM users WHERE id = {user_id}")
+```
+
+**Format specifiers:**
+
+| Specifier | Meaning |
+|-----------|---------|
+| `{val}` / `{val:s}` | Bound parameter, automatic format (default) |
+| `{val:b}` | Bound parameter, binary format |
+| `{val:t}` | Bound parameter, text format |
+| `{name:i}` | SQL identifier (table/column name) — double-quoted |
+| `{val:l}` | Literal value merged client-side (use sparingly) |
+| `{snippet:q}` | SQL snippet — another t-string or `sql.SQL`/`Composed` instance |
+
+**Dynamic identifier (`:i`):**
+
+```python
+column = "email"  # comes from caller
 query = t"SELECT {column:i} FROM users WHERE active = {active}"
 await cur.execute(query)
+```
+
+**NOTIFY — requires client-side composition (`:i` and `:l`):**
+
+```python
+def send_notify(conn: Connection, channel: str, payload: str) -> None:
+    conn.execute(t"NOTIFY {channel:i}, {payload:l}")
+# NOTIFY "foo.bar", 'O''Reilly'
+```
+
+**Nested templates with `:q` (dynamic WHERE clause):**
+
+```python
+from psycopg import sql
+
+def search_users(
+    conn: Connection,
+    ids: Sequence[int] | None = None,
+    name_pattern: str | None = None,
+) -> list[UserRow]:
+    filters = []
+    if ids is not None:
+        filters.append(t"u.id = ANY({list(ids)})")
+    if name_pattern is not None:
+        filters.append(t"u.name ~* {name_pattern}")
+    if not filters:
+        raise TypeError("at least one filter required")
+    joined = sql.SQL(" AND ").join(filters)
+    cur = conn.cursor(row_factory=class_row(UserRow))
+    cur.execute(t"SELECT * FROM users AS u WHERE {joined:q}")
+    return cur.fetchall()
+```
+
+**Inspect the composed SQL without executing (`sql.as_string`):**
+
+```python
+from psycopg import sql
+
+name = "O'Reilly"
+dob = datetime.date(1970, 1, 1)
+print(sql.as_string(t"INSERT INTO tbl VALUES ({name}, {dob})"))
+# INSERT INTO tbl VALUES ('O''Reilly', '1970-01-01'::date)
 ```
 
 ### Python < 3.14 — `psycopg.sql`
@@ -503,7 +584,7 @@ sqlfmt enforces lowercase keywords, trailing commas, and consistent indentation.
 ## Quick checklist
 
 - [ ] Simple CRUD uses `pg_*` helpers; custom queries use `.sql` files
-- [ ] No inline SQL strings in Python
+- [ ] Inline SQL only for trivial queries ≤ 4 lines; anything with JOINs/CTEs/aggregations/subqueries uses a `.sql` file
 - [ ] All parameters use `%(name)s` style with a dict argument
 - [ ] SQL files formatted with `sqlfmt`
 - [ ] Results mapped to a Pydantic model in `{topic}_models.py`
