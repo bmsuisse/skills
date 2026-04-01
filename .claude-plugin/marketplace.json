@@ -14,7 +14,6 @@
         "path": "skills"
       },
       "skills": [
-        "./coding-guidelines",
         "./coding-guidelines-python",
         "./coding-guidelines-typescript",
         "./codeunit-analyzer",
