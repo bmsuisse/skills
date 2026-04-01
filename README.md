@@ -46,8 +46,7 @@ Add to `~/.claude/settings.json` to install all plugins:
       "source": {
         "source": "github",
         "repo": "bmsuisse/skills",
-        "ref": "main",
-        "sparsePaths": [".claude-plugin"]
+        "ref": "main"
       }
     }
   },
@@ -67,7 +66,30 @@ Add to `~/.claude/settings.json` to install all plugins:
 | `fabricks-data@bmsuisse-skills` | Fabricks / Databricks data skills |
 | `writing@bmsuisse-skills` | Scientific and academic writing revision |
 
-Restart Claude Code after editing the file — it will fetch the plugins automatically.
+Then run these commands in Claude Code to apply the configuration:
+
+```bash
+# Add the marketplace (one-time setup — alternative to editing settings.json manually)
+/plugin marketplace add bmsuisse/skills
+
+# Install the plugins you want
+/plugin install coding@bmsuisse-skills
+/plugin install onetrade@bmsuisse-skills
+/plugin install fabricks-data@bmsuisse-skills
+/plugin install writing@bmsuisse-skills
+
+# After any config change, reload without restarting
+/reload-plugins
+```
+
+| Command | Description |
+|---|---|
+| `/plugin` | Open the interactive plugin manager (browse, install, enable/disable) |
+| `/plugin install <name>@bmsuisse-skills` | Install a specific plugin |
+| `/plugin uninstall <name>@bmsuisse-skills` | Remove a plugin |
+| `/plugin enable <name>@bmsuisse-skills` | Re-enable a disabled plugin |
+| `/plugin disable <name>@bmsuisse-skills` | Disable without uninstalling |
+| `/reload-plugins` | Reload all active plugins without restarting Claude Code |
 
 ---
 
