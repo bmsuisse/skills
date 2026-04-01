@@ -1,7 +1,22 @@
 {
-  "name": "skills",
-  "description": "Programming skills: Python, TypeScript, FastAPI, Postgres, coding guidelines, and more",
-  "skills": ".",
+  "name": "bmsuisse-skills",
+  "description": "BMSuisse skills: programming guidelines, Postgres, FastAPI, Fabricks, Databricks, and more",
+  "skills": [
+    "./coding-guidelines",
+    "./coding-guidelines-python",
+    "./coding-guidelines-typescript",
+    "./codeunit-analyzer",
+    "./deslop",
+    "./fastapi-guideline",
+    "./init-app-stack",
+    "./postgres-best-practices",
+    "./postgres-test-setup",
+    "./sql-optimization",
+    "./databricks-cli",
+    "./fabricks-glossary",
+    "./fabricks-sql-analyzer",
+    "./scientific-revision"
+  ],
   "hooks": {
     "PreToolUse": [
       {
