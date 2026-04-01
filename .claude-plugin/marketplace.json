@@ -4,19 +4,28 @@
     "name": "BMSuisse",
     "url": "https://github.com/bmsuisse"
   },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -c \"\nimport sys, json, re\nUV_RUN_TOOLS = ('pytest', 'ruff', 'pyright', 'basedpyright', 'ty')\nd = json.load(sys.stdin)\ncmd = d.get('tool_input', {}).get('command', '')\nn = cmd\nif cmd and not cmd.startswith('uv '):\n    if m := re.match(r'^python3? -m (.+)$', cmd): n = 'uv run -m ' + m[1]\n    elif m := re.match(r'^python3?(\\\\s.*)?$', cmd): n = 'uv run python' + (m[1] or '')\n    elif m := re.match(r'^pip3? install(\\\\s.*)?$', cmd): n = 'uv add' + (m[1] or '')\n    elif m := re.match(r'^pip3? uninstall(\\\\s.*)?$', cmd): n = 'uv remove' + (m[1] or '')\n    elif m := re.match(r'^pip3? (.+)$', cmd): n = 'uv pip ' + m[1]\n    elif m := re.match(r'^(' + '|'.join(re.escape(t) for t in UV_RUN_TOOLS) + r')(\\\\s.*)?$', cmd): n = 'uv run ' + m[1] + (m[2] or '')\nif n != cmd:\n    d['tool_input']['command'] = n\n    print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'updatedInput': d['tool_input']}}))\n\"",
+            "statusMessage": "Remapping to uv..."
+          }
+        ]
+      }
+    ]
+  },
   "plugins": [
     {
-      "name": "skills",
+      "name": "coding",
       "description": "Programming skills: Python, TypeScript, FastAPI, Postgres, coding guidelines, and more",
-      "source": {
-        "source": "git-subdir",
-        "url": "bmsuisse/skills",
-        "path": "skills"
-      },
+      "source": "./",
       "skills": [
         "./coding-guidelines-python",
         "./coding-guidelines-typescript",
-        "./codeunit-analyzer",
         "./deslop",
         "./fastapi-guideline",
         "./init-app-stack",
@@ -25,18 +34,31 @@
         "./sql-optimization"
       ]
     },
+    
+    {
+      "name": "onetrade",
+      "description": "OneTrade Coding",
+      "source": "./",
+      "skills": [
+        "./codeunit-analyzer"
+      ]
+    },
     {
       "name": "fabricks-data",
       "description": "Fabricks and Databricks data skills: CLI operations, SQL analysis, and domain glossary",
-      "source": {
-        "source": "git-subdir",
-        "url": "bmsuisse/skills",
-        "path": "skills"
-      },
+      "source": "./",
       "skills": [
         "./databricks-cli",
         "./fabricks-glossary",
         "./fabricks-sql-analyzer"
+      ]
+    },
+    {
+      "name": "writing",
+      "description": "Writing skills: Documentation, technical writing, and content creation",
+      "source": "./",
+      "skills": [
+        "./scientific-revision"
       ]
     }
   ]
