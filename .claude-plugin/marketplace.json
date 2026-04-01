@@ -1,0 +1,19 @@
+{
+  "name": "bmsuisse-skills",
+  "owner": {
+    "name": "BMSuisse",
+    "url": "https://github.com/bmsuisse"
+  },
+  "plugins": [
+    {
+      "name": "skills",
+      "source": {
+        "source": "github",
+        "repo": "bmsuisse/skills",
+        "ref": "main",
+        "sparsePaths": ["skills", "hooks", ".claude-plugin"]
+      },
+      "description": "Python development skills (FastAPI, Postgres, Databricks, coding guidelines) with uv command remapping hook"
+    }
+  ]
+}

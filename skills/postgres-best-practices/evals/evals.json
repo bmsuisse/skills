@@ -76,6 +76,50 @@
           "type": "qualitative"
         }
       ]
+    },
+    {
+      "id": 4,
+      "prompt": "I need to check if a user exists by their username. It's a single-column lookup and the query is trivial — just `SELECT id FROM users WHERE username = ?`. Can I write this inline in Python instead of creating a .sql file?",
+      "expected_output": "Yes — short trivial queries of up to 4 lines are allowed inline. The response should show the inline query using named parameter style %(username)s, confirm this is acceptable per the guidelines, and note that a .sql file is still required once a query involves JOINs, CTEs, aggregations, or becomes multi-condition.",
+      "files": [],
+      "assertions": [
+        {
+          "text": "Confirms that inline SQL is acceptable for this trivial single-line lookup",
+          "type": "qualitative"
+        },
+        {
+          "text": "Uses named parameter %(username)s style (not positional %s or f-string)",
+          "type": "qualitative"
+        },
+        {
+          "text": "Clarifies the boundary: complex queries (JOINs, CTEs, aggregations) still require a .sql file",
+          "type": "qualitative"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "I'm on Python 3.14 and I need to write a function that sends a NOTIFY to a dynamic channel name with a payload. The channel and payload come from function arguments. Show me how to do this safely with t-strings.",
+      "expected_output": "Uses t-string with :i for the channel identifier and :l for the payload (client-side literal), since NOTIFY cannot use server-side parameterization. Shows the correct psycopg t-string syntax and explains why :i and :l are needed here.",
+      "files": [],
+      "assertions": [
+        {
+          "text": "Uses t-string syntax (t\"NOTIFY ...\") rather than psycopg.sql or f-string",
+          "type": "qualitative"
+        },
+        {
+          "text": "Uses :i format specifier for the channel name (SQL identifier, double-quoted)",
+          "type": "qualitative"
+        },
+        {
+          "text": "Uses :l format specifier for the payload (client-side literal) or explains why server-side params don't work for NOTIFY",
+          "type": "qualitative"
+        },
+        {
+          "text": "Does not use f-string or string concatenation for the dynamic values",
+          "type": "qualitative"
+        }
+      ]
     }
   ]
 }
