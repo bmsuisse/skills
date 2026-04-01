@@ -8,12 +8,20 @@
     {
       "name": "skills",
       "source": {
-        "source": "github",
-        "repo": "bmsuisse/skills",
-        "ref": "main",
-        "sparsePaths": ["skills", "hooks", ".claude-plugin"]
+        "source": "git-subdir",
+        "url": "bmsuisse/skills",
+        "path": "skills/programming"
       },
-      "description": "Python development skills (FastAPI, Postgres, Databricks, coding guidelines) with uv command remapping hook"
+      "description": "Programming skills: Python, TypeScript, FastAPI, Postgres, coding guidelines, and more"
+    },
+    {
+      "name": "fabricks-data",
+      "source": {
+        "source": "git-subdir",
+        "url": "bmsuisse/skills",
+        "path": "skills/fabricks_data"
+      },
+      "description": "Fabricks and Databricks data skills: CLI operations, SQL analysis, and domain glossary"
     }
   ]
 }

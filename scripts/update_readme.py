@@ -41,24 +41,23 @@ def parse_frontmatter(skill_md: Path) -> dict[str, str]:
 
 
 def build_table() -> str:
-    rows: list[tuple[str, str]] = []
-    for skill_dir in sorted(SKILLS_DIR.iterdir()):
-        skill_md = skill_dir / "SKILL.md"
-        if not skill_dir.is_dir() or not skill_md.exists():
-            continue
+    rows: list[tuple[str, str, Path]] = []
+    for skill_md in sorted(SKILLS_DIR.rglob("SKILL.md")):
+        skill_dir = skill_md.parent
         fm = parse_frontmatter(skill_md)
         name = fm.get("name", skill_dir.name)
         description = fm.get("description", "")
         if len(description) > 120:
             description = description[:117].rstrip() + "…"
-        rows.append((name, description))
+        rel_path = skill_dir.relative_to(SKILLS_DIR.parent)
+        rows.append((name, description, rel_path))
 
     lines = [
         "| Skill | Description |",
         "|---|---|",
     ]
-    for name, description in rows:
-        lines.append(f"| [{name}](./skills/{name}/) | {description} |")
+    for name, description, rel_path in rows:
+        lines.append(f"| [{name}](./{rel_path}/) | {description} |")
     return "\n".join(lines)
 
 

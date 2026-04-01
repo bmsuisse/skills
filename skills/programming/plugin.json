@@ -1,7 +1,7 @@
 {
   "name": "skills",
-  "description": "Python development skills with uv command remapping",
-  "skills": "../skills",
+  "description": "Programming skills: Python, TypeScript, FastAPI, Postgres, coding guidelines, and more",
+  "skills": ".",
   "hooks": {
     "PreToolUse": [
       {
