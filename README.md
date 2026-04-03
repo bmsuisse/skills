@@ -14,21 +14,22 @@
 ## 📦 Available Skills
 
 <!-- SKILLS_TABLE_START -->
-| Skill | Plugin | Description |
-|---|---|---|
-| [coding-guidelines-python](./skills/coding-guidelines-python/) | `coding` | Apply and enforce Python-specific coding standards. Use alongside coding-guidelines for any Python file — covers typi… |
-| [coding-guidelines-typescript](./skills/coding-guidelines-typescript/) | `coding` | Apply and enforce TypeScript-specific coding standards. Use alongside coding-guidelines for any TypeScript file — cov… |
-| [deslop](./skills/deslop/) | `coding` | Remove AI slop from code and pull requests. Use this skill whenever the user wants to clean up AI-generated code, rev… |
-| [fastapi-guideline](./skills/fastapi-guideline/) | `coding` | Use this skill whenever working with FastAPI — building APIs, adding routes, structuring projects, streaming response… |
-| [init-app-stack](./skills/init-app-stack/) | `coding` | Use this skill whenever the user wants to bootstrap, scaffold, or initialize a new full-stack app with a Nuxt + Nuxt… |
-| [postgres-best-practices](./skills/postgres-best-practices/) | `coding` | PostgreSQL coding standards for Python projects using psycopg (no ORM). Use this skill whenever the user is writing o… |
-| [postgres-test-setup](./skills/postgres-test-setup/) | `coding` | Set up and work with a local PostgreSQL test database in Docker for integration/e2e tests. Use this skill whenever th… |
-| [sql-optimization](./skills/sql-optimization/) | `coding` | Universal SQL performance optimization assistant for comprehensive query tuning, indexing strategies, and database p… |
-| [codeunit-analyzer](./skills/codeunit-analyzer/) | `onetrade` | Comprehensive C-AL performance analyzer for Classic Microsoft Dynamics NAV (Navision). Targets Classic NAV anti-patte… |
-| [databricks-cli](./skills/databricks-cli/) | `fabricks-data` | Databricks CLI operations: auth, profiles, data exploration, bundles, and notebook execution. Use this skill for ANY… |
-| [fabricks-glossary](./skills/fabricks-glossary/) | `fabricks-data` | Use this skill whenever company-specific jargon, acronyms, or domain terminology is needed to answer correctly. |
-| [fabricks-sql-analyzer](./skills/fabricks-sql-analyzer/) | `fabricks-data` | Analyzes all SQL files in the Fabricks.Runtime repository, builds a dependency DAG, runs performance heuristics, and… |
-| [scientific-revision](./skills/scientific-revision/) | `writing` | Use this skill whenever the user wants to verify, revise, or improve a scientific essay, academic paper, or any writt… |
+| Skill | Description |
+|---|---|
+| [autoresearch](./skills/autoresearch/) | Autonomous iterative experimentation loop for Python, SQL, and ML projects. Guides you through defining a measurable… |
+| [codeunit-analyzer](./skills/codeunit-analyzer/) | Comprehensive C-AL performance analyzer for Classic Microsoft Dynamics NAV (Navision). Targets Classic NAV anti-patte… |
+| [coding-guidelines-python](./skills/coding-guidelines-python/) | Apply and enforce Python-specific coding standards. Use alongside coding-guidelines for any Python file — covers typi… |
+| [coding-guidelines-typescript](./skills/coding-guidelines-typescript/) | Apply and enforce TypeScript-specific coding standards. Use alongside coding-guidelines for any TypeScript file — cov… |
+| [databricks-cli](./skills/databricks-cli/) | Databricks CLI operations: auth, profiles, data exploration, bundles, and notebook execution. Use this skill for ANY… |
+| [deslop](./skills/deslop/) | Remove AI slop from code and pull requests. Use this skill whenever the user wants to clean up AI-generated code, rev… |
+| [fabricks-glossary](./skills/fabricks-glossary/) | Use this skill whenever company-specific jargon, acronyms, or domain terminology is needed to answer correctly. |
+| [fabricks-sql-analyzer](./skills/fabricks-sql-analyzer/) | Analyzes all SQL files in the Fabricks.Runtime repository, builds a dependency DAG, runs performance heuristics, and… |
+| [fastapi-guideline](./skills/fastapi-guideline/) | Use this skill whenever working with FastAPI — building APIs, adding routes, structuring projects, streaming response… |
+| [init-app-stack](./skills/init-app-stack/) | Use this skill whenever the user wants to bootstrap, scaffold, or initialize a new full-stack app with a Nuxt + Nuxt… |
+| [postgres-best-practices](./skills/postgres-best-practices/) | PostgreSQL coding standards for Python projects using psycopg (no ORM). Use this skill whenever the user is writing o… |
+| [postgres-test-setup](./skills/postgres-test-setup/) | Set up and work with a local PostgreSQL test database in Docker for integration/e2e tests. Use this skill whenever th… |
+| [scientific-revision](./skills/scientific-revision/) | Use this skill whenever the user wants to verify, revise, or improve a scientific essay, academic paper, or any writt… |
+| [sql-optimization](./skills/sql-optimization/) | "Universal SQL performance optimization assistant for comprehensive query tuning, indexing strategies, and database p… |
 <!-- SKILLS_TABLE_END -->
 
 ---
