@@ -203,7 +203,8 @@ THINK   Analyze prior results + current code.
 EDIT    Make one focused change to in-scope files.
         Keep it minimal — one idea per experiment.
 
-COMMIT  git add + git commit
+COMMIT  Stage only in-scope files, then commit:
+        git add <IN_SCOPE files> && git commit
         Message format: "experiment: <short description>"
 
 RUN     Execute METRIC_COMMAND, redirect all output:
@@ -214,10 +215,13 @@ MEASURE Extract the metric from $LOG_FILE.
 
 DECIDE  Compare to current best:
         ✅ IMPROVED  → keep commit, update best, log status = "keep"
-        ❌ SAME/WORSE → revert: git reset --hard HEAD~1, log status = "discard"
+        ❌ SAME/WORSE → revert only in-scope files:
+                       git reset HEAD~1               # soft-reset: undo commit, keep working tree
+                       git restore <IN_SCOPE files>   # discard changes to in-scope files only
+                       log status = "discard"
         💥 CRASH     → attempt up to 2 quick fixes (typo, import, simple error),
-                       amend commit, re-run. If still broken, revert entire
-                       experiment and log status = "crash".
+                       amend commit, re-run. If still broken, soft-reset and
+                       restore only in-scope files; log status = "crash".
 
 LOG     Append to results.tsv:
         <N>	<commit>	<value>	<status>	<description>
