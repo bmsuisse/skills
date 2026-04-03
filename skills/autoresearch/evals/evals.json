@@ -30,6 +30,12 @@
       "prompt": "Training my sklearn model takes 4 minutes and achieves 0.71 F1. I want to autonomously experiment to push F1 above 0.80 without going over 5 minutes of training time. Model code is in `model/classifier.py`.",
       "expected_output": "Agent sets up dual constraints (F1 higher-is-better as primary metric, training time as a constraint), creates branch, baselines both values, then experiments with hyperparameters, feature engineering, model selection — keeping only improvements that stay within the time constraint.",
       "assertions": []
+    },
+    {
+      "id": 6,
+      "prompt": "I have a slow pandas DataFrame pipeline in `etl/transform.py` — takes 45 seconds on a 500k-row CSV. I want to get it under 10 seconds. You can search the web for optimization ideas. Metric: `hyperfine --warmup 2 'python etl/transform.py'`.",
+      "expected_output": "Agent asks about web search permission, records WEB_SEARCH=yes, includes it in the confirmation table. During the experiment loop, when stuck or exploring new techniques (e.g. vectorization, polars migration, dtype optimization), performs targeted web searches and cites the source URL in the TSV description. Runs the full autoresearch loop: branch, baseline, iterate, report.",
+      "assertions": []
     }
   ]
 }

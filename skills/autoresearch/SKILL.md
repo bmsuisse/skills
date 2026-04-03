@@ -88,6 +88,21 @@ Ask:
 
 Record as `CONSTRAINTS`.
 
+### 1.4b Web search
+
+Ask:
+
+> **May I search the web for optimization ideas, documentation, or techniques?**
+>
+> Web search lets me look up library docs, algorithm papers, Stack Overflow
+> answers, and benchmarking guides to generate better hypotheses — especially
+> useful for ML tuning, SQL optimization, and unfamiliar libraries.
+>
+> Options: `yes` (search freely), `ask` (propose each query before running),
+> `no` (stay offline, codebase only).
+
+Record as `WEB_SEARCH` (`yes` | `ask` | `no`, default `no`).
+
 ### 1.5 Budget
 
 Ask:
@@ -121,6 +136,7 @@ Present a summary table and wait for explicit confirmation before continuing.
 | Constraints       |       |
 | Max experiments   |       |
 | Simplicity policy |       |
+| Web search        |       |
 
 ---
 
@@ -176,6 +192,12 @@ Run continuously. Never pause to ask "should I continue?". Stop only when:
 ```
 THINK   Analyze prior results + current code.
         Form a specific hypothesis: "X should improve Y because Z."
+        If WEB_SEARCH is `yes` or `ask` and you are stuck or entering a new
+        domain (e.g. unfamiliar library, ML algorithm, SQL planner behavior),
+        search the web for relevant techniques, docs, or benchmarks before
+        forming the hypothesis. For `ask`, state the proposed query and wait
+        for confirmation. Log the source URL in the description column of the
+        TSV when a web result directly inspired the experiment.
         Follow experiment strategy priority below.
 
 EDIT    Make one focused change to in-scope files.
