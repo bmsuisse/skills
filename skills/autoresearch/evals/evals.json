@@ -37,5 +37,50 @@
       "expected_output": "Agent asks about web search permission, records WEB_SEARCH=yes, includes it in the confirmation table. During the experiment loop, when stuck or exploring new techniques (e.g. vectorization, polars migration, dtype optimization), performs targeted web searches and cites the source URL in the TSV description. Runs the full autoresearch loop: branch, baseline, iterate, report.",
       "assertions": []
     }
+  ,
+    {
+      "id": 7,
+      "prompt": "I want to run two autoresearch experiments in parallel: one optimizing `etl/transform.py` for runtime, another reducing pyright errors in `src/`. Can you set up both to run simultaneously?",
+      "expected_output": "Agent explains the git worktree approach, creates two worktrees (one per run with unique RUN_IDs), confirms non-overlapping IN_SCOPE for each, then starts both loops — each in its own worktree directory on its own branch. Does NOT start the second loop in the same working directory as the first.",
+      "assertions": [
+        "Agent uses `git worktree add` to create two separate directories",
+        "Each run gets a unique RUN_ID and branch name (autoresearch/<run-id>)",
+        "Agent confirms that IN_SCOPE files do not overlap between the two runs",
+        "Agent does not attempt `git checkout -b` inside an already-active worktree loop"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "I have two competing hypotheses for speeding up my ML training: (A) switching optimizer from Adam to AdamW in `model/train.py`, (B) reducing batch size in `model/config.py`. I want to race them and see which wins. Can you set up parallel autoresearch for both?",
+      "expected_output": "Agent sets up two worktrees with separate scopes (`model/train.py` for run A, `model/config.py` for run B), establishes independent baselines in each, then runs both experiment loops. At the end, reports both results and advises on merge order (larger improvement first, re-baseline the second before merging).",
+      "assertions": [
+        "Agent creates two worktrees with distinct branch names",
+        "IN_SCOPE for run A (`model/train.py`) does not overlap with run B (`model/config.py`)",
+        "Both runs produce independent RESULTS_FILE TSVs",
+        "Agent advises merging the higher-improvement run first and re-running the baseline of the second before merging"
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "My parallel autoresearch run is done. How do I clean up the worktrees and merge the results back?",
+      "expected_output": "Agent provides the cleanup sequence: (1) `git worktree remove` for each finished worktree, (2) merge or PR the branch with the larger improvement first, (3) re-run the other run's baseline on the updated main to get an honest combined measurement, (4) `git branch -D` for branches with no net improvement.",
+      "assertions": [
+        "Agent uses `git worktree remove` (not `rm -rf`) for cleanup",
+        "Agent advises merging higher-improvement branch first",
+        "Agent mentions re-baselining before merging the second run",
+        "Agent mentions `git branch -D` for zero-improvement branches"
+      ]
+    },
+    {
+      "id": 10,
+      "prompt": "I accidentally set up two parallel autoresearch runs with overlapping IN_SCOPE — both are editing `src/utils.py`. What should I do?",
+      "expected_output": "Agent flags the conflict risk clearly: overlapping IN_SCOPE means the two loops will overwrite each other's changes and produce unreliable metrics. Recommends stopping both runs, picking one scope per run, and restarting with clean worktrees. Does not suggest continuing with overlapping scopes.",
+      "assertions": [
+        "Agent clearly warns that overlapping IN_SCOPE invalidates both runs",
+        "Agent recommends stopping both loops before continuing",
+        "Agent proposes a corrected scope split with no overlap",
+        "Agent does not suggest a workaround that allows the overlap to continue"
+      ]
+    }
   ]
 }

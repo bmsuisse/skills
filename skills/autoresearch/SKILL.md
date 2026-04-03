@@ -140,6 +140,63 @@ Present a summary table and wait for explicit confirmation before continuing.
 
 ---
 
+## Parallel autoresearch
+
+Run multiple experiment loops simultaneously, each on its own branch and working
+directory, using `git worktree`. Useful when you want to race two hypotheses, explore
+independent scopes concurrently, or keep your main editor on `main` while experiments run.
+
+### When to use parallel mode
+
+- Two or more independent scopes (different files or modules) that won't conflict
+- Long-running metric commands where waiting for one loop blocks progress
+- Competing strategies you want to benchmark side-by-side
+
+### Setup
+
+For each parallel run, create a dedicated worktree **before** starting its loop:
+
+```bash
+# In the repo root — repeat for each parallel run
+RUN_ID_A="$(date +%Y%m%d-%H%M)-<goal-a>"
+RUN_ID_B="$(date +%Y%m%d-%H%M)-<goal-b>"
+
+git worktree add ../<repo>-${RUN_ID_A} -b autoresearch/${RUN_ID_A}
+git worktree add ../<repo>-${RUN_ID_B} -b autoresearch/${RUN_ID_B}
+```
+
+Each worktree is a sibling directory with its own `HEAD` and index — commits,
+resets, and file edits in one worktree are completely invisible to the others.
+
+### Guidelines
+
+| Rule | Reason |
+| ---- | ------ |
+| **Non-overlapping `IN_SCOPE`** | Two loops editing the same file will overwrite each other's changes — the merge conflict is yours to resolve |
+| **Each run gets its own worktree** | Never share a directory between two loops |
+| **Separate `RESULTS_FILE` per run** | Use the unique `RUN_ID` — they naturally don't collide |
+| **Merge order matters** | When both runs finish, merge the one with the larger improvement first; re-run the other's baseline before merging it to get an honest combined measurement |
+| **VS Code workspace** | `File → Add Folder to Workspace` for each worktree directory — all runs visible side-by-side |
+
+### Cleanup
+
+When a parallel run finishes, remove its worktree:
+
+```bash
+git worktree remove ../<repo>-${RUN_ID_A}   # removes directory + unregisters
+# or, if the run produced no improvement:
+git worktree remove --force ../<repo>-${RUN_ID_A}
+git branch -D autoresearch/${RUN_ID_A}
+```
+
+List active worktrees at any time:
+
+```bash
+git worktree list
+```
+
+---
+
 ## Phase 2 — Branch & baseline
 
 1. **Generate a run ID** — combines date and a short goal slug, e.g. `20240115-pytest-passrate`.
