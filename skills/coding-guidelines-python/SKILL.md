@@ -1,5 +1,6 @@
 ---
 name: coding-guidelines-python
+plugin: coding
 description: >
   Apply and enforce Python-specific coding standards. Use alongside
   coding-guidelines for any Python file — covers typing, Pyright, dataclasses,

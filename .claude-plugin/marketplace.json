@@ -24,6 +24,7 @@
       "description": "Programming skills: Python, TypeScript, FastAPI, Postgres, coding guidelines, and more",
       "source": "./",
       "skills": [
+        "./autoresearch",
         "./coding-guidelines-python",
         "./coding-guidelines-typescript",
         "./deslop",

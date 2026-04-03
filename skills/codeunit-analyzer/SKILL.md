@@ -1,5 +1,6 @@
 ---
 name: codeunit-analyzer
+plugin: onetrade
 description: >
   Comprehensive C-AL performance analyzer for Classic Microsoft Dynamics NAV (Navision).
   Targets Classic NAV anti-patterns: N+1 queries, LOCKTABLE overuse, FlowField overuse,

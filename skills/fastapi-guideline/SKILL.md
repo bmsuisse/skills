@@ -1,5 +1,6 @@
 ---
 name: fastapi-guideline
+plugin: coding
 description: >
   Use this skill whenever working with FastAPI — building APIs, adding routes, structuring projects,
   streaming responses, handling authentication, database access, or running the server.

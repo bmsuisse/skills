@@ -1,5 +1,6 @@
 ---
 name: fabricks-sql-analyzer
+plugin: fabricks-data
 description: Analyzes all SQL files in the Fabricks.Runtime repository, builds a dependency DAG, runs performance heuristics, and produces a Markdown report with ranked findings and improvement suggestions. Optionally fetches row counts and EXPLAIN COST plans from Databricks. Pass --fix to automatically create a branch and apply SQL rewrites.
 ---
 

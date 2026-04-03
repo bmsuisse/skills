@@ -1,5 +1,6 @@
 ---
 name: postgres-best-practices
+plugin: coding
 description: >
   PostgreSQL coding standards for Python projects using psycopg (no ORM). Use
   this skill whenever the user is writing or reviewing code that queries

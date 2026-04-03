@@ -1,0 +1,35 @@
+{
+  "skill_name": "autoresearch",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "My ETL pipeline takes about 90 seconds to process our daily CSV dump. I want you to keep trying different optimizations until it's under 30s. The entry point is `pipeline/run.py`, measurements via `hyperfine --warmup 2 'python pipeline/run.py'`. Don't touch the tests or the schema.",
+      "expected_output": "Agent runs the setup phase, confirms parameters, creates autoresearch branch, establishes baseline, then runs the experiment loop autonomously — editing pipeline/run.py, committing, timing, keeping or reverting. Produces a results.tsv and final report.",
+      "assertions": []
+    },
+    {
+      "id": 2,
+      "prompt": "We have 47 pyright errors in our codebase after a big refactor. Can you iterate autonomously to get that count to zero? Files under `src/` are fair game, don't touch `tests/`.",
+      "expected_output": "Agent sets up with `pyright 2>&1 | grep -c 'error:'` as metric (lower is better), creates branch, baselines at 47 errors, then iteratively fixes type errors one experiment at a time — committing each batch, re-running pyright, keeping improvements.",
+      "assertions": []
+    },
+    {
+      "id": 3,
+      "prompt": "Our pytest suite sits at 68% pass rate after a dependency upgrade broke things. Run autoresearch to climb that back toward 100%. Metric: count of passing tests from `pytest --tb=no -q`. Scope is everything under `src/`. Constraints: don't delete tests, don't change test assertions.",
+      "expected_output": "Agent guides through setup confirmation, creates branch, establishes baseline pass count, then runs loop fixing failures — each experiment commits a targeted fix, measures pytest output, keeps on improvement, reverts on regression.",
+      "assertions": []
+    },
+    {
+      "id": 4,
+      "prompt": "I have a slow SQL query that aggregates sales data — takes about 800ms on our staging Postgres. I want to hill-climb it to under 100ms. The query is in `queries/sales_summary.sql`. Measure with EXPLAIN ANALYZE via psql.",
+      "expected_output": "Agent sets up with PostgreSQL EXPLAIN ANALYZE timing as metric, creates branch, baselines at ~800ms, then iterates: adding indexes, rewriting CTEs, changing join order — each experiment measured, kept or reverted.",
+      "assertions": []
+    },
+    {
+      "id": 5,
+      "prompt": "Training my sklearn model takes 4 minutes and achieves 0.71 F1. I want to autonomously experiment to push F1 above 0.80 without going over 5 minutes of training time. Model code is in `model/classifier.py`.",
+      "expected_output": "Agent sets up dual constraints (F1 higher-is-better as primary metric, training time as a constraint), creates branch, baselines both values, then experiments with hyperparameters, feature engineering, model selection — keeping only improvements that stay within the time constraint.",
+      "assertions": []
+    }
+  ]
+}

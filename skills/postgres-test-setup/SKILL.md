@@ -1,5 +1,6 @@
 ---
 name: postgres-test-setup
+plugin: coding
 description: >
   Set up and work with a local PostgreSQL test database in Docker for
   integration/e2e tests. Use this skill whenever the user wants to add,

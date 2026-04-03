@@ -1,5 +1,6 @@
 ---
 name: scientific-revision
+plugin: writing
 description: Use this skill whenever the user wants to verify, revise, or improve a scientific essay, academic paper, or any written document. It checks citation consistency, verifies bibliography entries via CrossRef and Google Scholar/Semantic Scholar, and detects AI-generated writing patterns (slop). Trigger this skill whenever the user mentions 'check citations', 'verify references', 'scientific revision', 'revise essay', 'clean up writing', 'check for AI slop', 'improve writing quality', 'check google scholar', or 'review my paper', especially in academic or professional writing contexts.
 ---
 

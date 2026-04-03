@@ -1,5 +1,6 @@
 ---
 name: coding-guidelines-typescript
+plugin: coding
 description: >
   Apply and enforce TypeScript-specific coding standards. Use alongside
   coding-guidelines for any TypeScript file — covers typing, no-any policy,

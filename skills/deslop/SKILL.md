@@ -1,5 +1,6 @@
 ---
 name: deslop
+plugin: coding
 description: >
   Remove AI slop from code and pull requests. Use this skill whenever the user
   wants to clean up AI-generated code, review a diff for unnecessary noise,

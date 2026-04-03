@@ -1,5 +1,6 @@
 ---
 name: fabricks-glossary
+plugin: fabricks-data
 description: Use this skill whenever company-specific jargon, acronyms, or domain terminology is needed to answer correctly.
 version: 1.0.0
 ---

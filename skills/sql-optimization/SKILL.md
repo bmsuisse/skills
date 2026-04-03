@@ -1,5 +1,6 @@
 ---
 name: sql-optimization
+plugin: coding
 description: "Universal SQL performance optimization assistant for comprehensive query tuning, indexing strategies, and database performance analysis across all SQL databases (MySQL, PostgreSQL, SQL Server, Oracle, Databricks). SQL style: sqlfmt lowercase, CTEs over subqueries, QUALIFY over row_number subqueries, GROUP BY ALL, meaningful aliases, alias-prefixed columns, no select *."
 ---
 

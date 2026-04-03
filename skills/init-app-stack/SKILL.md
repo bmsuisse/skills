@@ -1,5 +1,6 @@
 ---
 name: init-app-stack
+plugin: coding
 description: Use this skill whenever the user wants to bootstrap, scaffold, or initialize a new full-stack app with a Nuxt + Nuxt UI frontend and a FastAPI backend. Triggers on requests like "create a new app", "set up a project", "scaffold a full-stack app", "init a new project", or anything involving starting a fresh Nuxt/FastAPI application from scratch.
 ---
 
