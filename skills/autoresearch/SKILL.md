@@ -158,8 +158,8 @@ For each parallel run, create a dedicated worktree **before** starting its loop:
 
 ```bash
 # In the repo root — repeat for each parallel run
-RUN_ID_A="$(date +%Y%m%d-%H%M)-<goal-a>"
-RUN_ID_B="$(date +%Y%m%d-%H%M)-<goal-b>"
+RUN_ID_A="<goal-a>"   # e.g. etl-runtime
+RUN_ID_B="<goal-b>"   # e.g. pyright-errors
 
 git worktree add ../<repo>-${RUN_ID_A} -b autoresearch/${RUN_ID_A}
 git worktree add ../<repo>-${RUN_ID_B} -b autoresearch/${RUN_ID_B}
@@ -199,11 +199,11 @@ git worktree list
 
 ## Phase 2 — Branch & baseline
 
-1. **Generate a run ID** — combines date and a short goal slug, e.g. `20240115-pytest-passrate`.
+1. **Generate a run ID** — a short goal slug, e.g. `pytest-passrate`.
    This ID is used for all artifacts of this run so multiple runs never collide.
 
    ```bash
-   RUN_ID="$(date +%Y%m%d-%H%M)-<goal-slug>"   # e.g. 20240115-1430-pytest-passrate
+   RUN_ID="<goal-slug>"   # e.g. pytest-passrate
    RESULTS_FILE="autoresearch-${RUN_ID}.tsv"
    LOG_FILE="autoresearch-${RUN_ID}.log"
    ```
@@ -487,7 +487,7 @@ print(f'f1={np.mean(scores):.4f}')
 
 ## Results TSV format
 
-Filename: `autoresearch-<run-id>.tsv` (e.g. `autoresearch-20240115-1430-pytest-passrate.tsv`)
+Filename: `autoresearch-<run-id>.tsv` (e.g. `autoresearch-pytest-passrate.tsv`)
 
 Tab-separated, 5 columns:
 
