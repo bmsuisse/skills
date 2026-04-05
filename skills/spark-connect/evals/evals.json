@@ -1,0 +1,82 @@
+{
+  "skill_name": "spark-connect",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "How do I set up Databricks Connect so I can run my PySpark notebooks locally? I'm on DBR 17.3.",
+      "expected_output": "Agent explains the full setup: install `databricks-connect==17.3.*` via uv, create a .env with DATABRICKS_PROFILE and DATABRICKS_CLUSTER_ID, configure ~/.databrickscfg, and use get_spark_session() to auto-detect local vs cluster execution.",
+      "assertions": [
+        "Agent specifies `uv add databricks-connect==17.3.*` (version pinned to DBR)",
+        "Agent mentions DATABRICKS_PROFILE and DATABRICKS_CLUSTER_ID in .env",
+        "Agent shows or references the get_spark_session() auto-detect pattern",
+        "Agent explains that DATABRICKS_RUNTIME_VERSION absence means local/Connect mode"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I want to write a utility function that works both when running locally (Databricks Connect) and when deployed on the cluster. How do I handle SparkSession creation?",
+      "expected_output": "Agent provides the get_spark_session() pattern that checks DATABRICKS_RUNTIME_VERSION: if set, returns native SparkSession; otherwise returns DatabricksSession via Spark Connect. Optionally reads DATABRICKS_PROFILE from environment.",
+      "assertions": [
+        "Agent checks `os.getenv('DATABRICKS_RUNTIME_VERSION')` to detect environment",
+        "Agent uses `DatabricksSession.builder` for local execution",
+        "Agent uses `SparkSession.builder.getOrCreate()` for on-cluster execution",
+        "Agent shows reading DATABRICKS_PROFILE from env for profile selection"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "I'm getting 'Cannot configure default credentials' when calling get_spark_session() locally. What's wrong?",
+      "expected_output": "Agent diagnoses the authentication issue: missing or unconfigured ~/.databrickscfg profile, or DATABRICKS_PROFILE not set. Provides fix: run `databricks auth login --profile <your-profile>`, set DATABRICKS_PROFILE in .env, and verify with `databricks auth profiles`.",
+      "assertions": [
+        "Agent identifies missing/misconfigured auth profile as the cause",
+        "Agent provides `databricks auth login --profile <profile>` as the fix",
+        "Agent mentions setting DATABRICKS_PROFILE in .env",
+        "Agent does not suggest hardcoding credentials in code"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "What should my .env file look like for Spark Connect? And how do I load it in my script?",
+      "expected_output": "Agent shows a .env with DATABRICKS_PROFILE=<your-profile> and DATABRICKS_CLUSTER_ID=<your-cluster-id> (generic placeholders, not real values). Shows `from dotenv import load_dotenv; load_dotenv()` before importing Spark. Clarifies these must be loaded before get_spark_session() is called.",
+      "assertions": [
+        "Agent uses generic placeholder values (not hardcoded real IDs)",
+        "Agent shows `load_dotenv()` called before get_spark_session()",
+        "Agent includes both DATABRICKS_PROFILE and DATABRICKS_CLUSTER_ID",
+        "Agent does not include real cluster IDs or tokens in the example"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "I get a version mismatch error when connecting. My cluster runs DBR 16.4. What do I need to change?",
+      "expected_output": "Agent explains that databricks-connect version must match the cluster's DBR exactly. Fix: `uv add databricks-connect==16.4.*`. Shows how to find DBR version via CLI if unsure.",
+      "assertions": [
+        "Agent specifies the correct package version: `databricks-connect==16.4.*`",
+        "Agent explains the version-must-match-DBR requirement",
+        "Agent mentions `uv add` (not pip install) for installation",
+        "Agent optionally shows how to check DBR version via `databricks clusters get`"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Should I use spark.sql() or the PySpark DataFrame API when running via Spark Connect?",
+      "expected_output": "Agent recommends spark.sql() as the preferred pattern: easier to read, plan, and optimize. Notes the DataFrame API is fine for UDFs or ML pipelines that require it, but SQL is preferred for data queries. Explains this is consistent whether running locally or on cluster.",
+      "assertions": [
+        "Agent recommends spark.sql() as the preferred approach",
+        "Agent gives a concrete example of spark.sql() usage",
+        "Agent acknowledges DataFrame API is acceptable for UDFs/ML pipelines",
+        "Agent does not say the DataFrame API is always wrong"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "I want to run the autoresearch optimization loop on my PySpark notebook. How does that work with Spark Connect?",
+      "expected_output": "Agent explains the execution model: the local autoresearch loop edits the script, commits, runs it locally via `uv run python`, which triggers get_spark_session() → Spark Connect → cluster. Advises using hyperfine --warmup 1 (not 3+) due to cluster cost, and accounting for cold-start overhead in the baseline. Points to the autoresearch skill for the full loop protocol.",
+      "assertions": [
+        "Agent explains the local loop → Spark Connect → cluster execution chain",
+        "Agent recommends `hyperfine --warmup 1` to limit cluster compute cost",
+        "Agent mentions cold-start overhead affecting early measurements",
+        "Agent references the autoresearch skill for the full loop protocol"
+      ]
+    }
+  ]
+}

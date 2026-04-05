@@ -1,6 +1,6 @@
 ---
 name: databricks-cli
-plugin: fabricks-data
+plugin: databricks
 description: >
   Databricks CLI operations: auth, profiles, data exploration, bundles, and
   notebook execution. Use this skill for ANY Databricks task — running or

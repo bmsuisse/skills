@@ -15,6 +15,16 @@
             "statusMessage": "Remapping to uv..."
           }
         ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -c \"\nimport sys, json, re\ndef _fix_dev(a): return re.sub(r'(?:^|\\\\s)(--save-dev|-D)(?=\\\\s|$)', ' -d', a).strip()\nd = json.load(sys.stdin)\ncmd = d.get('tool_input', {}).get('command', '')\nn = cmd\nif cmd and not (cmd.startswith('bun ') or cmd == 'bun'):\n    if m := re.match(r'^(?:npx|pnpx)([\\\\s].+)?$', cmd): n = 'bunx' + (m[1] or '')\n    elif m := re.match(r'^npm\\\\s+(.*)?$', cmd):\n        r = (m[1] or '').strip()\n        if re.match(r'^(?:install|i)$', r): n = 'bun install'\n        elif m2 := re.match(r'^(?:install|i)\\\\s+(.+)$', r): n = 'bun add ' + _fix_dev(m2[1])\n        elif m2 := re.match(r'^(?:uninstall|un|remove|rm|r)\\\\s+(.+)$', r): n = 'bun remove ' + m2[1]\n        elif m2 := re.match(r'^run\\\\s+(.+)$', r): n = 'bun run ' + m2[1]\n        elif re.match(r'^(?:test|t)$', r): n = 'bun test'\n        elif m2 := re.match(r'^exec\\\\s+(.+)$', r): n = 'bunx ' + m2[1]\n        else: n = ('bun ' + r) if r else 'bun'\n    elif m := re.match(r'^pnpm\\\\s+(.*)?$', cmd):\n        r = (m[1] or '').strip()\n        if re.match(r'^install$', r): n = 'bun install'\n        elif m2 := re.match(r'^add\\\\s+(.+)$', r): n = 'bun add ' + _fix_dev(m2[1])\n        elif m2 := re.match(r'^(?:remove|rm|uninstall|un)\\\\s+(.+)$', r): n = 'bun remove ' + m2[1]\n        elif m2 := re.match(r'^run\\\\s+(.+)$', r): n = 'bun run ' + m2[1]\n        elif re.match(r'^test$', r): n = 'bun test'\n        elif m2 := re.match(r'^exec\\\\s+(.+)$', r): n = 'bunx ' + m2[1]\n        else: n = ('bun ' + r) if r else 'bun'\n    elif m := re.match(r'^yarn(?:\\\\s+(.*)?)?$', cmd):\n        r = (m[1] or '').strip()\n        if not r or re.match(r'^install$', r): n = 'bun install'\n        elif m2 := re.match(r'^add\\\\s+(.+)$', r): n = 'bun add ' + _fix_dev(m2[1])\n        elif m2 := re.match(r'^(?:remove|uninstall)\\\\s+(.+)$', r): n = 'bun remove ' + m2[1]\n        elif m2 := re.match(r'^run\\\\s+(.+)$', r): n = 'bun run ' + m2[1]\n        elif re.match(r'^test$', r): n = 'bun test'\n        else: n = 'bun ' + r\nif n != cmd:\n    d['tool_input']['command'] = n\n    print(json.dumps({'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'updatedInput': d['tool_input']}}))\n\"",
+            "statusMessage": "Remapping to bun..."
+          }
+        ]
       }
     ]
   },
@@ -45,11 +55,19 @@
       ]
     },
     {
-      "name": "fabricks-data",
-      "description": "Fabricks and Databricks data skills: CLI operations, SQL analysis, and domain glossary",
+      "name": "databricks",
+      "description": "Databricks skills: CLI operations, Spark Connect local execution, and cluster management",
       "source": "./",
       "skills": [
         "./databricks-cli",
+        "./spark-connect"
+      ]
+    },
+    {
+      "name": "fabricks-data",
+      "description": "Fabricks data skills: SQL analysis and domain glossary",
+      "source": "./",
+      "skills": [
         "./fabricks-glossary",
         "./fabricks-sql-analyzer"
       ]

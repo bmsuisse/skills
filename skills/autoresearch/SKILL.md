@@ -2,18 +2,21 @@
 name: autoresearch
 plugin: coding
 description: >
-  Autonomous iterative experimentation loop for Python, SQL, and ML projects.
-  Guides you through defining a measurable goal, then runs an autonomous loop of
-  code changes, measurements, and keep/revert decisions until you stop it.
+  Autonomous iterative experimentation loop for Python, SQL, ML, and Spark/Databricks
+  projects. Guides you through defining a measurable goal, then runs an autonomous
+  loop of code changes, measurements, and keep/revert decisions until you stop it.
   Use this skill whenever you want to: optimize Python runtime (cProfile, scalene,
   hyperfine), reduce SQL query time (EXPLAIN ANALYZE, pg_stat_statements), improve
   pytest pass rate or coverage, fix pyright errors systematically, tune ML training
   metrics (loss, accuracy, F1), reduce memory usage (tracemalloc, memory_profiler),
-  or run any iterative hill-climbing experiment where each attempt is measurable.
+  iterate on PySpark transformations or Spark SQL queries via Spark Connect (local
+  execution against a remote Databricks cluster), or run any iterative hill-climbing
+  experiment where each attempt is measurable.
   Trigger on: "optimize this", "autoopt", "autoresearch", "keep trying until it's
   faster", "improve test coverage automatically", "hill-climb this", "run experiments",
   "iterate autonomously", "keep going until it passes", "optimize SQL performance",
-  "tune this model", "reduce pyright errors automatically".
+  "tune this model", "reduce pyright errors automatically", "optimize this Spark job",
+  "tune my PySpark pipeline", "iterate on Databricks notebook", "hill-climb Spark query".
   DO NOT USE FOR: one-shot fixes, code review without a metric, tasks with no
   measurable outcome, or when you just want a single suggestion.
 compatibility: Requires git (project must be a git repository) and terminal access.
@@ -482,6 +485,60 @@ print(f'f1={np.mean(scores):.4f}')
 "
 # → parse: f1= (higher is better)
 ```
+
+### Spark / Databricks (via Spark Connect)
+
+Run PySpark scripts **locally** against a remote Databricks cluster using
+`databricks-connect`. The cluster does the heavy lifting; the local process is
+your experiment coordinator. See the **spark-connect** skill for setup details.
+
+```bash
+# Time a PySpark script end-to-end (local process + cluster execution)
+hyperfine --warmup 1 'uv run python notebooks/my_pipeline.py'
+# → parse: "mean" field (lower is better)
+
+# Capture a row count or computed metric from Spark SQL
+uv run python -c "
+from utils.databricks import get_spark_session
+spark = get_spark_session()
+result = spark.sql('''
+    SELECT COUNT(*) as n FROM my_catalog.my_schema.my_table
+    WHERE condition = true
+''').collect()[0]['n']
+print(f'metric={result}')
+"
+# → parse: metric= (direction depends on goal)
+
+# Capture MLflow metric from a training run
+uv run python -c "
+import mlflow
+client = mlflow.tracking.MlflowClient()
+run = client.search_runs(['<experiment_id>'], order_by=['metrics.val_f1 DESC'], max_results=1)[0]
+print(f'val_f1={run.data.metrics[\"val_f1\"]:.4f}')
+"
+# → parse: val_f1= (higher is better)
+```
+
+**Autoresearch loop model with Spark Connect:**
+
+```
+Local machine (autoresearch loop)
+  └─ edits notebook / script
+  └─ commits the change
+  └─ runs: uv run python notebooks/my_script.py
+            └─ get_spark_session()  →  Spark Connect  →  Databricks Cluster
+            └─ reads metric from stdout / MLflow
+  └─ keep or revert based on metric
+  └─ next iteration
+```
+
+**Constraints to consider for Spark runs:**
+- Each run spins up or warms up the Databricks cluster — cold starts add ~1–2 min
+- Use `hyperfine --warmup 1` (not 3+) to avoid excessive cluster cost
+- Set a generous time budget cap: `2× baseline` is fine for inter-cluster runs
+- Prefer `spark.sql(...)` over PySpark DataFrame API for readability and planability
+- If `DATABRICKS_CLUSTER_ID` or `DATABRICKS_PROFILE` are not set, fail fast with
+  a clear message rather than hanging
 
 ---
 

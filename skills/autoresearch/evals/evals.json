@@ -36,8 +36,7 @@
       "prompt": "I have a slow pandas DataFrame pipeline in `etl/transform.py` — takes 45 seconds on a 500k-row CSV. I want to get it under 10 seconds. You can search the web for optimization ideas. Metric: `hyperfine --warmup 2 'python etl/transform.py'`.",
       "expected_output": "Agent asks about web search permission, records WEB_SEARCH=yes, includes it in the confirmation table. During the experiment loop, when stuck or exploring new techniques (e.g. vectorization, polars migration, dtype optimization), performs targeted web searches and cites the source URL in the TSV description. Runs the full autoresearch loop: branch, baseline, iterate, report.",
       "assertions": []
-    }
-  ,
+    },
     {
       "id": 7,
       "prompt": "I want to run two autoresearch experiments in parallel: one optimizing `etl/transform.py` for runtime, another reducing pyright errors in `src/`. Can you set up both to run simultaneously?",
@@ -80,6 +79,28 @@
         "Agent recommends stopping both loops before continuing",
         "Agent proposes a corrected scope split with no overlap",
         "Agent does not suggest a workaround that allows the overlap to continue"
+      ]
+    },
+    {
+      "id": 11,
+      "prompt": "I have a PySpark ETL notebook at `notebooks/2.1-customer-features.py` that takes about 4 minutes end-to-end. It runs locally via Spark Connect against our Databricks cluster. I want to iterate autonomously to get it under 90 seconds. Measure with `hyperfine --warmup 1 'uv run python notebooks/2.1-customer-features.py'`. Scope: the notebook file only. Don't break schema or output table structure.",
+      "expected_output": "Agent recognizes this is a Spark Connect / Databricks autoresearch run. Sets up with hyperfine as the metric command (lower is better), acknowledges cold-start overhead, creates the branch, establishes baseline, then iterates — trying things like SQL rewrites, caching, partition pruning, pushdown predicates. Uses `spark.sql()` style where appropriate. Explains cluster warm-up considerations.",
+      "assertions": [
+        "Agent uses hyperfine with --warmup 1 (not higher) given cluster cost",
+        "Agent acknowledges that cluster cold-starts may inflate early measurements",
+        "Agent constrains edits to the notebook file only",
+        "Agent mentions or applies at least one Spark-specific optimization (e.g. partition pruning, caching, SQL rewrite, predicate pushdown)"
+      ]
+    },
+    {
+      "id": 12,
+      "prompt": "My ML training notebook `notebooks/3.2-model-training.py` logs val_f1 to MLflow. It's currently hitting 0.73. I want to autoresearch to push it above 0.82. Metric: latest val_f1 from the MLflow run. The notebook connects to Databricks via Spark Connect (.env has DATABRICKS_PROFILE=<your-profile>, DATABRICKS_CLUSTER_ID=<your-cluster-id>). Scope: the notebook. Max 15 experiments.",
+      "expected_output": "Agent sets up MLflow metric extraction as METRIC_COMMAND, records DATABRICKS_PROFILE and DATABRICKS_CLUSTER_ID from the .env context, sets MAX_EXPERIMENTS=15, creates branch, baselines val_f1, then iterates — trying hyperparameter changes, feature engineering, model architecture. Reads MLflow to extract the metric after each run. Keeps only experiments that improve val_f1.",
+      "assertions": [
+        "Agent records MAX_EXPERIMENTS=15 from the user's constraint",
+        "Agent uses MLflow client to extract val_f1 as the metric (not stdout parsing alone)",
+        "Agent recognizes DATABRICKS_PROFILE and DATABRICKS_CLUSTER_ID as the Spark Connect credentials",
+        "Agent does not touch files outside the notebook scope"
       ]
     }
   ]
