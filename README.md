@@ -28,6 +28,7 @@
 | [init-app-stack](./skills/init-app-stack/) | Use this skill whenever the user wants to bootstrap, scaffold, or initialize a new full-stack app with a Nuxt + Nuxt… |
 | [postgres-best-practices](./skills/postgres-best-practices/) | PostgreSQL coding standards for Python projects using psycopg (no ORM). Use this skill whenever the user is writing o… |
 | [postgres-test-setup](./skills/postgres-test-setup/) | Set up and work with a local PostgreSQL test database in Docker for integration/e2e tests. Use this skill whenever th… |
+| [remove-ai-writing](./skills/remove-ai-writing/) | "Detect and surgically fix AI writing patterns in English, German, French, or Italian text. Use this skill whenever t… |
 | [scientific-revision](./skills/scientific-revision/) | Use this skill whenever the user wants to verify, revise, or improve a scientific essay, academic paper, or any writt… |
 | [spark-connect](./skills/spark-connect/) | Guide for running PySpark code locally against a remote Databricks cluster via Spark Connect (databricks-connect). Us… |
 | [sql-optimization](./skills/sql-optimization/) | "Universal SQL performance optimization assistant for comprehensive query tuning, indexing strategies, and database p… |
