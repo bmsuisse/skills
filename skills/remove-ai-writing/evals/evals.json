@@ -1,0 +1,69 @@
+{
+  "skill_name": "remove-ai-writing",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I just wrote this marketing-ish overview about digital transformation for our internal wiki. Can you clean it up? It reads too much like ChatGPT wrote it. The file is at evals/files/en_ai_text.md",
+      "expected_output": "The text should have AI vocabulary removed (crucial, pivotal, seamlessly, groundbreaking, etc.), copula avoidance fixed (serves as → is), listicle bold-header format converted to prose, negative parallelisms simplified, rule-of-three filler trimmed, and superficial analysis clause endings deleted. Meaning and content must be preserved.",
+      "files": ["evals/files/en_ai_text.md"],
+      "expectations": [
+        "Words like 'crucial', 'pivotal', 'seamlessly', 'groundbreaking' are removed or replaced",
+        "The phrase 'serves as' is replaced with 'is' or equivalent",
+        "The bold-label list format is converted to prose or plain list",
+        "The 'not only X but also Y' pattern is simplified",
+        "'Additionally,' sentence opener is removed or replaced",
+        "The rule-of-three 'fast, reliable, and scalable' is trimmed",
+        "Vague 'Experts argue' without citation is flagged or removed",
+        "The original meaning and factual claims are preserved"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Ich habe diesen Text über digitale Transformation geschrieben, aber er klingt irgendwie nach KI. Kannst du die KI-Muster entfernen? Die Datei ist evals/files/de_ai_text.md",
+      "expected_output": "German AI patterns removed: entscheidend, ermöglicht, unterstreicht, nahtlos, wegweisend, wertvolle Erkenntnisse. Copula fix: dient als → ist. Schlüssel-parallel structure broken up. Bold-header list → prose. Swiss 'ss' convention maintained. Meaning preserved.",
+      "files": ["evals/files/de_ai_text.md"],
+      "expectations": [
+        "Words like 'entscheidend', 'wegweisend', 'nahtlos', 'umfassend' are removed or replaced",
+        "The phrase 'dient als' is replaced with 'ist' or equivalent",
+        "The bold-label list format is converted to prose or plain list",
+        "'Darüber hinaus' sentence opener is removed or replaced",
+        "The 'Schlüssel zu X / Schlüssel zu Z' parallel structure is restructured",
+        "'Experten sind sich einig' without citation is flagged or removed",
+        "Swiss convention: no 'ß' appears in the output (all 'ss')",
+        "The original meaning and factual claims are preserved"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "j'ai rédigé ce texte sur la transformation numérique mais ça sonne trop IA/ChatGPT. tu peux nettoyer les patterns artificiels? le fichier est dans evals/files/fr_ai_text.md",
+      "expected_output": "French AI patterns removed: crucial, fait office de, souligne, met en évidence, de manière transparente, précieuses perspectives. Copula fix: fait office de → est. Bold-header list → prose. Negative parallelism simplified. Meaning preserved.",
+      "files": ["evals/files/fr_ai_text.md"],
+      "expectations": [
+        "Words like 'crucial', 'révolutionnaire', 'exhaustive' are removed or replaced",
+        "The phrase 'fait office de' is replaced with 'est' or equivalent",
+        "The bold-label list format is converted to prose or plain list",
+        "'De plus' or 'En outre' sentence opener is removed or replaced",
+        "'Les experts s'accordent à dire' without citation is flagged or removed",
+        "The trailing clause 'ce qui met en évidence...' is removed",
+        "'il convient de noter' is removed or simplified",
+        "The original meaning and factual claims are preserved"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "ho scritto questo testo sulla trasformazione digitale ma è troppo 'AI-generated'. puoi togliere i pattern artificiali? il file è in evals/files/it_ai_text.md",
+      "expected_output": "Italian AI patterns removed: cruciale, funge da, sottolinea, mette in evidenza, in modo trasparente, preziose intuizioni. Copula fix: funge da → è. Bold-header list → prose. Negative parallelism simplified. Meaning preserved.",
+      "files": ["evals/files/it_ai_text.md"],
+      "expectations": [
+        "Words like 'cruciale', 'rivoluzionaria', 'esaustivo' are removed or replaced",
+        "The phrase 'funge da' is replaced with 'è' or equivalent",
+        "The bold-label list format is converted to prose or plain list",
+        "'Inoltre' sentence opener is removed or replaced",
+        "'Gli esperti concordano' without citation is flagged or removed",
+        "The trailing clause 'il che mette in evidenza...' is removed",
+        "'è importante sottolineare' is removed or simplified",
+        "The original meaning and factual claims are preserved"
+      ]
+    }
+  ]
+}
