@@ -1,0 +1,89 @@
+{
+  "skill_name": "databricks-sql-autotuner",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "/databricks-sql-autotuner \"SELECT c.customer_id, c.name, SUM(o.amount) AS total FROM orders o JOIN customers c ON o.customer_id = c.customer_id WHERE o.order_date >= '2024-01-01' GROUP BY c.customer_id, c.name ORDER BY total DESC LIMIT 100\"",
+      "expected_output": "Claude discovers available Databricks profiles and clusters, asks which to use, runs EXPLAIN EXTENDED on the query, identifies any shuffle or join bottlenecks, rewrites the SQL with optimizations (e.g. partition pruning, CTE restructuring), validates results are identical, benchmarks both versions with 3 runs each, and reports speedup with statistical significance.",
+      "assertions": [
+        {
+          "text": "Ran 'databricks auth profiles' to list available profiles",
+          "type": "behavior"
+        },
+        {
+          "text": "Asked user to confirm which profile and cluster to use before proceeding",
+          "type": "behavior"
+        },
+        {
+          "text": "Ran EXPLAIN EXTENDED before writing the optimized query",
+          "type": "behavior"
+        },
+        {
+          "text": "Produced an optimized query that is different from the original",
+          "type": "output"
+        },
+        {
+          "text": "Used tune.py for benchmarking rather than writing custom timing code inline",
+          "type": "behavior"
+        },
+        {
+          "text": "Reported speedup with mean, std, and whether the result was statistically significant",
+          "type": "output"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "/databricks-sql-autotuner queries/slow_report.sql",
+      "expected_output": "Claude reads the file at queries/slow_report.sql, then follows the full workflow: profile/cluster discovery, env setup, EXPLAIN, optimization, validation, benchmark. Works identically to the inline SQL path.",
+      "assertions": [
+        {
+          "text": "Read the .sql file rather than treating the path as an inline SQL string",
+          "type": "behavior"
+        },
+        {
+          "text": "Ran the full workflow (explain → optimize → validate → benchmark)",
+          "type": "behavior"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "hey this databricks query has been killing me for days, it times out after 10 minutes. can you help optimize it?\n\nSELECT /*+ BROADCAST(dim_product) */ t.order_id, t.amount, p.category, r.region_name FROM fact_transactions t JOIN dim_product p ON t.product_id = p.product_id JOIN dim_region r ON t.region_code = r.region_code WHERE t.transaction_date BETWEEN '2023-01-01' AND '2023-12-31' AND p.category IN ('Electronics', 'Apparel') UNION ALL SELECT t.order_id, t.amount, p.category, r.region_name FROM fact_transactions_archive t JOIN dim_product p ON t.product_id = p.product_id JOIN dim_region r ON t.region_code = r.region_code WHERE t.transaction_date BETWEEN '2022-01-01' AND '2022-12-31'",
+      "expected_output": "Claude recognizes this as a SQL tuning request even without the /databricks-sql-autotuner prefix, runs the full workflow, and specifically catches that the BROADCAST hint inside a UNION ALL branch must be moved to the outermost SELECT to avoid a Spark parse error.",
+      "assertions": [
+        {
+          "text": "Triggered the skill based on the user's description of a slow query without explicit command",
+          "type": "behavior"
+        },
+        {
+          "text": "Noted that BROADCAST hints cannot appear inside UNION ALL CTE branches and moved it to the outermost SELECT",
+          "type": "output"
+        },
+        {
+          "text": "Did not use DataFrame API or cluster config changes in the optimization",
+          "type": "output"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "/databricks-sql-autotuner \"SELECT * FROM events WHERE udf_parse_url(url, 'HOST') = 'example.com' AND udf_country_from_zip(zip_code) = 'DE'\" --n-runs 5",
+      "expected_output": "Claude identifies that udf_parse_url is a persistent catalog function and udf_country_from_zip is a session UDF that needs registration, creates udf_setup.py with the register_udfs(spark) function, and runs the benchmark with 5 runs instead of the default 3.",
+      "assertions": [
+        {
+          "text": "Identified which UDFs are persistent vs session-scoped",
+          "type": "output"
+        },
+        {
+          "text": "Created a udf_setup.py file with a register_udfs(spark) function for session UDFs",
+          "type": "output"
+        },
+        {
+          "text": "Used --n-runs 5 for the benchmark (honored the user override)",
+          "type": "behavior"
+        }
+      ]
+    }
+  ]
+}

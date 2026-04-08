@@ -13,6 +13,7 @@
 .env
 .env.*
 .venv/
+.venv_autotuner/
 node_modules/
 
 # UV Lock file
