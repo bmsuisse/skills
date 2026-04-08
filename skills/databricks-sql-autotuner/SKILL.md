@@ -127,13 +127,13 @@ Auto-select any running general-purpose cluster if one exists; otherwise ask.
 
 If the chosen cluster is terminated, start it:
 ```bash
-databricks clusters start --cluster-id <CLUSTER_ID> --profile <PROFILE>
+databricks clusters start <CLUSTER_ID> --profile <PROFILE>
 ```
 
 ### 1.4 Get DBR version
 
 ```bash
-databricks clusters get --cluster-id <CLUSTER_ID> --profile <PROFILE> \
+databricks clusters get <CLUSTER_ID> --profile <PROFILE> --output json \
   | python3 -c "import sys,json; v=json.load(sys.stdin)['spark_version']; print(v.split('-')[0])"
 ```
 
@@ -144,7 +144,7 @@ Record as `DBR_VERSION` (e.g., `17.3`). This determines which `databricks-connec
 Run to discover the current defaults:
 
 ```bash
-databricks clusters get --cluster-id <CLUSTER_ID> --profile <PROFILE> \
+databricks clusters get <CLUSTER_ID> --profile <PROFILE> --output json \
   | python3 -c "import sys,json; c=json.load(sys.stdin); \
     cfg=c.get('spark_conf',{}); \
     print('catalog:', cfg.get('spark.databricks.sql.initial.catalog.name','hive_metastore')); \
