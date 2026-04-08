@@ -181,16 +181,35 @@ Present a summary and wait for confirmation:
 
 ## Phase 2 — Environment setup
 
-Requires **uv**. Check it is available:
+### 2.0 Resolve the skill directory
+
+The scripts live inside the skill, not the project. Locate them first:
+
+```bash
+SKILL_DIR=$(find ~/.claude/skills/databricks-sql-autotuner \
+                  "$(git rev-parse --show-toplevel 2>/dev/null)/.claude/skills/databricks-sql-autotuner" \
+             -maxdepth 0 -type d 2>/dev/null | head -1)
+echo "SKILL_DIR=$SKILL_DIR"
+```
+
+If neither path exists, check where Claude Code installed the skill:
+```bash
+find ~ -path "*/.claude/skills/databricks-sql-autotuner" -maxdepth 6 -type d 2>/dev/null | head -1
+```
+
+Record as `SKILL_DIR`. All script paths below use `$SKILL_DIR/scripts/`.
+
+### 2.1 Check uv
+
 ```bash
 uv --version
 ```
 If missing: `curl -LsSf https://astral.sh/uv/install.sh | sh`
 
-Run the setup script with the system Python (outside any venv):
+### 2.2 Run setup
 
 ```bash
-python3 scripts/env_setup.py \
+python3 "$SKILL_DIR/scripts/env_setup.py" \
   --dbr-version <DBR_VERSION> \
   --profile <PROFILE> \
   --cluster-id <CLUSTER_ID>
@@ -200,14 +219,15 @@ This uses `uv venv` to create `.venv_autotuner/`, installs
 `databricks-connect==<DBR_VERSION>.*`, and verifies the connection with a
 `SELECT 1` smoke test.
 
-All subsequent commands invoke the venv Python directly (`uv run --python` dropped `-c` support in v0.10+, so we call the binary directly):
+All subsequent commands invoke the venv Python directly:
 
 ```bash
-.venv_autotuner/bin/python scripts/tune.py ...
-# Windows: .venv_autotuner\Scripts\python.exe scripts/tune.py ...
+VENV_PYTHON=".venv_autotuner/bin/python"          # macOS / Linux
+# Windows: VENV_PYTHON=".venv_autotuner\Scripts\python.exe"
+TUNE="$VENV_PYTHON $SKILL_DIR/scripts/tune.py"
 ```
 
-Record as `VENV_PYTHON = ".venv_autotuner/bin/python"` (Windows: `.venv_autotuner\Scripts\python.exe`).
+Use `$TUNE` for every `tune.py` invocation from here on.
 
 ---
 
@@ -262,7 +282,7 @@ echo "${LOG_FILE}"     >> .git/info/exclude
 Benchmark the original query to establish `BASELINE_MEAN`:
 
 ```bash
-<VENV_PYTHON> scripts/tune.py \
+$TUNE \
   --profile <PROFILE> \
   --cluster-id <CLUSTER_ID> \
   --original @original.sql \
@@ -288,7 +308,7 @@ would answer (e.g. "is this table small enough to broadcast?").
 ### 3.1 Get the execution plan
 
 ```bash
-<VENV_PYTHON> scripts/tune.py \
+$TUNE \
   --profile <PROFILE> \
   --cluster-id <CLUSTER_ID> \
   --original "<QUERY_OR_@FILE>" \
@@ -335,7 +355,7 @@ itself may be the bottleneck — not the outer query.
 To read the view definition:
 
 ```bash
-<VENV_PYTHON> scripts/tune.py \
+$TUNE \
   --profile <PROFILE> \
   --cluster-id <CLUSTER_ID> \
   --original "SHOW CREATE TABLE <view_name>" \
@@ -377,7 +397,7 @@ would answer. Pass only the tables relevant to the bottleneck — not every tabl
 the query.
 
 ```bash
-<VENV_PYTHON> scripts/tune.py \
+$TUNE \
   --profile <PROFILE> \
   --cluster-id <CLUSTER_ID> \
   --catalog <CATALOG> \
@@ -588,7 +608,7 @@ Commit **before** benchmarking. This records what was tried even if it doesn't i
 ### 5.2 Run the benchmark
 
 ```bash
-<VENV_PYTHON> scripts/tune.py \
+$TUNE \
   --profile <PROFILE> \
   --cluster-id <CLUSTER_ID> \
   --original @original.sql \
@@ -651,14 +671,14 @@ COMMIT  git add optimized_<N>.sql && git commit -m "sql-tune: attempt <N> — <d
         Commit before benchmarking — this records what was tried.
 
 RUN     # Always validate + benchmark (needed for all goals)
-        <VENV_PYTHON> scripts/tune.py \
+        $TUNE \
           --profile <PROFILE> --cluster-id <CLUSTER_ID> \
           --original @original.sql --optimized @optimized_<N>.sql \
           --catalog <CATALOG> --schema <SCHEMA> \
           --n-runs <N_RUNS> > $LOG_FILE 2>&1
 
         # For simplicity / both goals, also score complexity
-        python3 scripts/complexity.py --json optimized_<N>.sql > complexity_<N>.json
+        python3 "$SKILL_DIR/scripts/complexity.py" --json optimized_<N>.sql > complexity_<N>.json
 
 MEASURE Extract from $LOG_FILE (timing) and complexity_<N>.json (score).
         On crash: read last 50 lines for the error. Attempt up to 2 quick fixes,
