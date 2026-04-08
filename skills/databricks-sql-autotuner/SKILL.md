@@ -33,11 +33,40 @@ Read these before writing the optimized query:
 
 ## Phase 0 — Parse input
 
-The user invokes with: `/databricks-sql-autotuner <query-or-path>`
+The user invokes with:
 
-- If the argument is a file path (ends in `.sql` or the path exists), read the file.
-- Otherwise, treat the argument as an inline SQL string.
-- If no argument was provided, ask the user to paste or provide the query now.
+```
+/databricks-sql-autotuner [options] <query-or-path>
+```
+
+Supported options (all optional — skip any discovery step where the value is provided):
+
+| Option | Example | Effect |
+|:-------|:--------|:-------|
+| `--cluster <id>` | `--cluster 0408-195905-abc` | Skip cluster listing; use this cluster ID directly |
+| `--profile <name>` | `--profile premium` | Skip profile selection; use this profile |
+| `--catalog <name>` | `--catalog my_catalog` | Skip catalog discovery; use this value |
+| `--schema <name>` | `--schema my_schema` | Skip schema discovery; use this value |
+| `--runs <n>` | `--runs 5` | Override default benchmark run count (default: 3) |
+| `--goals <list>` | `--goals speed` | Comma-separated goals: `speed`, `simplicity`, or `speed,simplicity` |
+
+Record as `GOALS` (default: `speed`). Accepted values:
+
+| Value | Meaning |
+|:------|:--------|
+| `speed` | Minimize execution time |
+| `simplicity` | Minimize complexity score (lines, nesting, subqueries) |
+| `speed,simplicity` | Optimize speed first; once accepted, simplify while staying within 10% of best time |
+
+Parse these from the invocation arguments before starting Phase 1. For any option
+not supplied, run the normal discovery step.
+
+| `--query <sql-or-path>` | `--query @slow.sql` | SQL string or `@path/to/file.sql`; if omitted, ask the user |
+
+The `--query` value:
+- `@path/to/file.sql` → read the file
+- Any other string → treat as inline SQL
+- Omitted → ask the user to paste or provide the query
 
 ---
 
@@ -56,10 +85,16 @@ databricks auth login --profile <name>
 
 ### 1.2 Select profile
 
-Present all available profiles with their workspace host URLs.
-Ask the user which profile to use. Do not auto-select, even if only one exists.
+If `--profile` was provided, skip this step.
+
+Otherwise present all available profiles with their workspace host URLs.
+Auto-select if only one exists; otherwise ask.
 
 ### 1.3 Select cluster
+
+If `--cluster` was provided, skip the listing and use that ID directly.
+
+Otherwise:
 
 ```bash
 databricks clusters list --profile <PROFILE> --output json
@@ -67,7 +102,7 @@ databricks clusters list --profile <PROFILE> --output json
 
 Filter to clusters with `state = RUNNING` or `state = TERMINATED` (can be started).
 Present the list (cluster ID, name, state, DBR version).
-Ask which cluster to target. Default to any running general-purpose cluster if one exists.
+Auto-select any running general-purpose cluster if one exists; otherwise ask.
 
 If the chosen cluster is terminated, start it:
 ```bash
@@ -101,7 +136,9 @@ command returns nothing useful.
 
 ### 1.6 Benchmark runs
 
-Ask:
+If `--runs` was provided, skip this step and use that value.
+
+Otherwise ask:
 > **How many benchmark runs per query variant? (default: 3)**
 
 Record as `N_RUNS` (default `3`, minimum `2`).
@@ -592,26 +629,40 @@ EDIT    Write one focused change to optimized_<N>.sql.
 COMMIT  git add optimized_<N>.sql && git commit -m "sql-tune: attempt <N> — <description>"
         Commit before benchmarking — this records what was tried.
 
-RUN     <VENV_PYTHON> scripts/tune.py \
+RUN     # Always validate + benchmark (needed for all goals)
+        <VENV_PYTHON> scripts/tune.py \
           --profile <PROFILE> --cluster-id <CLUSTER_ID> \
           --original @original.sql --optimized @optimized_<N>.sql \
           --catalog <CATALOG> --schema <SCHEMA> \
           --n-runs <N_RUNS> > $LOG_FILE 2>&1
 
-MEASURE Read the JSON from $LOG_FILE.
+        # For simplicity / both goals, also score complexity
+        python3 scripts/complexity.py --json optimized_<N>.sql > complexity_<N>.json
+
+MEASURE Extract from $LOG_FILE (timing) and complexity_<N>.json (score).
         On crash: read last 50 lines for the error. Attempt up to 2 quick fixes,
         amend the commit, re-run. If still broken, soft-reset and discard.
 
-DECIDE  Compare optimized.mean_s to BEST_MEAN:
-        ✅ IMPROVED + statistically significant
-             → keep commit, update BEST_MEAN, update best query file
-        ❌ SAME/WORSE or not statistically significant
-             → git reset HEAD~1 && git restore optimized_<N>.sql
-        💥 VALIDATION FAIL (results differ)
-             → fix the SQL semantics first, then re-benchmark
+        Metric to optimize depends on GOALS:
+        ┌──────────────────────┬────────────────────────────────────────────────────┐
+        │ speed                │ optimized.mean_s  (lower is better)                │
+        │ simplicity           │ complexity score  (lower is better)                │
+        │ speed,simplicity     │ Phase 1: optimize mean_s (same as speed)           │
+        │                      │ Phase 2: once speed accepted, optimize score        │
+        │                      │          while mean_s stays ≤ BEST_MEAN * 1.10     │
+        └──────────────────────┴────────────────────────────────────────────────────┘
+
+DECIDE  Compare metric to BEST:
+        speed             → ✅ if mean_s improved + statistically significant
+        simplicity        → ✅ if complexity score decreased + validation passes
+        speed,simplicity  → phase 1: same as speed
+                            phase 2: ✅ if score decreased AND mean_s ≤ BEST_MEAN * 1.10
+
+        ❌ no improvement → git reset HEAD~1 && git restore optimized_<N>.sql
+        💥 VALIDATION FAIL → fix semantics first, then re-benchmark
 
 LOG     Append to $RESULTS_FILE:
-        <N>\t<sha>\t<mean_s>\t<speedup>\t<status>\t<description>
+        <N>\t<sha>\t<mean_s>\t<complexity_score>\t<status>\t<description>
 ```
 
 ### Strategy priority
@@ -624,6 +675,21 @@ LOG     Append to $RESULTS_FILE:
    already did what the hint asked, or if a Photon fallback is dominating
 6. **Accept the floor** — if 5+ consecutive attempts yield no improvement and the
    remaining ideas are speculative, stop the loop and go to Phase 6
+
+**For `simplicity` or `speed,simplicity` goal**, strategy shifts focus (in the simplicity phase):
+- Prefer removing CTEs that the optimizer re-evaluates anyway
+- Inline single-use subqueries where they don't increase nesting
+- Replace multi-step transformations with a single built-in function call
+- Remove redundant ORDER BY, DISTINCT, or GROUP BY that the caller drops
+- Simplicity wins don't require statistical significance — a lower score is enough
+
+**Hard constraints that apply to all goals, including simplicity:**
+- Never introduce `SELECT *` — explicit column lists must be preserved exactly.
+  `SELECT *` hides schema changes, breaks downstream consumers, and can silently
+  change column order. A query with fewer lines but a `SELECT *` is not simpler —
+  it is fragile.
+- Never remove columns from the output or reorder them
+- Never change NULL semantics or filter behaviour
 
 ---
 
