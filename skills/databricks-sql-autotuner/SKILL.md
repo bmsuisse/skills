@@ -26,17 +26,20 @@ cluster. The optimized query must produce **identical results** and show a
 # Minimal — paste an inline query, discover everything automatically
 /databricks-sql-autotuner "SELECT o.order_id, SUM(l.amount) FROM orders o JOIN lines l ON o.id = l.order_id GROUP BY o.order_id"
 
-# From a file, specific cluster and profile
-/databricks-sql-autotuner --cluster 0408-195905-abc --profile premium @queries/slow_report.sql
+# From a file, cluster by ID
+/databricks-sql-autotuner --cluster-id 0408-195905-abc --profile premium @queries/slow_report.sql
+
+# From a file, cluster by name
+/databricks-sql-autotuner --cluster-name my-cluster --profile premium @queries/slow_report.sql
 
 # Optimize for speed, 5 benchmark runs
-/databricks-sql-autotuner --cluster 0408-195905-abc --goals speed --runs 5 @queries/slow_report.sql
+/databricks-sql-autotuner --cluster-id 0408-195905-abc --goals speed --runs 5 @queries/slow_report.sql
 
 # Optimize for speed first, then simplify
-/databricks-sql-autotuner --cluster 0408-195905-abc --goals speed,simplicity @queries/slow_report.sql
+/databricks-sql-autotuner --cluster-id 0408-195905-abc --goals speed,simplicity @queries/slow_report.sql
 
 # Override catalog and schema
-/databricks-sql-autotuner --cluster 0408-195905-abc --catalog sales --schema prod @queries/slow_report.sql
+/databricks-sql-autotuner --cluster-id 0408-195905-abc --catalog sales --schema prod @queries/slow_report.sql
 ```
 
 ---
@@ -64,7 +67,8 @@ Supported options (all optional — skip any discovery step where the value is p
 
 | Option | Example | Effect |
 |:-------|:--------|:-------|
-| `--cluster <id>` | `--cluster 0408-195905-abc` | Skip cluster listing; use this cluster ID directly |
+| `--cluster-id <id>` | `--cluster-id 0408-195905-abc` | Skip cluster listing; use this cluster ID directly |
+| `--cluster-name <name>` | `--cluster-name my-cluster` | Skip cluster listing; find cluster by name |
 | `--profile <name>` | `--profile premium` | Skip profile selection; use this profile |
 | `--catalog <name>` | `--catalog my_catalog` | Skip catalog discovery; use this value |
 | `--schema <name>` | `--schema my_schema` | Skip schema discovery; use this value |
@@ -113,9 +117,24 @@ Auto-select if only one exists; otherwise ask.
 
 ### 1.3 Select cluster
 
-If `--cluster` was provided, skip the listing and use that ID directly.
+If `--cluster-id` was provided, use that ID directly and skip the listing.
 
-Otherwise:
+If `--cluster-name` was provided, resolve it to an ID:
+
+```bash
+databricks clusters list --profile <PROFILE> --output json \
+  | python3 -c "
+import sys, json
+clusters = json.load(sys.stdin)
+name = '<CLUSTER_NAME>'
+match = [c for c in clusters if c.get('cluster_name') == name]
+if not match:
+    print('ERROR: no cluster named', name, file=sys.stderr); sys.exit(1)
+print(match[0]['cluster_id'])
+"
+```
+
+If neither was provided, list all clusters:
 
 ```bash
 databricks clusters list --profile <PROFILE> --output json
