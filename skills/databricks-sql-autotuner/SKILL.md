@@ -20,6 +20,27 @@ Analyze, rewrite, validate, and benchmark SQL queries against a live Databricks
 cluster. The optimized query must produce **identical results** and show a
 **statistically meaningful speedup** before it is accepted.
 
+## Examples
+
+```
+# Minimal — paste an inline query, discover everything automatically
+/databricks-sql-autotuner "SELECT o.order_id, SUM(l.amount) FROM orders o JOIN lines l ON o.id = l.order_id GROUP BY o.order_id"
+
+# From a file, specific cluster and profile
+/databricks-sql-autotuner --cluster 0408-195905-abc --profile premium @queries/slow_report.sql
+
+# Optimize for speed, 5 benchmark runs
+/databricks-sql-autotuner --cluster 0408-195905-abc --goals speed --runs 5 @queries/slow_report.sql
+
+# Optimize for speed first, then simplify
+/databricks-sql-autotuner --cluster 0408-195905-abc --goals speed,simplicity @queries/slow_report.sql
+
+# Override catalog and schema
+/databricks-sql-autotuner --cluster 0408-195905-abc --catalog sales --schema prod @queries/slow_report.sql
+```
+
+---
+
 ## Reference files
 
 Read these before writing the optimized query:
