@@ -85,12 +85,19 @@ Record as `DBR_VERSION` (e.g., `17.3`). This determines which `databricks-connec
 
 ### 1.5 Catalog / schema context
 
-Ask:
-> **What catalog and schema should I use as the default context for this query?**
-> (e.g., `my_catalog` / `default`, or `main` / `my_schema`)
-> Press Enter to skip if the query uses fully qualified table names.
+Run to discover the current defaults:
 
-Record as `CATALOG` and `SCHEMA` (may be empty).
+```bash
+databricks clusters get --cluster-id <CLUSTER_ID> --profile <PROFILE> \
+  | python3 -c "import sys,json; c=json.load(sys.stdin); \
+    cfg=c.get('spark_conf',{}); \
+    print('catalog:', cfg.get('spark.databricks.sql.initial.catalog.name','hive_metastore')); \
+    print('schema:', cfg.get('spark.databricks.sql.initial.catalog.namespace','default'))"
+```
+
+Use whatever the cluster reports as `CATALOG` and `SCHEMA`. Only ask the user to
+override if the query explicitly references a different catalog/schema or if the
+command returns nothing useful.
 
 ### 1.6 Benchmark runs
 
