@@ -87,6 +87,7 @@ Parse these from the invocation arguments before starting Phase 1. For any optio
 not supplied, run the normal discovery step.
 
 | `--query <sql-or-path>` | `--query @slow.sql` | SQL string or `@path/to/file.sql`; if omitted, ask the user |
+| `--optimized <path>` | `--optimized out.sql` | Write optimized query to a separate file instead of editing the original in place |
 
 The `--query` value:
 - `@path/to/file.sql` → read the file
@@ -272,48 +273,55 @@ LOG_FILE="sqltune-${RUN_ID}.log"
 git checkout -b sql-tune/${RUN_ID}
 ```
 
-### 2b.3 Save the original query
+### 2b.3 Establish the working file
 
-Write the original query to a file — this is the file you'll pass to `tune.py` via `@file` syntax:
+Determine `QUERY_FILE` (the file that will be edited each iteration) and
+`ORIGINAL_FILE` (the baseline passed to `--original` in tune.py):
 
+| Scenario | ORIGINAL_FILE | QUERY_FILE |
+|:---------|:-------------|:-----------|
+| `--query @file.sql` (default) | `file.sql` | `file.sql` — edit in place |
+| `--query @file.sql --optimized out.sql` | `file.sql` | `out.sql` — write here, original stays untouched |
+| `--query "inline SQL"` | `query.sql` (write it, commit) | `query.sql` — edit in place |
+| `--query "inline SQL" --optimized out.sql` | `query.sql` | `out.sql` |
+
+When `--optimized` is given, copy the original into that file first:
 ```bash
-# save as original.sql in the repo root (or a tuning/ subdirectory)
+cp $ORIGINAL_FILE $QUERY_FILE
+git add $QUERY_FILE
 ```
+
+When editing in place (no `--optimized`), `ORIGINAL_FILE == QUERY_FILE` and git tracks the evolution naturally.
 
 ### 2b.4 Initialize the results log
-
-Create `$RESULTS_FILE` in the repo root:
-
-```
-attempt	commit	mean_s	speedup	status	description
-0	<sha>	<baseline_mean>	1.0	baseline	original query
-```
-
-Register both files so git ignores them:
 
 ```bash
 echo "${RESULTS_FILE}" >> .git/info/exclude
 echo "${LOG_FILE}"     >> .git/info/exclude
 ```
 
-### 2b.5 Run the baseline
+Create `$RESULTS_FILE`:
 
-Benchmark the original query to establish `BASELINE_MEAN`:
+```
+attempt	commit	mean_s	speedup	status	description
+0	<sha>	<baseline_mean>	1.0	baseline	original query
+```
+
+### 2b.5 Run the baseline
 
 ```bash
 $TUNE \
   --profile <PROFILE> \
   --cluster-id <CLUSTER_ID> \
-  --original @original.sql \
-  --optimized @original.sql \   # same query — just to get timing
+  --original @$QUERY_FILE \
+  --optimized @$QUERY_FILE \
   --catalog <CATALOG> \
   --schema <SCHEMA> \
   --n-runs <N_RUNS> > $LOG_FILE 2>&1
 ```
 
-Extract `original.mean_s` from the JSON output and record as experiment `0`.
+Extract `original.mean_s` and record as attempt `0`.
 
-Report to the user:
 > Baseline: **mean = X.XXs**. Branch: `sql-tune/<run-id>`. Starting analysis.
 
 ---
@@ -612,17 +620,16 @@ def register_udfs(spark):
 
 ## Phase 5 — Validate, benchmark & log
 
-### 5.1 Save the optimized query
+### 5.1 Edit and commit
 
-Write the optimized query to `optimized_<N>.sql` (where N is the attempt number,
-starting at 1). Always work from files — never pass long queries inline.
+Edit `$QUERY_FILE` directly — the branch is isolated so edits are safe to make in place.
 
 ```bash
-git add optimized_<N>.sql
+git add $QUERY_FILE
 git commit -m "sql-tune: attempt <N> — <one-line description of what changed>"
 ```
 
-Commit **before** benchmarking. This records what was tried even if it doesn't improve things.
+Commit **before** benchmarking so every attempt is in the git log regardless of outcome.
 
 ### 5.2 Run the benchmark
 
@@ -630,12 +637,15 @@ Commit **before** benchmarking. This records what was tried even if it doesn't i
 $TUNE \
   --profile <PROFILE> \
   --cluster-id <CLUSTER_ID> \
-  --original @original.sql \
-  --optimized @optimized_<N>.sql \
+  --original @$QUERY_FILE \
+  --optimized @$QUERY_FILE \
   --catalog <CATALOG> \
   --schema <SCHEMA> \
   --n-runs <N_RUNS> > $LOG_FILE 2>&1
 ```
+
+(Both `--original` and `--optimized` point to the same file — tune.py compares the
+current version to the baseline it runs internally.)
 
 The script outputs JSON with:
 - `validation.passed` — whether results are byte-for-byte identical
@@ -654,9 +664,8 @@ A speedup is **real** only when:
 
 ```
 ✅ IMPROVED  → keep commit, update BEST_MEAN = optimized.mean_s
-❌ SAME/WORSE → revert:
-               git reset HEAD~1
-               git restore optimized_<N>.sql
+❌ SAME/WORSE → revert the file to the last kept commit:
+               git checkout HEAD $QUERY_FILE
 💥 VALIDATION FAIL → fix the query and re-benchmark before reverting
 ```
 
@@ -683,25 +692,24 @@ THINK   Read $RESULTS_FILE and the current best query.
         Form a specific hypothesis: "changing X should reduce Y because Z."
         Follow the strategy priority below.
 
-EDIT    Write one focused change to optimized_<N>.sql.
-        One idea per attempt — don't combine multiple changes.
+EDIT    Edit $QUERY_FILE directly — one focused change per attempt.
+        The branch is isolated; edits are safe to make in place.
 
-COMMIT  git add optimized_<N>.sql && git commit -m "sql-tune: attempt <N> — <description>"
+COMMIT  git add $QUERY_FILE && git commit -m "sql-tune: attempt <N> — <description>"
         Commit before benchmarking — this records what was tried.
 
-RUN     # Always validate + benchmark (needed for all goals)
-        $TUNE \
+RUN     $TUNE \
           --profile <PROFILE> --cluster-id <CLUSTER_ID> \
-          --original @original.sql --optimized @optimized_<N>.sql \
+          --original @$ORIGINAL_FILE --optimized @$QUERY_FILE \
           --catalog <CATALOG> --schema <SCHEMA> \
           --n-runs <N_RUNS> > $LOG_FILE 2>&1
 
         # For simplicity / both goals, also score complexity
-        python3 "$SKILL_DIR/scripts/complexity.py" --json optimized_<N>.sql > complexity_<N>.json
+        python3 "$SKILL_DIR/scripts/complexity.py" --json $QUERY_FILE > complexity.json
 
-MEASURE Extract from $LOG_FILE (timing) and complexity_<N>.json (score).
+MEASURE Extract from $LOG_FILE (timing) and complexity.json (score).
         On crash: read last 50 lines for the error. Attempt up to 2 quick fixes,
-        amend the commit, re-run. If still broken, soft-reset and discard.
+        amend the commit, re-run. If still broken, revert and discard.
 
         Metric to optimize depends on GOALS:
         ┌──────────────────────┬────────────────────────────────────────────────────┐
@@ -718,7 +726,7 @@ DECIDE  Compare metric to BEST:
         speed,simplicity  → phase 1: same as speed
                             phase 2: ✅ if score decreased AND mean_s ≤ BEST_MEAN * 1.10
 
-        ❌ no improvement → git reset HEAD~1 && git restore optimized_<N>.sql
+        ❌ no improvement → git checkout HEAD $QUERY_FILE   (revert file, keep commit msg in log)
         💥 VALIDATION FAIL → fix semantics first, then re-benchmark
 
 LOG     Append to $RESULTS_FILE:
