@@ -221,12 +221,13 @@ def format_table_stats_report(stats_list: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def time_query(spark, query: str, n_runs: int, label: str) -> list[float]:
+def time_query(spark, query: str, n_runs: int, label: str, timing_count: bool = False) -> list[float]:
+    exec_sql = f"SELECT COUNT(*) AS n FROM ({query})" if timing_count else query
     times: list[float] = []
     _progress(0, n_runs, label)
     for i in range(n_runs):
         start = time.perf_counter()
-        spark.sql(query).collect()
+        spark.sql(exec_sql).collect()
         elapsed = time.perf_counter() - start
         times.append(elapsed)
         _progress(i + 1, n_runs, label, elapsed)
@@ -290,6 +291,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--schema")
     p.add_argument("--n-runs", type=int, default=3, dest="n_runs")
     p.add_argument("--explain-only", action="store_true", dest="explain_only")
+    p.add_argument("--timing-count", action="store_true", dest="timing_count",
+                   help="Wrap timing runs in COUNT(*) to avoid collecting large result sets to the driver")
     p.add_argument("--table-stats", nargs="+", dest="table_stats", metavar="TABLE",
                    help="Collect metadata + stats for tables (fully qualified or unqualified)")
     return p
@@ -351,11 +354,14 @@ def main() -> None:
     validation = validate_queries(spark, original, optimized)
     print(f"[validate] {'PASS' if validation['passed'] else 'FAIL'}", file=sys.stderr)
 
+    if args.timing_count:
+        print("[bench] Using COUNT(*) wrapper for timing (--timing-count)", file=sys.stderr)
+
     print(f"\n[bench] Original ({args.n_runs} runs)...", file=sys.stderr)
-    orig_times = time_query(spark, original, args.n_runs, "original")
+    orig_times = time_query(spark, original, args.n_runs, "original", args.timing_count)
 
     print(f"\n[bench] Optimized ({args.n_runs} runs)...", file=sys.stderr)
-    opt_times = time_query(spark, optimized, args.n_runs, "optimized")
+    opt_times = time_query(spark, optimized, args.n_runs, "optimized", args.timing_count)
 
     orig_stats = compute_stats(orig_times)
     opt_stats = compute_stats(opt_times)

@@ -88,6 +88,7 @@ not supplied, run the normal discovery step.
 
 | `--query <sql-or-path>` | `--query @slow.sql` | SQL string or `@path/to/file.sql`; if omitted, ask the user |
 | `--optimized <path>` | `--optimized out.sql` | Write optimized query to a separate file instead of editing the original in place |
+| `--timing-count` | `--timing-count` | Wrap timing runs in `COUNT(*)` to avoid collecting large result sets to the driver (use when query returns millions of rows) |
 
 The `--query` value:
 - `@path/to/file.sql` → read the file
@@ -833,5 +834,6 @@ Validation: PASS — N rows, identical results
 | Version mismatch | Ensure `DBR_VERSION` from `clusters get` matches installed `databricks-connect` |
 | `.venv_autotuner` import errors | Delete the venv and re-run `env_setup.py` |
 | Validation diff on floats | May be floating-point non-determinism — check with `ROUND()` or cast to DECIMAL |
+| `.collect()` fails with `>4 GiB` / driver OOM | Query returns millions of rows — add `--timing-count` to wrap timing runs in `COUNT(*)`. Validation still uses real results. |
 | Hint parse error in UNION ALL | Move hint to outermost SELECT (see Phase 4 restriction) |
 | Session UDF not found | Create `udf_setup.py` with a `register_udfs(spark)` function |
