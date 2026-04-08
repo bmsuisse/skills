@@ -71,8 +71,9 @@ def verify_connection(venv: Path, profile: str, cluster_id: str) -> None:
         "assert result[0]['ok'] == 1, 'Unexpected result from SELECT 1'\n"
         "print(f'[verify] OK — Spark {spark.version}')\n"
     )
+    # Call the venv Python directly — uv run dropped -c support in v0.10+
     proc = subprocess.run(
-        ["uv", "run", "--python", str(venv_python(venv)), "-c", code],
+        [str(venv_python(venv)), "-c", code],
         capture_output=True,
         text=True,
     )
@@ -101,7 +102,7 @@ def main() -> None:
 
     python_path = venv_python(venv)
     print(f"\n[setup] Done. Run tune.py with:")
-    print(f"  uv run --python {python_path} scripts/tune.py "
+    print(f"  {python_path} scripts/tune.py "
           f"--profile {args.profile} --cluster-id {args.cluster_id} ...")
 
 

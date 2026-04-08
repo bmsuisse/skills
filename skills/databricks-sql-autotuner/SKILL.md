@@ -135,13 +135,14 @@ This uses `uv venv` to create `.venv_autotuner/`, installs
 `databricks-connect==<DBR_VERSION>.*`, and verifies the connection with a
 `SELECT 1` smoke test.
 
-All subsequent commands use:
+All subsequent commands invoke the venv Python directly (`uv run --python` dropped `-c` support in v0.10+, so we call the binary directly):
+
 ```bash
-uv run --python .venv_autotuner/bin/python scripts/tune.py ...
-# Windows: uv run --python .venv_autotuner\Scripts\python.exe scripts/tune.py ...
+.venv_autotuner/bin/python scripts/tune.py ...
+# Windows: .venv_autotuner\Scripts\python.exe scripts/tune.py ...
 ```
 
-Record as `VENV_RUN = "uv run --python .venv_autotuner/bin/python"` (adjust path for Windows).
+Record as `VENV_PYTHON = ".venv_autotuner/bin/python"` (Windows: `.venv_autotuner\Scripts\python.exe`).
 
 ---
 
@@ -159,7 +160,7 @@ For each table, you will collect metadata and stats in the next step.
 ### 3.2 Collect table metadata and statistics
 
 ```bash
-<VENV_RUN> scripts/tune.py \
+<VENV_PYTHON> scripts/tune.py \
   --profile <PROFILE> \
   --cluster-id <CLUSTER_ID> \
   --catalog <CATALOG> \
@@ -193,7 +194,7 @@ Use these facts to make optimization decisions:
 ### 3.3 Get the execution plan
 
 ```bash
-<VENV_RUN> scripts/tune.py \
+<VENV_PYTHON> scripts/tune.py \
   --profile <PROFILE> \
   --cluster-id <CLUSTER_ID> \
   --original "<QUERY_OR_@FILE>" \
@@ -301,7 +302,7 @@ def register_udfs(spark):
 Once the optimized query is ready:
 
 ```bash
-<VENV_RUN> scripts/tune.py \
+<VENV_PYTHON> scripts/tune.py \
   --profile <PROFILE> \
   --cluster-id <CLUSTER_ID> \
   --original "<ORIGINAL_QUERY_OR_@FILE>" \

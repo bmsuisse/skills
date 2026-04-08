@@ -32,6 +32,7 @@ import json
 import math
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 
@@ -398,13 +399,27 @@ def main() -> None:
     set_context(spark, args.catalog, args.schema)
     load_session_udfs(spark)
 
-    # --table-stats mode: collect and print metadata for requested tables
+    # --table-stats mode: collect metadata for all tables in parallel
     if args.table_stats:
-        print(f"\n[stats] Collecting metadata for: {', '.join(args.table_stats)}", file=sys.stderr)
-        all_stats = []
-        for tbl in args.table_stats:
-            print(f"[stats] {tbl}...", file=sys.stderr)
-            all_stats.append(collect_table_stats(spark, tbl))
+        tables = args.table_stats
+        print(f"\n[stats] Collecting metadata for {len(tables)} table(s) in parallel: "
+              f"{', '.join(tables)}", file=sys.stderr)
+
+        results: dict[str, dict] = {}
+        max_workers = min(len(tables), 8)  # cap at 8 concurrent Spark threads
+        with ThreadPoolExecutor(max_workers=max_workers) as pool:
+            futures = {pool.submit(collect_table_stats, spark, tbl): tbl for tbl in tables}
+            for fut in as_completed(futures):
+                tbl = futures[fut]
+                try:
+                    results[tbl] = fut.result()
+                    print(f"[stats] done: {tbl}", file=sys.stderr)
+                except Exception as exc:
+                    print(f"[stats] error for {tbl}: {exc}", file=sys.stderr)
+                    results[tbl] = {"table": tbl, "error": str(exc)}
+
+        # Preserve original table order in output
+        all_stats = [results[tbl] for tbl in tables if tbl in results]
         print(format_table_stats_report(all_stats))
         if table_stats_only:
             return
