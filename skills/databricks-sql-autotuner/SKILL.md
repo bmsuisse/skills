@@ -137,21 +137,12 @@ Record as `N_RUNS`. Then present the full summary from the JSON and wait for con
 
 ### 2.0 Resolve the skill directory
 
-The scripts live inside the skill, not the project. Locate them first:
-
 ```bash
-SKILL_DIR=$(find ~/.claude/skills/databricks-sql-autotuner \
-                  "$(git rev-parse --show-toplevel 2>/dev/null)/.claude/skills/databricks-sql-autotuner" \
-             -maxdepth 0 -type d 2>/dev/null | head -1)
+SKILL_DIR="$(git rev-parse --show-toplevel 2>/dev/null || echo "$HOME")/.claude/skills/databricks-sql-autotuner"
 echo "SKILL_DIR=$SKILL_DIR"
 ```
 
-If neither path exists, check where Claude Code installed the skill:
-```bash
-find ~ -path "*/.claude/skills/databricks-sql-autotuner" -maxdepth 6 -type d 2>/dev/null | head -1
-```
-
-Record as `SKILL_DIR`. All script paths below use `$SKILL_DIR/scripts/`.
+This is where the mapper hook installs the skill in every project. Record as `SKILL_DIR` — all script paths use `$SKILL_DIR/scripts/`.
 
 ### 2.1 Check uv
 

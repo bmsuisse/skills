@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 
@@ -35,6 +36,12 @@ def _run(*args: str) -> dict | list | None:
         return json.loads(result.stdout)
     except json.JSONDecodeError:
         return None
+
+
+def _parse_dbr(spark_version: str) -> str:
+    """Extract major.minor from a spark_version string like '17.3.x-scala2.12'."""
+    m = re.match(r"(\d+\.\d+)", spark_version)
+    return m.group(1) if m else spark_version.split("-")[0]
 
 
 def _require(*args: str) -> dict | list:
@@ -64,7 +71,7 @@ def list_clusters(profile: str) -> list[dict]:
             "cluster_name": c.get("cluster_name"),
             "state": c.get("state"),
             "spark_version": c.get("spark_version", ""),
-            "dbr_version": (c.get("spark_version") or "").split("-")[0],
+            "dbr_version": _parse_dbr((c.get("spark_version") or "")),
         }
         for c in clusters
     ]
@@ -104,15 +111,26 @@ def main() -> None:
             selected_profile = profiles[0]["name"]
             print(f"[profile] Auto-selected (only one): {selected_profile}", file=sys.stderr)
         else:
-            print("\nAvailable profiles:", file=sys.stderr)
-            for p in profiles:
-                print(f"  • {p['name']}  ({p['host']})", file=sys.stderr)
-            print(
-                "\n[action] Multiple profiles found. Re-run with --profile <name> to continue.",
-                file=sys.stderr,
-            )
-            print(json.dumps({"status": "needs_profile", "profiles": profiles}, indent=2))
-            return
+            unique_hosts = {p["host"] for p in profiles}
+            preferred = next((p["name"] for p in profiles if p["name"] == "premium"), None)
+            if len(unique_hosts) == 1:
+                # All profiles point to the same workspace — pick premium, else first
+                selected_profile = preferred or profiles[0]["name"]
+                print(
+                    f"[profile] Auto-selected '{selected_profile}' "
+                    f"(all {len(profiles)} profiles share the same host)",
+                    file=sys.stderr,
+                )
+            else:
+                print("\nAvailable profiles:", file=sys.stderr)
+                for p in profiles:
+                    print(f"  • {p['name']}  ({p['host']})", file=sys.stderr)
+                print(
+                    "\n[action] Multiple profiles on different hosts. Re-run with --profile <name>.",
+                    file=sys.stderr,
+                )
+                print(json.dumps({"status": "needs_profile", "profiles": profiles}, indent=2))
+                return
 
     # --- Clusters ---
     all_clusters = list_clusters(selected_profile)
@@ -172,7 +190,7 @@ def main() -> None:
     cluster_name = detail.get("cluster_name", selected_cluster_id)
     state = detail.get("state", "UNKNOWN")
     spark_version = detail.get("spark_version", "")
-    dbr_version = spark_version.split("-")[0] if spark_version else "unknown"
+    dbr_version = _parse_dbr(spark_version) if spark_version else "unknown"
     catalog, schema = extract_catalog_schema(detail)
 
     if state == "TERMINATED":
