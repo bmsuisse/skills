@@ -21,6 +21,7 @@
 | [coding-guidelines-python](./skills/coding-guidelines-python/) | Apply and enforce Python-specific coding standards. Use alongside coding-guidelines for any Python file — covers typi… |
 | [coding-guidelines-sql](./skills/coding-guidelines-sql/) | SQL and data warehouse coding guidelines for the BME data platform. Use this skill whenever the user is writing, revi… |
 | [coding-guidelines-typescript](./skills/coding-guidelines-typescript/) | Apply and enforce TypeScript-specific coding standards. Use alongside coding-guidelines for any TypeScript file — cov… |
+| [data-modeling-dimensional](./skills/data-modeling-dimensional/) | Dimensional data modeling guide for the Fabricks platform — covers the full pipeline from staging through raw, transf… |
 | [databricks-cli](./skills/databricks-cli/) | Databricks CLI operations: auth, profiles, data exploration, bundles, and notebook execution. Use this skill for ANY… |
 | [databricks-sql-autotuner](./skills/databricks-sql-autotuner/) | Databricks SQL query optimizer: analyzes a slow SQL query, rewrites it for speed using SQL-level optimizations only,… |
 | [deslop](./skills/deslop/) | Remove AI slop from code and pull requests. Use this skill whenever the user wants to clean up AI-generated code, rev… |
