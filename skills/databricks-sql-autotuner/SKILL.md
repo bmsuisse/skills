@@ -53,6 +53,7 @@ Read these before writing the optimized query:
 | [`references/spark-sql-hints.md`](references/spark-sql-hints.md) | Any time you are considering a hint (`BROADCAST`, `MERGE`, `SHUFFLE_HASH`, `REBALANCE`, etc.) or dealing with UNION ALL scoping |
 | [`references/spark-sql-perf-tuning.md`](references/spark-sql-perf-tuning.md) | For AQE behavior, partition tuning, statistics interpretation, and the full SQL-level optimization checklist |
 | [`references/optimization-patterns.md`](references/optimization-patterns.md) | At the start of Phase 4, and whenever Phase 3.2a identifies a view as a join target. Contains: view inlining strategy, skew salting SQL, CTE materialization caveat, Photon-unfriendly patterns, UNION ALL hint restriction, session UDF setup, and the full optimization loop strategy. |
+| [`references/sql-coding-guidelines.md`](references/sql-coding-guidelines.md) | When writing or rewriting any SQL — apply BME naming conventions, join style, CTE structure, alias patterns, and key naming rules to all generated SQL. Read at the start of Phase 4 alongside `optimization-patterns.md`. |
 
 ---
 
