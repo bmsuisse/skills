@@ -1,0 +1,47 @@
+{
+  "skill_name": "coding-guidelines-sql",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Write a SparkSQL query that reads from transf.fact_sales_order, joins to core.dim_cost_center and core.dim_item, groups by cost center and item, and sums the sales amount. Use proper BME naming conventions and SQL style.",
+      "expected_output": "A well-structured SparkSQL query using snake_case aliases, left join (not left outer join), explicit inner join, GROUP BY ALL, meaningful aliases, CTEs if needed, _sk suffix for surrogate keys, no SELECT *",
+      "files": [],
+      "expectations": [
+        "Uses 'left join' not 'left outer join'",
+        "Uses 'inner join' explicitly (not just 'join')",
+        "Aliases are snake_case and meaningful (e.g. fs, cc, i — not a, b, c)",
+        "Uses GROUP BY ALL instead of repeating column names",
+        "Column names use snake_case and are lowercase",
+        "No SELECT * — explicit column list",
+        "Surrogate key columns use _sk suffix (e.g. cost_center_sk, item_sk)"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I need to deduplicate a table of employees and keep only the most recent record per department (based on hire_date). Write the SparkSQL for this.",
+      "expected_output": "Uses QUALIFY with row_number() over (partition by department order by hire_date desc) = 1 — NOT a wrapper CTE with a WHERE rn = 1 filter",
+      "files": [],
+      "expectations": [
+        "Uses QUALIFY to filter the window function result inline",
+        "Does NOT use a wrapper CTE just to filter row_number",
+        "Uses row_number() over (partition by ... order by ... desc)",
+        "Column names are snake_case lowercase",
+        "Meaningful alias on the table"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Review this SQL and rewrite it following BME coding guidelines:\n\nSELECT o.OrderId, o.CustomerName, SUM(o.SalesAmount) as TotalSales\nFROM FactSales o\nLEFT OUTER JOIN DimCustomer c ON o.CustomerId = c.CustomerId\nWHERE LOWER(c.CustomerName) = 'test'\nGROUP BY o.OrderId, o.CustomerName",
+      "expected_output": "Rewritten query with: lowercase everything, snake_case names, 'left join' not 'left outer join', collation or note about lower() issue, GROUP BY ALL, avoid _name suffix (CustomerName -> customer), meaningful aliases",
+      "files": [],
+      "expectations": [
+        "All keywords and identifiers are lowercase",
+        "Uses 'left join' not 'left outer join'",
+        "Uses GROUP BY ALL",
+        "Flags or fixes the LOWER() on a join/filter column (prefer collation or plain equality)",
+        "Renames CustomerName to customer (avoids _name suffix per BME convention)",
+        "Aliases are snake_case"
+      ]
+    }
+  ]
+}

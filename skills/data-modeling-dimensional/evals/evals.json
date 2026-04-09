@@ -1,0 +1,48 @@
+{
+  "skill_name": "data-modeling-dimensional",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I need to create a new fact table for purchase orders on the Fabricks platform. The source data is in raw.erp_purchase_header and raw.erp_purchase_line. The fact should eventually join to dim_vendor, dim_article, dim_cost_center, and dim_date. What files do I need to create and in which layers?",
+      "expected_output": "A clear breakdown of all files to create across the pipeline: transf/scd2 or transf/merger for consolidation, transf/fact for business logic, core/fact for surrogate key resolution, semantic/fact for presentation. With config YAML entries for each layer.",
+      "files": [],
+      "expectations": [
+        "Mentions creating a file in gold/transf/merger/ or gold/transf/scd2/ for source consolidation",
+        "Mentions creating gold/transf/fact/purchase_order.sql for business logic/calculations",
+        "Mentions creating gold/core/fact/purchase_order.sql for surrogate key resolution",
+        "Mentions creating semantic/semantic/fact/purchase_order.sql for BI presentation",
+        "Mentions _config.yml entries for each layer",
+        "Does NOT suggest putting surrogate key resolution in transf/fact",
+        "Mentions vendor_bk, article_bk, cost_center_bk as business keys to carry on the fact"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "We have a supplier dimension that changes over time — suppliers can change their name, address, and payment terms. Should this be SCD Type 1 or SCD Type 2? How do I structure the SQL and which files do I need?",
+      "expected_output": "Recommends SCD2 since attributes change over time and history matters. Explains the __valid_from/__valid_to structure, the transf/scd2/ file, and how core/dim/ splits into dim_supplier (current) and dim_supplier_hist (all versions).",
+      "files": [],
+      "expectations": [
+        "Recommends SCD Type 2 (not SCD1) for this scenario",
+        "Explains __valid_from and __valid_to columns",
+        "Mentions __is_current flag",
+        "Mentions creating file in gold/transf/scd2/supplier.sql",
+        "Mentions core/dim/supplier.sql with __identity surrogate key",
+        "Explains the split between dim_supplier (current) and dim_supplier_hist (all versions)",
+        "Mentions udf_identity_v2() or __identity for surrogate key generation"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Where should I put the logic that calculates purchase order margin (purchase_price - standard_cost)? Should it go in transf/fact or core/fact?",
+      "expected_output": "Clearly states it belongs in gold/transf/fact — business calculations go there, not in core/fact. Core/fact is only for surrogate key resolution. Gives reasoning about layer separation.",
+      "files": [],
+      "expectations": [
+        "Correctly identifies gold/transf/fact/ as the right place for margin calculation",
+        "Explains that core/fact is for surrogate key resolution only",
+        "Does NOT suggest putting the calculation in core/fact",
+        "Does NOT suggest putting the calculation in semantic/",
+        "Explains the separation of concerns between transf/fact and core/fact"
+      ]
+    }
+  ]
+}
