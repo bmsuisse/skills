@@ -93,7 +93,8 @@ def explain_query(spark, query: str) -> str:
 def _safe_sql(spark, sql: str) -> list:
     try:
         return spark.sql(sql).collect()
-    except Exception:
+    except Exception as e:
+        print(f"[warn] SQL skipped ({e})", file=sys.stderr)
         return []
 
 
@@ -278,6 +279,58 @@ def validate_queries(spark, original: str, optimized: str) -> dict:
     return {"passed": True, "row_count": orig_count}
 
 
+def validate_queries_global_temp(spark, original: str, optimized: str) -> dict:
+    """Validate via global temp tables — results are cached on the cluster, nothing collected to driver."""
+    spark.sql(f"CREATE OR REPLACE GLOBAL TEMP VIEW _tuner_original AS {original}")
+    spark.sql(f"CREATE OR REPLACE GLOBAL TEMP VIEW _tuner_optimized AS {optimized}")
+    spark.sql("CACHE TABLE global_temp._tuner_original")
+    spark.sql("CACHE TABLE global_temp._tuner_optimized")
+
+    orig_count = spark.sql("SELECT COUNT(*) AS n FROM global_temp._tuner_original").collect()[0]["n"]
+    opt_count = spark.sql("SELECT COUNT(*) AS n FROM global_temp._tuner_optimized").collect()[0]["n"]
+
+    if orig_count != opt_count:
+        return {
+            "passed": False,
+            "reason": f"Row count mismatch: original={orig_count}, optimized={opt_count}",
+            "original_rows": orig_count,
+            "optimized_rows": opt_count,
+        }
+
+    diff_rows = spark.sql("""
+        SELECT * FROM global_temp._tuner_original EXCEPT ALL SELECT * FROM global_temp._tuner_optimized
+        UNION ALL
+        SELECT * FROM global_temp._tuner_optimized EXCEPT ALL SELECT * FROM global_temp._tuner_original
+    """).limit(10).collect()
+
+    if diff_rows:
+        return {
+            "passed": False,
+            "reason": "Results differ (symmetric difference is non-empty)",
+            "row_count": orig_count,
+            "sample_diff": [r.asDict() for r in diff_rows[:5]],
+        }
+
+    return {"passed": True, "row_count": orig_count}
+
+
+def time_query_global_temp(spark, query: str, n_runs: int, label: str) -> list[float]:
+    """Time query by materializing into a cached global temp table — avoids driver collection."""
+    name = f"_tuner_{label}"
+    times: list[float] = []
+    _progress(0, n_runs, label)
+    for i in range(n_runs):
+        _safe_sql(spark, f"UNCACHE TABLE IF EXISTS global_temp.{name}")
+        start = time.perf_counter()
+        spark.sql(f"CREATE OR REPLACE GLOBAL TEMP VIEW {name} AS {query}")
+        spark.sql(f"CACHE TABLE global_temp.{name}")
+        elapsed = time.perf_counter() - start
+        times.append(elapsed)
+        _progress(i + 1, n_runs, label, elapsed)
+    _safe_sql(spark, f"UNCACHE TABLE IF EXISTS global_temp.{name}")
+    return times
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         description="Benchmark and validate two Databricks SQL query variants.",
@@ -293,6 +346,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--explain-only", action="store_true", dest="explain_only")
     p.add_argument("--timing-count", action="store_true", dest="timing_count",
                    help="Wrap timing runs in COUNT(*) to avoid collecting large result sets to the driver")
+    p.add_argument("--global-temp", action="store_true", dest="global_temp",
+                   help="Materialize results into cached global temp tables on the cluster instead of "
+                        "collecting to the driver (use when result sets are too large even for COUNT(*))")
     p.add_argument("--table-stats", nargs="+", dest="table_stats", metavar="TABLE",
                    help="Collect metadata + stats for tables (fully qualified or unqualified)")
     return p
@@ -351,31 +407,49 @@ def main() -> None:
     plan = explain_query(spark, original)
 
     print("\n[validate] Checking result equivalence...", file=sys.stderr)
-    validation = validate_queries(spark, original, optimized)
-    print(f"[validate] {'PASS' if validation['passed'] else 'FAIL'}", file=sys.stderr)
+    try:
+        if args.global_temp:
+            validation = validate_queries_global_temp(spark, original, optimized)
+        else:
+            validation = validate_queries(spark, original, optimized)
+        print(f"[validate] {'PASS' if validation['passed'] else 'FAIL'}", file=sys.stderr)
 
-    if args.timing_count:
-        print("[bench] Using COUNT(*) wrapper for timing (--timing-count)", file=sys.stderr)
+        if args.global_temp:
+            print("[bench] Using global temp tables for timing and validation (--global-temp)", file=sys.stderr)
+        elif args.timing_count:
+            print("[bench] Using COUNT(*) wrapper for timing (--timing-count)", file=sys.stderr)
 
-    print(f"\n[bench] Original ({args.n_runs} runs)...", file=sys.stderr)
-    orig_times = time_query(spark, original, args.n_runs, "original", args.timing_count)
+        print(f"\n[bench] Original ({args.n_runs} runs)...", file=sys.stderr)
+        if args.global_temp:
+            orig_times = time_query_global_temp(spark, original, args.n_runs, "original")
+        else:
+            orig_times = time_query(spark, original, args.n_runs, "original", args.timing_count)
 
-    print(f"\n[bench] Optimized ({args.n_runs} runs)...", file=sys.stderr)
-    opt_times = time_query(spark, optimized, args.n_runs, "optimized", args.timing_count)
+        print(f"\n[bench] Optimized ({args.n_runs} runs)...", file=sys.stderr)
+        if args.global_temp:
+            opt_times = time_query_global_temp(spark, optimized, args.n_runs, "optimized")
+        else:
+            opt_times = time_query(spark, optimized, args.n_runs, "optimized", args.timing_count)
 
-    orig_stats = compute_stats(orig_times)
-    opt_stats = compute_stats(opt_times)
-    speedup = orig_stats["mean_s"] / opt_stats["mean_s"] if opt_stats["mean_s"] > 0 else None
+        orig_stats = compute_stats(orig_times)
+        opt_stats = compute_stats(opt_times)
+        speedup = orig_stats["mean_s"] / opt_stats["mean_s"] if opt_stats["mean_s"] > 0 else None
 
-    print(f"\n{'=' * 60}", file=sys.stderr)
-    print(json.dumps({
-        "explain_plan": plan,
-        "validation": validation,
-        "original": orig_stats,
-        "optimized": opt_stats,
-        "speedup": round(speedup, 3) if speedup else None,
-        "statistically_significant": is_significant(orig_stats, opt_stats) if speedup and speedup > 1 else False,
-    }, indent=2))
+        print(f"\n{'=' * 60}", file=sys.stderr)
+        print(json.dumps({
+            "explain_plan": plan,
+            "validation": validation,
+            "original": orig_stats,
+            "optimized": opt_stats,
+            "speedup": round(speedup, 3) if speedup else None,
+            "statistically_significant": is_significant(orig_stats, opt_stats) if speedup and speedup > 1 else False,
+        }, indent=2))
+    finally:
+        if args.global_temp:
+            print("[cleanup] Dropping global temp tables...", file=sys.stderr)
+            for name in ("_tuner_original", "_tuner_optimized"):
+                _safe_sql(spark, f"UNCACHE TABLE IF EXISTS global_temp.{name}")
+                _safe_sql(spark, f"DROP VIEW IF EXISTS global_temp.{name}")
 
 
 if __name__ == "__main__":

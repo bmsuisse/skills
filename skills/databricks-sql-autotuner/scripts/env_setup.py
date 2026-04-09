@@ -16,6 +16,7 @@ correct databricks-connect version, and verifies the connection with SELECT 1.
 from __future__ import annotations
 
 import argparse
+import json
 import platform
 import subprocess
 import sys
@@ -66,10 +67,10 @@ def verify_connection(venv: Path, profile: str, cluster_id: str) -> None:
     print(f"[verify] Testing connection (profile={profile}, cluster={cluster_id})...")
     code = (
         "from databricks.connect import DatabricksSession\n"
-        f"spark = DatabricksSession.builder.profile('{profile}').clusterId('{cluster_id}').getOrCreate()\n"
+        f"spark = DatabricksSession.builder.profile({json.dumps(profile)}).clusterId({json.dumps(cluster_id)}).getOrCreate()\n"
         "result = spark.sql('SELECT 1 AS ok').collect()\n"
         "assert result[0]['ok'] == 1, 'Unexpected result from SELECT 1'\n"
-        "print(f'[verify] OK — Spark {spark.version}')\n"
+        "print(f'[verify] OK \u2014 Spark {spark.version}')\n"
     )
     # Call the venv Python directly — uv run dropped -c support in v0.10+
     proc = subprocess.run(

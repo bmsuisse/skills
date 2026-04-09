@@ -5,6 +5,7 @@
       "id": 1,
       "prompt": "/databricks-sql-autotuner \"SELECT c.customer_id, c.name, SUM(o.amount) AS total FROM orders o JOIN customers c ON o.customer_id = c.customer_id WHERE o.order_date >= '2024-01-01' GROUP BY c.customer_id, c.name ORDER BY total DESC LIMIT 100\"",
       "expected_output": "Claude discovers available Databricks profiles and clusters, asks which to use, runs EXPLAIN EXTENDED on the query, identifies any shuffle or join bottlenecks, rewrites the SQL with optimizations (e.g. partition pruning, CTE restructuring), validates results are identical, benchmarks both versions with 3 runs each, and reports speedup with statistical significance.",
+      "files": [],
       "assertions": [
         {
           "text": "Ran 'databricks auth profiles' to list available profiles",
@@ -34,16 +35,21 @@
     },
     {
       "id": 2,
-      "prompt": "/databricks-sql-autotuner queries/slow_report.sql",
-      "expected_output": "Claude reads the file at queries/slow_report.sql, then follows the full workflow: profile/cluster discovery, env setup, EXPLAIN, optimization, validation, benchmark. Works identically to the inline SQL path.",
+      "prompt": "/databricks-sql-autotuner @evals/fixtures/slow_report.sql",
+      "expected_output": "Claude reads the fixture SQL file, then follows the full workflow: profile/cluster discovery, env setup, EXPLAIN, optimization, validation, benchmark. Works identically to the inline SQL path.",
+      "files": ["evals/fixtures/slow_report.sql"],
       "assertions": [
         {
-          "text": "Read the .sql file rather than treating the path as an inline SQL string",
+          "text": "Read the .sql file via @file syntax rather than treating the path as inline SQL",
           "type": "behavior"
         },
         {
           "text": "Ran the full workflow (explain → optimize → validate → benchmark)",
           "type": "behavior"
+        },
+        {
+          "text": "Identified at least one concrete optimization opportunity from the EXPLAIN plan",
+          "type": "output"
         }
       ]
     },
@@ -51,6 +57,7 @@
       "id": 3,
       "prompt": "hey this databricks query has been killing me for days, it times out after 10 minutes. can you help optimize it?\n\nSELECT /*+ BROADCAST(dim_product) */ t.order_id, t.amount, p.category, r.region_name FROM fact_transactions t JOIN dim_product p ON t.product_id = p.product_id JOIN dim_region r ON t.region_code = r.region_code WHERE t.transaction_date BETWEEN '2023-01-01' AND '2023-12-31' AND p.category IN ('Electronics', 'Apparel') UNION ALL SELECT t.order_id, t.amount, p.category, r.region_name FROM fact_transactions_archive t JOIN dim_product p ON t.product_id = p.product_id JOIN dim_region r ON t.region_code = r.region_code WHERE t.transaction_date BETWEEN '2022-01-01' AND '2022-12-31'",
       "expected_output": "Claude recognizes this as a SQL tuning request even without the /databricks-sql-autotuner prefix, runs the full workflow, and specifically catches that the BROADCAST hint inside a UNION ALL branch must be moved to the outermost SELECT to avoid a Spark parse error.",
+      "files": [],
       "assertions": [
         {
           "text": "Triggered the skill based on the user's description of a slow query without explicit command",
@@ -70,6 +77,7 @@
       "id": 4,
       "prompt": "/databricks-sql-autotuner \"SELECT * FROM events WHERE udf_parse_url(url, 'HOST') = 'example.com' AND udf_country_from_zip(zip_code) = 'DE'\" --n-runs 5",
       "expected_output": "Claude identifies that udf_parse_url is a persistent catalog function and udf_country_from_zip is a session UDF that needs registration, creates udf_setup.py with the register_udfs(spark) function, and runs the benchmark with 5 runs instead of the default 3.",
+      "files": [],
       "assertions": [
         {
           "text": "Identified which UDFs are persistent vs session-scoped",
@@ -82,6 +90,86 @@
         {
           "text": "Used --n-runs 5 for the benchmark (honored the user override)",
           "type": "behavior"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "/databricks-sql-autotuner --explain-only --profile prod --cluster-id 0408-195905-abc \"SELECT s.sale_id, p.name, SUM(s.qty * s.price) AS revenue FROM sales s JOIN products p ON s.product_id = p.id GROUP BY s.sale_id, p.name\"",
+      "expected_output": "Claude runs EXPLAIN EXTENDED and prints the physical plan. Does NOT run any benchmarking, ask about n_runs, or write an optimized query. Exits after printing the plan and identifying bottlenecks from it.",
+      "files": [],
+      "assertions": [
+        {
+          "text": "Passed --explain-only to tune.py and printed the EXPLAIN EXTENDED output",
+          "type": "behavior"
+        },
+        {
+          "text": "Did NOT run any timing benchmark or produce an optimized query",
+          "type": "behavior"
+        },
+        {
+          "text": "Identified at least one specific bottleneck or observation from the plan (e.g. SortMergeJoin, Exchange, FileScan)",
+          "type": "output"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "/databricks-sql-autotuner --table-stats sales.orders sales.customers --profile prod --cluster-id 0408-195905-abc",
+      "expected_output": "Claude collects metadata for the two tables and prints a markdown report covering physical details (Delta format, size, file count), partition columns, schema with column types, and column statistics where available. Does not run any SQL benchmarking.",
+      "files": [],
+      "assertions": [
+        {
+          "text": "Passed both table names to tune.py --table-stats and printed the metadata report",
+          "type": "behavior"
+        },
+        {
+          "text": "Did NOT run any timing benchmark or EXPLAIN EXTENDED",
+          "type": "behavior"
+        },
+        {
+          "text": "Report includes physical size information (sizeInBytes or sizeMB) for at least one table",
+          "type": "output"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "this query returns about 80 million rows and my driver keeps running out of memory when benchmarking. use --timing-count so it only collects the count\n\n/databricks-sql-autotuner --timing-count --profile prod --cluster-id 0408-195905-abc --original \"SELECT event_id, user_id, event_type, ts FROM raw_events WHERE event_date >= '2024-01-01'\" --optimized \"SELECT event_id, user_id, event_type, ts FROM raw_events WHERE event_date >= '2024-01-01' AND event_type IS NOT NULL\"",
+      "expected_output": "Claude passes --timing-count to tune.py so timing runs are wrapped in COUNT(*). Validation still compares actual result sets for correctness, not counts. Reports timing and speedup as usual.",
+      "files": [],
+      "assertions": [
+        {
+          "text": "Passed --timing-count to tune.py for the benchmark run",
+          "type": "behavior"
+        },
+        {
+          "text": "Logged '[bench] Using COUNT(*) wrapper for timing' in output",
+          "type": "output"
+        },
+        {
+          "text": "Still ran validation (result equivalence check) — not skipped because of --timing-count",
+          "type": "behavior"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "/databricks-sql-autotuner --global-temp --profile prod --cluster-id 0408-195905-abc --original \"SELECT region_code, SUM(amount) AS total FROM transactions GROUP BY region_code\" --optimized \"SELECT /*+ BROADCAST(r) */ t.region_code, SUM(t.amount) AS total FROM transactions t JOIN regions r ON t.region_code = r.region_code GROUP BY t.region_code\"",
+      "expected_output": "Claude uses --global-temp so results are materialized into global_temp._tuner_* tables on the cluster via CACHE TABLE. No rows collected to the driver during timing. Global temp tables are cleaned up after the run (or if it crashes).",
+      "files": [],
+      "assertions": [
+        {
+          "text": "Passed --global-temp to tune.py",
+          "type": "behavior"
+        },
+        {
+          "text": "Logged '[bench] Using global temp tables' in output",
+          "type": "output"
+        },
+        {
+          "text": "Logged '[cleanup] Dropping global temp tables' after benchmarking",
+          "type": "output"
         }
       ]
     }

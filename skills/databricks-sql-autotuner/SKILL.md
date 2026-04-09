@@ -52,6 +52,7 @@ Read these before writing the optimized query:
 |:-----|:------------|
 | [`references/spark-sql-hints.md`](references/spark-sql-hints.md) | Any time you are considering a hint (`BROADCAST`, `MERGE`, `SHUFFLE_HASH`, `REBALANCE`, etc.) or dealing with UNION ALL scoping |
 | [`references/spark-sql-perf-tuning.md`](references/spark-sql-perf-tuning.md) | For AQE behavior, partition tuning, statistics interpretation, and the full SQL-level optimization checklist |
+| [`references/optimization-patterns.md`](references/optimization-patterns.md) | At the start of Phase 4, and whenever Phase 3.2a identifies a view as a join target. Contains: view inlining strategy, skew salting SQL, CTE materialization caveat, Photon-unfriendly patterns, UNION ALL hint restriction, session UDF setup, and the full optimization loop strategy. |
 
 ---
 
@@ -89,6 +90,7 @@ not supplied, run the normal discovery step.
 | `--query <sql-or-path>` | `--query @slow.sql` | SQL string or `@path/to/file.sql`; if omitted, ask the user |
 | `--optimized <path>` | `--optimized out.sql` | Write optimized query to a separate file instead of editing the original in place |
 | `--timing-count` | `--timing-count` | Wrap timing runs in `COUNT(*)` to avoid collecting large result sets to the driver (use when query returns millions of rows) |
+| `--global-temp` | `--global-temp` | Materialize results into cached global temp tables on the cluster (`global_temp._tuner_*`) instead of collecting to the driver. Applies to both timing and validation. Use when the result set is too large even for `COUNT(*)` or when you want to keep intermediate results on the cluster for inspection. |
 
 The `--query` value:
 - `@path/to/file.sql` → read the file
@@ -99,104 +101,34 @@ The `--query` value:
 
 ## Phase 1 — Environment discovery
 
-### 1.1 Verify Databricks CLI is authenticated
+Run `discover.py` to handle profile/cluster selection, DBR version detection, and
+catalog/schema defaults in one step. It requires only the Databricks CLI — no venv needed.
 
 ```bash
-databricks auth profiles
+python3 $SKILL_DIR/scripts/discover.py \
+  [--profile <PROFILE>] \
+  [--cluster-id <CLUSTER_ID> | --cluster-name <NAME>]
 ```
 
-If this fails or returns no profiles, stop and ask the user to authenticate:
+**Behaviour:**
+- If only one CLI profile exists, auto-selects it; otherwise lists profiles and stops
+  with `"status": "needs_profile"` — re-run with `--profile <name>`.
+- If only one cluster is RUNNING, auto-selects it; otherwise lists usable clusters and
+  stops with `"status": "needs_cluster"` — re-run with `--cluster-id <id>`.
+- On success outputs `"status": "ok"` JSON with `profile`, `cluster_id`, `dbr_version`,
+  `catalog`, `schema` — record all of these as session variables.
+- If the cluster is TERMINATED, prints the start command; wait for it to reach RUNNING
+  before proceeding.
+
+If the CLI is not authenticated the command will fail — ask the user to run:
 ```bash
 databricks auth login --profile <name>
 ```
 
-### 1.2 Select profile
+After discovery, ask the user:
+> **How many benchmark runs per variant? (default: 3, minimum: 2)**
 
-If `--profile` was provided, skip this step.
-
-Otherwise present all available profiles with their workspace host URLs.
-Auto-select if only one exists; otherwise ask.
-
-### 1.3 Select cluster
-
-If `--cluster-id` was provided, use that ID directly and skip the listing.
-
-If `--cluster-name` was provided, resolve it to an ID:
-
-```bash
-databricks clusters list --profile <PROFILE> --output json \
-  | python3 -c "
-import sys, json
-clusters = json.load(sys.stdin)
-name = '<CLUSTER_NAME>'
-match = [c for c in clusters if c.get('cluster_name') == name]
-if not match:
-    print('ERROR: no cluster named', name, file=sys.stderr); sys.exit(1)
-print(match[0]['cluster_id'])
-"
-```
-
-If neither was provided, list all clusters:
-
-```bash
-databricks clusters list --profile <PROFILE> --output json
-```
-
-Filter to clusters with `state = RUNNING` or `state = TERMINATED` (can be started).
-Present the list (cluster ID, name, state, DBR version).
-Auto-select any running general-purpose cluster if one exists; otherwise ask.
-
-If the chosen cluster is terminated, start it:
-```bash
-databricks clusters start <CLUSTER_ID> --profile <PROFILE>
-```
-
-### 1.4 Get DBR version
-
-```bash
-databricks clusters get <CLUSTER_ID> --profile <PROFILE> --output json \
-  | python3 -c "import sys,json; v=json.load(sys.stdin)['spark_version']; print(v.split('-')[0])"
-```
-
-Record as `DBR_VERSION` (e.g., `17.3`). This determines which `databricks-connect` to install.
-
-### 1.5 Catalog / schema context
-
-Run to discover the current defaults:
-
-```bash
-databricks clusters get <CLUSTER_ID> --profile <PROFILE> --output json \
-  | python3 -c "import sys,json; c=json.load(sys.stdin); \
-    cfg=c.get('spark_conf',{}); \
-    print('catalog:', cfg.get('spark.databricks.sql.initial.catalog.name','hive_metastore')); \
-    print('schema:', cfg.get('spark.databricks.sql.initial.catalog.namespace','default'))"
-```
-
-Use whatever the cluster reports as `CATALOG` and `SCHEMA`. Only ask the user to
-override if the query explicitly references a different catalog/schema or if the
-command returns nothing useful.
-
-### 1.6 Benchmark runs
-
-If `--runs` was provided, skip this step and use that value.
-
-Otherwise ask:
-> **How many benchmark runs per query variant? (default: 3)**
-
-Record as `N_RUNS` (default `3`, minimum `2`).
-
-### 1.7 Confirm
-
-Present a summary and wait for confirmation:
-
-| Parameter    | Value |
-|:-------------|:------|
-| Profile      |       |
-| Cluster ID   |       |
-| DBR version  |       |
-| Catalog      |       |
-| Schema       |       |
-| N runs       |       |
+Record as `N_RUNS`. Then present the full summary from the JSON and wait for confirmation.
 
 ---
 
@@ -254,74 +186,30 @@ Use `$TUNE` for every `tune.py` invocation from here on.
 
 ## Phase 2b — Branch & baseline
 
-Every tuning session gets its own branch and a results log. This keeps the work
-isolated, makes it easy to compare iterations, and produces a clean git history
-that shows exactly what was tried and kept.
-
-### 2b.1 Generate a run ID
-
-Use a short slug derived from the query's purpose — e.g. `sales-summary`, `user-funnel-join`.
+Run `init_run.py` to handle branch creation, working-file setup, TSV initialisation,
+and the baseline benchmark in one step. Must use the autotuner venv Python.
 
 ```bash
-RUN_ID="<query-slug>"           # e.g. sales-summary
-RESULTS_FILE="sqltune-${RUN_ID}.tsv"
-LOG_FILE="sqltune-${RUN_ID}.log"
-```
-
-### 2b.2 Create a branch
-
-```bash
-git checkout -b sql-tune/${RUN_ID}
-```
-
-### 2b.3 Establish the working file
-
-Determine `QUERY_FILE` (the file that will be edited each iteration) and
-`ORIGINAL_FILE` (the baseline passed to `--original` in tune.py):
-
-| Scenario | ORIGINAL_FILE | QUERY_FILE |
-|:---------|:-------------|:-----------|
-| `--query @file.sql` (default) | `file.sql` | `file.sql` — edit in place |
-| `--query @file.sql --optimized out.sql` | `file.sql` | `out.sql` — write here, original stays untouched |
-| `--query "inline SQL"` | `query.sql` (write it, commit) | `query.sql` — edit in place |
-| `--query "inline SQL" --optimized out.sql` | `query.sql` | `out.sql` |
-
-When `--optimized` is given, copy the original into that file first:
-```bash
-cp $ORIGINAL_FILE $QUERY_FILE
-git add $QUERY_FILE
-```
-
-When editing in place (no `--optimized`), `ORIGINAL_FILE == QUERY_FILE` and git tracks the evolution naturally.
-
-### 2b.4 Initialize the results log
-
-```bash
-echo "${RESULTS_FILE}" >> .git/info/exclude
-echo "${LOG_FILE}"     >> .git/info/exclude
-```
-
-Create `$RESULTS_FILE`:
-
-```
-attempt	commit	mean_s	speedup	status	description
-0	<sha>	<baseline_mean>	1.0	baseline	original query
-```
-
-### 2b.5 Run the baseline
-
-```bash
-$TUNE \
+$VENV_PYTHON $SKILL_DIR/scripts/init_run.py \
   --profile <PROFILE> \
   --cluster-id <CLUSTER_ID> \
-  --original @$QUERY_FILE \
-  --optimized @$QUERY_FILE \
-  --catalog <CATALOG> \
-  --schema <SCHEMA> \
-  --n-runs <N_RUNS> > $LOG_FILE 2>&1
+  --original <@FILE_OR_INLINE_SQL> \
+  [--optimized <out.sql>] \
+  [--run-id <slug>] \
+  [--n-runs <N_RUNS>] \
+  [--catalog <CATALOG>] [--schema <SCHEMA>] \
+  [--timing-count] [--global-temp]
 ```
 
-Extract `original.mean_s` and record as attempt `0`.
+**What it does:**
+- Derives a `run-id` slug from the query filename (or timestamp for inline SQL); pass
+  `--run-id` to override with a descriptive slug like `sales-summary`.
+- Creates branch `sql-tune/<run-id>` and sets up `ORIGINAL_FILE` / `QUERY_FILE`
+  (copies original → optimized file if `--optimized` is given).
+- Excludes the TSV and log from git, writes the TSV header.
+- Runs the baseline benchmark (original vs original) and appends attempt `0`.
+- Outputs JSON with `run_id`, `baseline_mean_s`, `original_file`, `query_file`,
+  `results_file`, `log_file`, `branch` — record all as session variables.
 
 > Baseline: **mean = X.XXs**. Branch: `sql-tune/<run-id>`. Starting analysis.
 
@@ -376,47 +264,12 @@ you need more information about the tables?**
 
 ### 3.2a Read view definitions (when a join target is a view)
 
-The EXPLAIN plan will show a view's underlying query inlined as a subquery tree.
-If you see a deep nested plan for what should be a simple table join, the view
-itself may be the bottleneck — not the outer query.
+If the plan shows a deep nested subquery where you expect a FileScan, the join
+target is a view. Read its definition with `SHOW CREATE TABLE <view_name>` via
+`--explain-only`, or collect it alongside table stats (`--table-stats` works for views).
 
-To read the view definition:
-
-```bash
-$TUNE \
-  --profile <PROFILE> \
-  --cluster-id <CLUSTER_ID> \
-  --original "SHOW CREATE TABLE <view_name>" \
-  --catalog <CATALOG> \
-  --schema <SCHEMA> \
-  --explain-only
-```
-
-Or collect it alongside table stats (the `--table-stats` flag works for views too).
-
-When you read a view definition, look for:
-- Filters that could be pushed closer to the source scan
-- Joins inside the view that are better placed in the outer query (where the
-  caller already filters heavily before joining)
-- Aggregations computed in the view that the caller immediately re-aggregates
-- DISTINCT or ORDER BY inside the view that serve no purpose when used as a
-  subquery
-- Correlated subqueries or scalar subqueries that run once per row
-
-**What to do if the view is suboptimal:**
-You have two options — pick the one that is less invasive:
-
-1. **Inline the view as a CTE** — replace `JOIN my_view ON ...` with
-   `WITH my_view AS (<rewritten definition>) ...` in the optimized query.
-   This avoids changing the view in the catalog and keeps the fix self-contained.
-
-2. **Suggest a view rewrite** — if the view is used widely and inlining would
-   make the outer query unreadable, write an optimized version of the view
-   definition separately and note it under "Additional recommendations" in the
-   final report. Do not change the view in the catalog.
-
-Always prefer option 1 unless the view is complex enough that inlining it makes
-the outer query harder to reason about than it was before.
+See **`references/optimization-patterns.md` → View optimization** for what to look
+for inside the definition and whether to inline it as a CTE or suggest a separate rewrite.
 
 ### 3.2 Collect table stats (when needed)
 
@@ -512,55 +365,9 @@ Rewrite the query using **SQL-level rewrites only**.
 - **Skew salting** — when a GROUP BY key is heavily skewed, a two-pass SQL salt
   distributes the hot partition across workers (see salting pattern below)
 
-### Skew salting pattern
-
-When the plan shows a highly skewed Exchange on a GROUP BY key, salt the aggregation:
-
-```sql
--- Phase 1: aggregate with a random salt to spread the hot key
-WITH salted AS (
-  SELECT
-    key,
-    FLOOR(RAND() * 8) AS salt,  -- 8 buckets; tune to cluster core count
-    SUM(value) AS partial_sum
-  FROM large_table
-  GROUP BY key, salt
-)
--- Phase 2: collapse the salted buckets
-SELECT key, SUM(partial_sum) AS total
-FROM salted
-GROUP BY key
-```
-
-Only use this when column stats or a skewed Exchange confirms one key dominates.
-The extra aggregation pass adds overhead on balanced data — don't apply it speculatively.
-
-### CTE materialization caveat
-
-Spark does **not** guarantee that a CTE is computed only once. If a CTE is referenced
-multiple times in the query, Spark may re-evaluate it on each reference. This means:
-
-- A CTE used to "cache" an expensive subquery may not help — or may hurt if the
-  subquery is scanned multiple times instead of once.
-- If you add a CTE to de-duplicate a repeated subquery and the plan still shows the
-  subquery running multiple times, note `CACHE TABLE` as a recommendation outside SQL scope.
-- Prefer CTEs for readability and hint-targeting; don't assume they imply materialization.
-
-### Photon-unfriendly patterns
-
-Databricks Photon accelerates most SQL, but silently falls back to JVM execution for:
-
-| Pattern | Why Photon can't accelerate it |
-|:--------|:-------------------------------|
-| Python / Scala UDFs | Black-box execution, no vectorization possible |
-| `TRANSFORM(array, x -> ...)` | Higher-order functions not yet Photon-native |
-| `FILTER(array, x -> ...)` | Same — lambda expressions bypass Photon |
-| `MAP_KEYS` / `MAP_VALUES` on complex maps | Complex type operations not vectorized |
-| Non-deterministic functions in certain contexts | Photon cannot reorder them safely |
-
-If the plan shows `ArrowEvalPython`, `ObjectHashAggregate`, or `BatchEvalPython` nodes,
-a Photon fallback is happening. Flag it in the attack plan and suggest replacing with
-built-in Spark SQL equivalents where possible.
+Before writing the optimized query, read **`references/optimization-patterns.md`** for
+detailed patterns: skew salting SQL, CTE materialization caveats, Photon-unfriendly
+patterns, UNION ALL hint restrictions, and session UDF setup.
 
 ### What is NOT allowed — never suggest these
 
@@ -575,47 +382,15 @@ but never include it in the optimized query itself.
 
 ### Hint restriction — CRITICAL for UNION ALL
 
-Spark SQL does **not** allow `/*+ ... */` hints inside CTE branches that are
-part of a `UNION ALL`. Place all optimizer hints on the **outermost SELECT only**:
-
-```sql
--- ✅ CORRECT
-SELECT /*+ BROADCAST(small_table) */ *
-FROM big_table
-JOIN small_table ON ...
-
--- ❌ WRONG — hint inside a UNION ALL branch causes a parse error
-WITH branch AS (
-  SELECT /*+ BROADCAST(t) */ * FROM t   -- this will fail
-)
-SELECT * FROM branch
-UNION ALL
-SELECT * FROM other
-```
+Spark SQL does **not** allow hints inside CTE branches that are part of a `UNION ALL`.
+Place all optimizer hints on the **outermost SELECT only**. See
+`references/optimization-patterns.md` → UNION ALL hint restriction for examples.
 
 ### UDF handling
 
-If the query calls UDFs, check whether each is:
-- A **persistent SQL function** (created with `CREATE FUNCTION` in the catalog) — these work as-is
-- A **session UDF** that must be registered at runtime — create a `udf_setup.py` file (see below)
-
-If session UDFs are needed, create `udf_setup.py` in the current directory:
-
-```python
-# udf_setup.py — loaded by tune.py automatically if it exists
-from pyspark.sql.functions import udf as spark_udf
-from pyspark.sql.types import StringType
-
-def _my_udf(value):
-    # your implementation
-    return result
-
-def register_udfs(spark):
-    spark.udf.register("my_udf_name", spark_udf(_my_udf, StringType()))
-```
-
-`tune.py` checks for `udf_setup.py` in the current directory and calls
-`register_udfs(spark)` automatically before running any queries.
+If the query calls UDFs: persistent catalog functions (`CREATE FUNCTION`) work as-is.
+Session UDFs must be registered via `udf_setup.py` — see
+`references/optimization-patterns.md` → Session UDF setup.
 
 ---
 
@@ -736,29 +511,9 @@ LOG     Append to $RESULTS_FILE:
 
 ### Strategy priority
 
-1. **Follow the plan** — work through the attack plan from Phase 3.3 in order
-2. **Follow wins** — if a hint or rewrite helped, probe further in that direction
-3. **Diversify after 3 consecutive discards** — switch to a different bottleneck
-4. **Combine winners** — if A and B each improved independently, try A+B together
-5. **Diagnose no-speedup runs** — re-EXPLAIN the optimized query; check if AQE
-   already did what the hint asked, or if a Photon fallback is dominating
-6. **Accept the floor** — if 5+ consecutive attempts yield no improvement and the
-   remaining ideas are speculative, stop the loop and go to Phase 6
-
-**For `simplicity` or `speed,simplicity` goal**, strategy shifts focus (in the simplicity phase):
-- Prefer removing CTEs that the optimizer re-evaluates anyway
-- Inline single-use subqueries where they don't increase nesting
-- Replace multi-step transformations with a single built-in function call
-- Remove redundant ORDER BY, DISTINCT, or GROUP BY that the caller drops
-- Simplicity wins don't require statistical significance — a lower score is enough
-
-**Hard constraints that apply to all goals, including simplicity:**
-- Never introduce `SELECT *` — explicit column lists must be preserved exactly.
-  `SELECT *` hides schema changes, breaks downstream consumers, and can silently
-  change column order. A query with fewer lines but a `SELECT *` is not simpler —
-  it is fragile.
-- Never remove columns from the output or reorder them
-- Never change NULL semantics or filter behaviour
+See **`references/optimization-patterns.md` → Optimization loop strategy priority**
+for the full prioritized list, per-goal tactics, and hard constraints (including the
+`SELECT *` prohibition).
 
 ---
 
@@ -830,10 +585,12 @@ Validation: PASS — N rows, identical results
 | Error | Fix |
 |:------|:----|
 | `Cannot configure default credentials` | Re-authenticate: `databricks auth login --profile <PROFILE>` |
-| `Cluster not found` | Verify cluster ID: `databricks clusters list --profile <PROFILE>` |
-| Version mismatch | Ensure `DBR_VERSION` from `clusters get` matches installed `databricks-connect` |
+| `discover.py` prints `needs_profile` or `needs_cluster` | Normal — re-run with the missing `--profile` or `--cluster-id` flag |
+| `Cluster not found` | Verify cluster ID: `python3 $SKILL_DIR/scripts/discover.py --profile <PROFILE>` |
+| Version mismatch | Ensure `DBR_VERSION` from `discover.py` matches installed `databricks-connect` |
 | `.venv_autotuner` import errors | Delete the venv and re-run `env_setup.py` |
+| `init_run.py` branch already exists | Pass a different `--run-id` or delete the branch first |
 | Validation diff on floats | May be floating-point non-determinism — check with `ROUND()` or cast to DECIMAL |
-| `.collect()` fails with `>4 GiB` / driver OOM | Query returns millions of rows — add `--timing-count` to wrap timing runs in `COUNT(*)`. Validation still uses real results. |
+| `.collect()` fails with `>4 GiB` / driver OOM | Query returns millions of rows — add `--timing-count` to wrap timing runs in `COUNT(*)`. Validation still uses real results. For very large datasets use `--global-temp` instead, which keeps all intermediate results on the cluster. |
 | Hint parse error in UNION ALL | Move hint to outermost SELECT (see Phase 4 restriction) |
 | Session UDF not found | Create `udf_setup.py` with a `register_udfs(spark)` function |
