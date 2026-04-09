@@ -128,7 +128,21 @@ select order_nr, "sws"     as _source from sws_orders
 
 ## SparkSQL Best Practices
 
+### Lateral Column Alias — reuse SELECT expressions without a subquery
+Databricks SQL lets you reference an alias defined earlier in the same `SELECT` — no subquery needed.
+See: https://www.databricks.com/blog/introducing-support-lateral-column-alias
+```sql
+-- prefer: reuse alias directly
+select
+    sales_amount - discount as net_amount,
+    net_amount * 0.1 as tax_amount      -- lateral alias, no repeated expression
+from fact_sales
+```
+When rewriting a query: replace repeated expressions and subquery wrappers with lateral column aliases where the same value is computed more than once in a SELECT.
+
 ### QUALIFY — deduplication / top-N without a wrapper CTE
+`QUALIFY` filters window function results inline — eliminates a wrapper CTE just for `WHERE rn = 1`.
+See: https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-syntax-qry-select-qualify
 ```sql
 -- prefer over row_number() CTE wrappers
 select order_nr, customer_nr, order_date

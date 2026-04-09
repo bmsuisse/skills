@@ -243,10 +243,42 @@ Refer to the internal naming convention document **04.02 Naming conventions for 
 These patterns apply specifically to SparkSQL / Databricks SQL. They make queries
 faster, safer, and more readable — use them whenever the target platform is Spark.
 
+### Lateral Column Alias — reuse SELECT expressions without a subquery
+
+Databricks SQL supports referencing an alias defined earlier in the same `SELECT`
+clause — no subquery or CTE needed.
+See: https://www.databricks.com/blog/introducing-support-lateral-column-alias
+
+```sql
+-- avoid: repeating the expression or wrapping in a subquery
+select
+    sales_amount - discount as net_amount,
+    (sales_amount - discount) * 0.1 as tax_amount   -- expression repeated
+from fact_sales
+
+-- prefer: lateral column alias
+select
+    sales_amount - discount as net_amount,
+    net_amount * 0.1 as tax_amount                   -- reuses the alias directly
+from fact_sales
+```
+
+Also useful for computed boolean flags that feed a subsequent filter:
+
+```sql
+select
+    order_date,
+    fiscal_year,
+    (sales_amount > 1000) as is_high_value,
+    is_high_value and fiscal_year = 2024 as is_current_high_value
+from fact_sales
+```
+
 ### QUALIFY — deduplication and top-N without a wrapper CTE
 
 `QUALIFY` filters window function results inline. It eliminates the extra CTE you'd
 otherwise need just to filter on `row_number()`.
+See: https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-syntax-qry-select-qualify
 
 ```sql
 -- avoid: extra CTE just to filter the window result
