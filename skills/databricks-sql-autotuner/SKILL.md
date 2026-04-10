@@ -1,16 +1,20 @@
 ---
 name: databricks-sql-autotuner
 description: >
-  Databricks SQL query optimizer: analyzes a slow SQL query, rewrites it for
-  speed using SQL-level optimizations only, validates byte-for-byte result
-  equivalence, and benchmarks both versions with statistical significance testing.
-  Use this skill whenever the user wants to optimize, speed up, tune, or benchmark
-  a SQL query on Databricks. Trigger on: "/databricks-sql-autotuner", "optimize
-  this SQL", "make this query faster", "tune my Databricks query", "benchmark SQL
-  on Databricks", "speed up this spark SQL", "SQL performance on Databricks",
-  "EXPLAIN this query", "why is my query slow on Databricks", "SQL query
-  optimization Databricks", or whenever a user pastes a SQL query and mentions
-  performance, slowness, or runtime.
+  Databricks SQL query optimizer and error fixer: analyzes a slow or broken SQL
+  query, rewrites it for speed using SQL-level optimizations only, validates
+  byte-for-byte result equivalence, and benchmarks both versions with statistical
+  significance testing. Also diagnoses and fixes SQL errors (syntax errors, cast
+  failures, column resolution errors, type mismatches) using --goals fix.
+  Use this skill whenever the user wants to optimize, speed up, tune, benchmark,
+  or fix a SQL query on Databricks. Trigger on: "/databricks-sql-autotuner",
+  "optimize this SQL", "make this query faster", "tune my Databricks query",
+  "benchmark SQL on Databricks", "speed up this spark SQL", "SQL performance on
+  Databricks", "EXPLAIN this query", "why is my query slow on Databricks",
+  "SQL query optimization Databricks", "fix my SQL query", "SQL syntax error",
+  "casting error in SQL", "column not found in SQL", "AnalysisException",
+  "ParseException", "my Databricks query is failing", or whenever a user pastes
+  a SQL query and mentions errors, failures, or exceptions.
 compatibility: Requires databricks CLI (authenticated) and Python 3.9+.
 ---
 
@@ -37,6 +41,10 @@ cluster. The optimized query must produce **identical results** and show a
 
 # Optimize for speed first, then simplify
 /databricks-sql-autotuner --cluster-id 0408-195905-abc --goals speed,simplicity @queries/slow_report.sql
+
+# Diagnose and fix a broken query (syntax error, cast failure, column not found, etc.)
+/databricks-sql-autotuner --goals fix @queries/broken_report.sql
+/databricks-sql-autotuner --goals fix "SELECT order_date::DATE, SUM(amount) FROM orders GROUP BY 1"
 
 # Override catalog and schema
 /databricks-sql-autotuner --cluster-id 0408-195905-abc --catalog sales --schema prod @queries/slow_report.sql
@@ -84,6 +92,21 @@ Record as `GOALS` (default: `speed`). Accepted values:
 | `speed` | Minimize execution time |
 | `simplicity` | Minimize complexity score (lines, nesting, subqueries) |
 | `speed,simplicity` | Optimize speed first; once accepted, simplify while staying within 10% of best time |
+| `fix` | Diagnose and repair a broken query (syntax errors, cast failures, column resolution errors, type mismatches). No benchmarking. |
+
+**Phase skip table** — skip phases that don't apply to active goals:
+
+| Phase | speed | simplicity | speed,simplicity | fix |
+|:------|:-----:|:----------:|:----------------:|:---:|
+| 1 — Environment discovery | ✅ | ✅ | ✅ | ✅ |
+| 2 — Env setup (venv) | ✅ | ✅ | ✅ | ✅ |
+| 2b — Branch & baseline benchmark | ✅ | ✅ | ✅ | ⛔ skip |
+| 3 — Query analysis (EXPLAIN) | ✅ | ✅ | ✅ | ✅ (as error capture) |
+| 3.3 — Attack plan | ✅ | ✅ | ✅ | ⛔ skip |
+| **Phase Fix** — diagnose + repair | ⛔ skip | ⛔ skip | ⛔ skip | ✅ |
+| 4 — SQL optimization | ✅ | ✅ | ✅ | ⛔ skip |
+| 5 — Benchmark loop | ✅ | ✅ | ✅ | ⛔ skip |
+| 6 — Report | ✅ | ✅ | ✅ | ✅ (fix report) |
 
 Parse these from the invocation arguments before starting Phase 1. For any option
 not supplied, run the normal discovery step.
@@ -329,6 +352,98 @@ outside SQL), say so explicitly and explain what you found.
 
 ---
 
+## Phase Fix — Diagnose and repair broken SQL  *(only when GOALS = fix)*
+
+> Skip Phases 2b, 3.3, 4, 5, and 5b entirely. After Phase Fix, jump straight to Phase 6 (fix report).
+
+The user has a SQL query that fails to run — syntax error, cast failure, column resolution error,
+type mismatch, or similar. The goal is to produce a corrected query that executes cleanly, with
+no change to the intended logic.
+
+### Fix.1 — Capture the error
+
+Run EXPLAIN EXTENDED to get Spark's analysis error. Spark catches most errors at the plan stage
+(type mismatches, unknown columns, bad casts, ambiguous references) before touching any data.
+
+```bash
+$TUNE \
+  --profile <PROFILE> \
+  --cluster-id <CLUSTER_ID> \
+  --original @$QUERY_FILE \
+  --catalog <CATALOG> \
+  --schema <SCHEMA> \
+  --explain-only
+```
+
+If EXPLAIN succeeds but the user says the query fails at runtime (e.g. a cast error on actual
+data values, not schema), run a `SELECT ... LIMIT 1` to surface the runtime error.
+
+Record the full error message. Look for:
+
+| Error class | Spark error pattern | Common cause |
+|:------------|:--------------------|:-------------|
+| `ParseException` | `extraneous input`, `mismatched input`, `no viable alternative` | Syntax error — missing keyword, wrong parentheses, invalid token |
+| `AnalysisException` | `cannot resolve`, `Column not found`, `ambiguous reference` | Unknown column, wrong alias, missing table reference |
+| `AnalysisException` | `cannot up cast`, `cannot cast`, `data type mismatch` | Type mismatch in JOIN ON, UNION ALL columns, or CASE branch |
+| `AnalysisException` | `Table or view not found` | Wrong catalog/schema, typo in table name |
+| `SparkException` at runtime | `NumberFormatException`, `DateTimeException`, `ArithmeticException` | Bad cast on real data (e.g. non-numeric string cast to INT) |
+| `AnalysisException` | `Hint not found`, `Invalid hint` | Bad SQL hint — wrong table alias or unsupported hint |
+
+### Fix.2 — Identify root cause and fix
+
+Use the error message plus the query structure to find the exact line and reason.
+Common fixes:
+
+| Error | Fix |
+|:------|:----|
+| `cannot resolve 'col'` | Check table aliases and column names; add the correct table prefix |
+| `ambiguous reference to 'col'` | Prefix with table alias: `t.col` instead of `col` |
+| `cannot up cast string to int` | Add explicit `TRY_CAST(col AS INT)` or fix the upstream type |
+| `data type mismatch: UNION ALL` | All SELECT lists must have matching types — add `CAST(col AS type)` |
+| `data type mismatch: JOIN ON` | Join keys must be the same type — add `CAST(left_key AS type_of_right_key)` |
+| `::` type cast syntax | Databricks uses `CAST(x AS type)`, not PostgreSQL `::type` syntax |
+| `extraneous input` near keyword | Missing comma, misplaced `AND`, or reserved word used as alias — quote the alias |
+| `Table or view not found` | Check `CATALOG.SCHEMA.table` — verify with `SHOW TABLES IN <schema>` |
+| `NumberFormatException` at runtime | Use `TRY_CAST` instead of `CAST` to handle malformed values gracefully |
+| `INTERVAL` syntax error | Databricks uses `INTERVAL '30' DAYS` or `INTERVAL 30 DAYS`, not `INTERVAL '30 days'` |
+| `DateTimeException` | `TO_DATE` / `TO_TIMESTAMP` format string must match actual data format |
+
+Make the **minimal surgical change** that fixes the error without altering the query's intent.
+Don't refactor unrelated parts. Don't optimize. Don't reformat.
+
+Write the corrected query back to `$QUERY_FILE`.
+
+### Fix.3 — Verify
+
+Re-run EXPLAIN EXTENDED. It must succeed cleanly.
+
+```bash
+$TUNE \
+  --profile <PROFILE> \
+  --cluster-id <CLUSTER_ID> \
+  --original @$QUERY_FILE \
+  --catalog <CATALOG> \
+  --schema <SCHEMA> \
+  --explain-only
+```
+
+If there was a runtime error (not caught by EXPLAIN), also run `SELECT ... LIMIT 1` to confirm
+the fix holds on real data.
+
+If the fix introduces a new error, repeat Fix.2 → Fix.3. Up to 3 attempts before surfacing
+the remaining issue to the user with a clear explanation.
+
+### Fix.4 — Commit
+
+```bash
+git add $QUERY_FILE
+git commit -m "sql-fix: <one-line description of what was broken and how it was fixed>"
+```
+
+Then proceed to Phase 6 (fix report).
+
+---
+
 ## Phase 4 — SQL optimization
 
 > **Output contract:** The only thing this skill produces is a rewritten SQL query.
@@ -507,7 +622,29 @@ for the full prioritized list, per-goal tactics, and hard constraints (including
 
 ## Phase 6 — Report
 
-Present a summary:
+**If GOALS = fix**, present the fix report instead of the tuning report:
+
+```
+## SQL Fix Report
+
+### Error diagnosed
+<exact error message from Spark>
+
+### Root cause
+<one sentence: what was wrong and why>
+
+### Fix applied
+<diff of what changed — show the before/after lines>
+
+### Verification
+EXPLAIN EXTENDED: ✅ PASS (no errors)
+[Optional] LIMIT 1 test: ✅ PASS
+
+### Fixed SQL
+<corrected query>
+```
+
+**Otherwise** (speed / simplicity goals), present the tuning summary:
 
 First print the full attempt log:
 
@@ -578,6 +715,7 @@ Validation: PASS — N rows, identical results
 | Version mismatch | Ensure `DBR_VERSION` from `discover.py` matches installed `databricks-connect` |
 | `.venv_autotuner` import errors | Delete the venv and re-run `env_setup.py` |
 | `init_run.py` branch already exists | Pass a different `--run-id` or delete the branch first |
+| Query fails with `ParseException` / `AnalysisException` | Use `--goals fix` — the fix phase diagnoses and repairs without benchmarking |
 | Validation diff on floats | May be floating-point non-determinism — check with `ROUND()` or cast to DECIMAL |
 | `.collect()` fails with `>4 GiB` / driver OOM | Query returns millions of rows — add `--timing-count` to wrap timing runs in `COUNT(*)`. Validation still uses real results. For very large datasets use `--global-temp` instead, which keeps all intermediate results on the cluster. |
 | Hint parse error in UNION ALL | Move hint to outermost SELECT (see Phase 4 restriction) |

@@ -252,6 +252,41 @@
           "type": "behavior"
         }
       ]
+    },
+    {
+      "id": 9,
+      "prompt": "/python-autotuner --goals fix evals/fixtures/broken_module/transformer.py",
+      "expected_output": "Claude imports the file to detect a SyntaxError (missing colon on a def line), identifies the exact line, adds the colon, re-checks syntax, runs pytest to confirm tests pass, commits the fix, and produces a fix report.",
+      "files": [
+        "evals/fixtures/broken_module/transformer.py",
+        "evals/fixtures/broken_module/tests/test_transformer.py"
+      ],
+      "assertions": [
+        {
+          "text": "Ran ast.parse or python3 import to capture the SyntaxError before running pytest",
+          "type": "behavior"
+        },
+        {
+          "text": "Identified the exact line and cause of the error (missing colon / wrong syntax)",
+          "type": "output"
+        },
+        {
+          "text": "Made a minimal fix (only the broken line changed, no surrounding refactor)",
+          "type": "output"
+        },
+        {
+          "text": "Re-ran pytest to confirm all tests pass after the fix",
+          "type": "behavior"
+        },
+        {
+          "text": "Did NOT run any benchmark or produce speedup numbers (fix goal = no benchmarking)",
+          "type": "behavior"
+        },
+        {
+          "text": "Produced a fix report showing the error, root cause, and what was changed",
+          "type": "output"
+        }
+      ]
     }
   ]
 }

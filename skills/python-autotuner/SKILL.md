@@ -1,18 +1,22 @@
 ---
 name: python-autotuner
 description: >
-  Python code optimizer: analyzes a Python file or function, rewrites it for
-  speed and quality using one focused change at a time, validates correctness
-  with pytest, benchmarks with pytest-benchmark, checks style with ruff, checks
-  types with ty, and measures complexity reduction. Use this skill whenever the
-  user wants to optimize, speed up, simplify, clean up, or benchmark Python
-  code. Trigger on: "/python-autotuner", "optimize this Python", "make this
-  function faster", "improve Python code quality", "benchmark my Python
+  Python code optimizer and error fixer: analyzes a Python file or function,
+  rewrites it for speed and quality using one focused change at a time,
+  validates correctness with pytest, benchmarks with timeit, checks style with
+  ruff, checks types with ty, and measures complexity reduction. Also diagnoses
+  and fixes broken Python code (SyntaxError, ImportError, TypeError,
+  AttributeError, runtime crashes) using --goals fix. Use this skill whenever
+  the user wants to optimize, speed up, simplify, clean up, benchmark, or fix
+  Python code. Trigger on: "/python-autotuner", "optimize this Python", "make
+  this function faster", "improve Python code quality", "benchmark my Python
   function", "reduce complexity in this Python file", "ruff keeps failing",
   "my Python function is too slow", "simplify this Python code", "type errors
   in my Python", "clean up this Python", "Python performance", "profile this
-  Python function", or whenever a user shares a Python file and mentions
-  performance, quality, slowness, or complexity.
+  Python function", "fix this Python error", "SyntaxError in Python",
+  "my Python code is crashing", "TypeError in Python", "ImportError Python",
+  or whenever a user shares a Python file and mentions errors, crashes,
+  failures, performance, quality, slowness, or complexity.
 compatibility: Requires Python 3.10+, uv. ruff/ty/pytest/pytest-benchmark installed via uv if missing.
 ---
 
@@ -43,6 +47,9 @@ violations, ty errors, or complexity score.
 
 # Audit only — analyze and print attack plan, make no changes
 /python-autotuner --explain-only mymodule/processor.py
+
+# Fix a broken file (SyntaxError, ImportError, TypeError, runtime crash)
+/python-autotuner --goals fix mymodule/broken_parser.py
 ```
 
 ---
@@ -70,7 +77,7 @@ The user invokes with:
 | Option | Example | Default | Effect |
 |:-------|:--------|:--------|:-------|
 | `--function <name>` | `--function parse_records` | all functions | Focus benchmark and profiling on a specific function |
-| `--goals <list>` | `--goals speed,quality` | `speed,quality` | Comma-separated: `speed`, `quality`, `simplicity` |
+| `--goals <list>` | `--goals speed,quality` | `speed,quality` | Comma-separated: `speed`, `quality`, `simplicity`, `fix` |
 | `--n-runs <n>` | `--n-runs 5` | `3` | Benchmark runs per variant (only used when goals include `speed`) |
 | `--test-file <path>` | `--test-file tests/test_parser.py` | auto-discover | pytest file to use for validation |
 | `--explain-only` | `--explain-only` | off | Run Phases 0–3 only: analyze and print attack plan, then stop. No edits made. |
@@ -84,17 +91,19 @@ Record as `TARGET_FILE`, `TARGET_FUNCTION` (or None), `GOALS`, `N_RUNS`, `TEST_F
 | `quality` only | Phases 2.3, 3.3 (no benchmark or profiling needed) |
 | `simplicity` only | Phases 2.3, 3.1, 3.2, 3.3 (no benchmark, ruff, or ty needed) |
 | `speed` only | Phases 3.1, 3.2 (no ruff/ty analysis needed) |
+| `fix` | Phases 2.3–2.5, 3.3–3.5 (no benchmarking, no loop — diagnose, patch, verify, done) |
 | any | Phase 2.4 if ruff not in goals; Phase 2.5 if simplicity not in goals |
 
-This avoids expensive pytest-benchmark runs when the user only wants quality or simplicity fixes.
+This avoids expensive benchmark runs when the user only wants quality, simplicity, or error fixes.
 
 **Goal meanings:**
 
 | Goal | What improves |
 |:-----|:-------------|
-| `speed` | pytest-benchmark mean time (lower is better) |
+| `speed` | timeit mean time (lower is better) |
 | `quality` | ruff violation count + ty error count (lower is better) |
 | `simplicity` | complexity score: LOC + nesting_depth×10 + cyclomatic×5 (lower is better) |
+| `fix` | Broken code that errors at import or runtime. Success = code runs and tests pass. |
 
 When `--goals` is omitted, default to `speed,quality`.
 
@@ -366,6 +375,93 @@ Show the attack plan and confirm before proceeding.
 
 ---
 
+## Phase Fix — Diagnose and repair broken Python  *(only when GOALS = fix)*
+
+> Skip Phases 2.3–2.5 (benchmark / quality / complexity baselines), 3.3–3.5 (profiling, attack plan), and the Phase 5 loop. After Phase Fix, jump straight to Phase 6 (fix report).
+
+The user has Python code that fails to import or run. The goal is a minimal, surgical fix that makes the code execute correctly without changing its intent. No optimization, no style cleanup — just the error, diagnosed and patched.
+
+### Fix.1 — Capture the error
+
+**Syntax / import errors** (caught before any code runs):
+```bash
+python3 -c "import ast; ast.parse(open('$TARGET_FILE').read()); print('syntax ok')"
+python3 -c "import importlib.util; s=importlib.util.spec_from_file_location('m','$TARGET_FILE'); m=importlib.util.module_from_spec(s); s.loader.exec_module(m)" 2>&1
+```
+
+**Runtime errors** (only surface when code actually executes — caught by tests):
+```bash
+pytest "$TEST_FILE" -x --tb=short 2>&1 | head -50
+```
+
+**Type errors** (static — no execution needed):
+```bash
+ty check "$TARGET_FILE" 2>&1
+```
+
+Run all three. Record every error: class, message, file, line number.
+
+Error triage — what each error class tells you:
+
+| Error class | Caught by | Common cause |
+|:------------|:----------|:-------------|
+| `SyntaxError` | `ast.parse` | Typo, missing colon, mismatched parentheses, f-string issue |
+| `IndentationError` | `ast.parse` | Mixed tabs/spaces, block dedented wrong |
+| `ImportError` / `ModuleNotFoundError` | import | Missing dependency, wrong module name, circular import |
+| `NameError` | runtime / pytest | Variable used before assignment, typo in name |
+| `TypeError` | runtime / pytest | Wrong argument count, wrong type passed, `None` where value expected |
+| `AttributeError` | runtime / pytest | Method called on wrong type, misspelled attribute, `None` propagated |
+| `ValueError` | runtime / pytest | Unpacking wrong count, `int('abc')`, invalid enum value |
+| `KeyError` | runtime / pytest | Dict key doesn't exist — missing `.get()` or wrong key name |
+| `RecursionError` | runtime / pytest | Infinite recursion — base case missing |
+| ty `error[possibly-unbound]` | ty | Variable assigned inside `if` but used outside — needs default or guard |
+| ty `error[invalid-argument-type]` | ty | Function called with wrong type — fix call site or add `cast()` |
+
+### Fix.2 — Identify root cause and apply minimal fix
+
+Look at the exact error message and line number. Make the smallest change that fixes it:
+
+| Symptom | Fix |
+|:--------|:----|
+| `SyntaxError: invalid syntax` near closing paren | Count opening vs closing parens on that line and above |
+| `SyntaxError` in f-string | Avoid backslashes inside f-string expression — assign to variable first |
+| `IndentationError` | Check if the file mixes tabs and spaces — `expand -t 4 $TARGET_FILE` to normalize |
+| `ModuleNotFoundError: No module named 'X'` | Add `X` to dependencies (`uv add X`), or fix the import path |
+| `ImportError: cannot import name 'X' from 'Y'` | Name was renamed or removed — check the module's actual exports |
+| `NameError: name 'X' is not defined` | Typo, or used before assignment — fix spelling or move assignment earlier |
+| `TypeError: X() missing N required positional arguments` | Caller is missing arguments — check the function signature |
+| `TypeError: unsupported operand type(s) for +: 'int' and 'str'` | Type mismatch — add `str()` or `int()` conversion at the right point |
+| `AttributeError: 'NoneType' object has no attribute 'X'` | A function returned `None` unexpectedly — add a None guard or fix the return |
+| `AttributeError: 'X' object has no attribute 'Y'` | Typo in attribute name, or wrong object type passed |
+| `KeyError: 'X'` | Use `dict.get('X')` or verify the key exists before access |
+| `ValueError: too many values to unpack` | Unpacking tuple/list of wrong length — use `a, *rest = ...` or fix the source |
+| `RecursionError` | Missing or unreachable base case in recursive function |
+
+Make **one fix at a time** if there are multiple errors, starting with the one that blocks execution entirely (syntax errors first, then import errors, then runtime errors).
+
+### Fix.3 — Verify
+
+```bash
+# Syntax clean?
+python3 -c "import ast; ast.parse(open('$TARGET_FILE').read()); print('syntax ok')"
+
+# Tests pass?
+pytest "$TEST_FILE" -x --tb=short 2>&1
+```
+
+Both must pass. If a new error surfaces after the first fix, repeat Fix.2 → Fix.3 (up to 5 iterations). If a fix is not converging, stop and explain the remaining issue to the user clearly.
+
+### Fix.4 — Commit
+
+```bash
+git add "$TARGET_FILE"
+git commit -m "py-fix: <what was broken> — <what was changed>"
+```
+
+Then proceed to Phase 6 (fix report).
+
+---
+
 ## Phase 4 — Rewrite
 
 **One focused change per attempt.** Never batch multiple unrelated changes.
@@ -501,6 +597,30 @@ Strategy priority by goal:
 
 ## Phase 6 — Report
 
+**If GOALS = fix**, present the fix report:
+
+```
+## Python Fix Report
+
+### Error diagnosed
+<exact error class, message, file, and line number>
+
+### Root cause
+<one sentence: what was wrong and why>
+
+### Fix applied
+<show the specific lines changed — before/after>
+
+### Verification
+pytest: ✅ N tests passed
+Syntax check: ✅ clean
+
+### Fixed code
+<the corrected section of the file>
+```
+
+**Otherwise** (speed / quality / simplicity), present the tuning summary.
+
 ```bash
 cat py-tune-results.tsv
 git log --oneline <baseline-sha>..HEAD
@@ -559,5 +679,7 @@ Present:
 | `BENCHMARKS dict is empty` | Check benchmark_spec.py — must define at least one `name: lambda: fn(args)` entry |
 | `radon: command not found` | `uv tool install radon` — or use bundled `scripts/complexity.py` as fallback |
 | `--explain-only` made no edits | Correct — explain-only stops after Phase 3. Run without the flag to apply changes. |
+| Code has errors at baseline | Use `--goals fix` — the fix phase diagnoses and repairs without benchmarking |
+| `SyntaxError` before tests even run | Fix phase catches this at `ast.parse` before pytest is invoked |
 | `Revert fails` | Use `cp "$ORIGINAL_BACKUP" "$TARGET_FILE"` to restore from the pre-run copy |
 | `Stat sig unclear` | With N_RUNS < 5, CI overlap is common — increase `--n-runs` |

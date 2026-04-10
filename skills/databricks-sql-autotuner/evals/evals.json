@@ -194,6 +194,42 @@
           "type": "output"
         }
       ]
+    },
+    {
+      "id": 10,
+      "prompt": "/databricks-sql-autotuner --goals fix --profile prod --cluster-id 0408-195905-abc \"SELECT o.order_id, o.order_date::DATE, c.customer_name, SUM(l.amount) AS total FROM orders o JOIN customers c ON o.customer_id = c.id JOIN order_lines l ON o.order_id = l.order_id WHERE o.status = 'completed' AND order_date >= '2024-01-01' GROUP BY 1, 2, 3\"",
+      "expected_output": "Claude runs EXPLAIN EXTENDED, catches the ParseException on the PostgreSQL-style ::DATE cast (not valid in Databricks SQL), rewrites it as CAST(o.order_date AS DATE), also catches that 'order_date' in the WHERE clause is ambiguous (must be o.order_date), fixes both, re-runs EXPLAIN to verify clean, commits and reports the fix.",
+      "files": [],
+      "assertions": [
+        {
+          "text": "Ran EXPLAIN EXTENDED (via --explain-only) to capture the error before making any edits",
+          "type": "behavior"
+        },
+        {
+          "text": "Identified the ::DATE PostgreSQL cast syntax as invalid in Databricks SQL",
+          "type": "output"
+        },
+        {
+          "text": "Replaced ::DATE with CAST(o.order_date AS DATE)",
+          "type": "output"
+        },
+        {
+          "text": "Fixed the ambiguous order_date reference in the WHERE clause to o.order_date",
+          "type": "output"
+        },
+        {
+          "text": "Re-ran EXPLAIN after fixing to verify the query is now valid",
+          "type": "behavior"
+        },
+        {
+          "text": "Did NOT run any benchmark or produce a speedup report (fix goal = no benchmarking)",
+          "type": "behavior"
+        },
+        {
+          "text": "Produced a fix report showing the error, root cause, and fixed SQL",
+          "type": "output"
+        }
+      ]
     }
   ]
 }
