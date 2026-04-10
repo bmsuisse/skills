@@ -1,0 +1,257 @@
+{
+  "skill_name": "python-autotuner",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "/python-autotuner --goals speed --n-runs 3 evals/fixtures/slow_loop/processor.py",
+      "expected_output": "Claude identifies slow Python patterns (manual loops, O(n) list membership, manual accumulation), rewrites them using efficient built-ins (sum(), list comprehension, set, Counter), verifies all tests still pass, benchmarks both versions, and reports a speedup.",
+      "files": [
+        "evals/fixtures/slow_loop/processor.py",
+        "evals/fixtures/slow_loop/tests/test_processor.py"
+      ],
+      "assertions": [
+        {
+          "text": "Identified at least one slow pattern (O(n) list membership, manual loop accumulation, inner dict scan)",
+          "type": "output"
+        },
+        {
+          "text": "Rewrote at least one function using a more efficient Python built-in (list comprehension, sum(), dict, set, Counter)",
+          "type": "output"
+        },
+        {
+          "text": "Ran pytest to verify correctness before and after each change",
+          "type": "behavior"
+        },
+        {
+          "text": "Ran scripts/benchmark.py or timeit-based measurement to produce timing numbers",
+          "type": "behavior"
+        },
+        {
+          "text": "Reported a speedup ratio for at least one function",
+          "type": "output"
+        },
+        {
+          "text": "Used scripts/complexity.py or equivalent to measure complexity",
+          "type": "behavior"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "/python-autotuner --goals quality evals/fixtures/ruff_violations/formatter.py",
+      "expected_output": "Claude detects ruff violations, fixes them using ruff --fix then manual edits, runs ty, and reports before/after violation counts.",
+      "files": [
+        "evals/fixtures/ruff_violations/formatter.py",
+        "evals/fixtures/ruff_violations/tests/test_formatter.py"
+      ],
+      "assertions": [
+        {
+          "text": "Ran ruff --fix as the first quality step before any manual edits",
+          "type": "behavior"
+        },
+        {
+          "text": "Fixed the bare except clause (E722)",
+          "type": "output"
+        },
+        {
+          "text": "Fixed the mutable default argument in ReportBuilder.__init__ (B006)",
+          "type": "output"
+        },
+        {
+          "text": "Ran pytest to verify tests still pass after quality fixes",
+          "type": "behavior"
+        },
+        {
+          "text": "Reported a before/after count of ruff violations",
+          "type": "output"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "/python-autotuner --goals simplicity evals/fixtures/high_complexity/classifier.py",
+      "expected_output": "Claude identifies the deeply nested if-else chain in classify_order() (cc~20, nesting~5), refactors using early returns or lookup tables, reduces complexity score measurably, all tests pass.",
+      "files": [
+        "evals/fixtures/high_complexity/classifier.py",
+        "evals/fixtures/high_complexity/tests/test_classifier.py"
+      ],
+      "assertions": [
+        {
+          "text": "Ran scripts/complexity.py --per-function to find the highest-complexity function before editing",
+          "type": "behavior"
+        },
+        {
+          "text": "Identified classify_order() as having high cyclomatic complexity or deep nesting",
+          "type": "output"
+        },
+        {
+          "text": "Reduced nesting depth or cyclomatic complexity (guard clauses, lookup table, or extracted helpers)",
+          "type": "output"
+        },
+        {
+          "text": "Ran pytest to verify all tests pass after simplification",
+          "type": "behavior"
+        },
+        {
+          "text": "Reported before/after complexity scores",
+          "type": "output"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "/python-autotuner --goals quality evals/fixtures/missing_types/parser.py",
+      "expected_output": "Claude detects missing type annotations flagged by ty, adds proper type hints to all function signatures, verifies tests still pass, reports before/after ty error count.",
+      "files": [
+        "evals/fixtures/missing_types/parser.py",
+        "evals/fixtures/missing_types/tests/test_parser.py"
+      ],
+      "assertions": [
+        {
+          "text": "Ran scripts/check_quality.py or ty check to identify type errors before editing",
+          "type": "behavior"
+        },
+        {
+          "text": "Added type annotations to at least 3 function signatures",
+          "type": "output"
+        },
+        {
+          "text": "Used appropriate types (str, list, dict, None return types, union types)",
+          "type": "output"
+        },
+        {
+          "text": "Ran pytest to verify tests still pass after adding annotations",
+          "type": "behavior"
+        },
+        {
+          "text": "Reported before/after ty error count",
+          "type": "output"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "/python-autotuner --goals quality evals/fixtures/cross_platform_paths/file_utils.py",
+      "expected_output": "Claude identifies cross-platform issues: string path concatenation (should use pathlib.Path), missing encoding= in open() calls, os.path.* usage (ruff PTH rules), and hardcoded path separators. Fixes them using pathlib.Path and explicit encoding='utf-8', verifies tests pass on any OS.",
+      "files": [
+        "evals/fixtures/cross_platform_paths/file_utils.py",
+        "evals/fixtures/cross_platform_paths/tests/test_file_utils.py"
+      ],
+      "assertions": [
+        {
+          "text": "Identified cross-platform issues: string path concatenation, missing encoding=, or os.path.* usage",
+          "type": "output"
+        },
+        {
+          "text": "Replaced string path concatenation (dirpath + '/' + filename) with pathlib.Path or os.path.join",
+          "type": "output"
+        },
+        {
+          "text": "Added encoding='utf-8' to open() calls that were missing it",
+          "type": "output"
+        },
+        {
+          "text": "Ran pytest to verify tests still pass after cross-platform fixes",
+          "type": "behavior"
+        },
+        {
+          "text": "Reported ruff violation count before and after (PTH rules and SIM rules)",
+          "type": "output"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "/python-autotuner --goals quality evals/fixtures/subprocess_safety/runner.py",
+      "expected_output": "Claude identifies shell=True used with list commands (redundant and platform-fragile), missing encoding= in open() calls, os.path.* usage, and makedirs without exist_ok. Fixes them for cross-platform safety, verifies tests pass.",
+      "files": [
+        "evals/fixtures/subprocess_safety/runner.py",
+        "evals/fixtures/subprocess_safety/tests/test_runner.py"
+      ],
+      "assertions": [
+        {
+          "text": "Identified shell=True used with list-form commands (redundant, breaks on Windows)",
+          "type": "output"
+        },
+        {
+          "text": "Removed shell=True from subprocess.run() calls that pass a list (not a string)",
+          "type": "output"
+        },
+        {
+          "text": "Added encoding='utf-8' to open() calls missing it",
+          "type": "output"
+        },
+        {
+          "text": "Fixed os.makedirs without exist_ok=True to avoid race condition",
+          "type": "output"
+        },
+        {
+          "text": "Ran pytest to verify tests still pass after fixes",
+          "type": "behavior"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "/python-autotuner --goals speed,quality,simplicity evals/fixtures/combined_goals/data_pipeline.py",
+      "expected_output": "Claude identifies and fixes all three goal types: ruff violations (import style, comparison to None, type() instead of isinstance()), slow algorithms (bubble sort, manual O(n) dict grouping), and high complexity (nested loops). Runs pytest throughout. Reports all three metric deltas.",
+      "files": [
+        "evals/fixtures/combined_goals/data_pipeline.py",
+        "evals/fixtures/combined_goals/tests/test_data_pipeline.py"
+      ],
+      "assertions": [
+        {
+          "text": "Replaced the manual bubble sort in top_n_per_category with sorted()",
+          "type": "output"
+        },
+        {
+          "text": "Fixed ruff violations (import style, type() == instead of isinstance(), mutable default None comparison)",
+          "type": "output"
+        },
+        {
+          "text": "Reduced nesting in filter_records using early continue or guard clauses",
+          "type": "output"
+        },
+        {
+          "text": "Ran pytest after each change to verify correctness",
+          "type": "behavior"
+        },
+        {
+          "text": "Reported all three metric types: speed (ms), quality (ruff+ty count), complexity score",
+          "type": "output"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "/python-autotuner --goals speed,quality evals/fixtures/class_methods/cache.py",
+      "expected_output": "Claude identifies O(n) list-of-tuples store (should be a dict for O(1) lookup), missing type annotations on all methods, and type() == comparisons. Replaces the store with a dict or collections.OrderedDict, adds type hints, fixes ruff violations. All 14 tests pass.",
+      "files": [
+        "evals/fixtures/class_methods/cache.py",
+        "evals/fixtures/class_methods/tests/test_cache.py"
+      ],
+      "assertions": [
+        {
+          "text": "Identified that the list-of-tuples store causes O(n) get/set/has/delete operations",
+          "type": "output"
+        },
+        {
+          "text": "Replaced list-of-tuples store with a dict (or OrderedDict) for O(1) lookup",
+          "type": "output"
+        },
+        {
+          "text": "Added type annotations to at least 3 method signatures in SimpleCache",
+          "type": "output"
+        },
+        {
+          "text": "Fixed type() == comparisons to use isinstance() in update_many()",
+          "type": "output"
+        },
+        {
+          "text": "Ran pytest to verify all cache tests pass after the restructure",
+          "type": "behavior"
+        }
+      ]
+    }
+  ]
+}
