@@ -26,7 +26,9 @@ VENV_NAME = ".venv_autotuner"
 
 
 def venv_python(venv: Path) -> Path:
-    return venv / ("Scripts" if platform.system() == "Windows" else "bin") / "python"
+    is_windows = platform.system() == "Windows"
+    name = "python.exe" if is_windows else "python"
+    return venv / ("Scripts" if is_windows else "bin") / name
 
 
 def check_uv() -> None:

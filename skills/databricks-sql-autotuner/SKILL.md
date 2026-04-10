@@ -334,7 +334,7 @@ outside SQL), say so explicitly and explain what you found.
 > **Output contract:** The only thing this skill produces is a rewritten SQL query.
 > No Python code. No cluster config. No DataFrame API. No schema changes.
 > A plain SQL string — same SELECT structure, same columns, same output — just faster.
-> SQL hints (`/*+ BROADCAST(...) */`) and SQL comments are allowed.
+> SQL hints (`/*+ BROADCAST(...) */`) are allowed. Do **not** add SQL comments to the query.
 
 Rewrite the query using **SQL-level rewrites only**.
 
@@ -348,7 +348,6 @@ Rewrite the query using **SQL-level rewrites only**.
 - Replacing UDFs with equivalent built-in Spark SQL functions
 - Splitting complex expressions to help predicate pushdown
 - SQL optimizer hints: `/*+ BROADCAST(t) */`, `/*+ MERGE(t) */`, `/*+ SHUFFLE_HASH(t) */`
-- SQL comments (`--` or `/* */`) explaining what the optimization does
 - **Inlining a view as a CTE** — if a join target is a view whose definition is
   suboptimal, replace the view reference with `WITH view_name AS (<rewritten SQL>)`
   in the optimized query. The output is still a single self-contained SQL string.
