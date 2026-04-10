@@ -105,8 +105,8 @@ def main() -> None:
     parser.add_argument("--global-temp", action="store_true", dest="global_temp")
     args = parser.parse_args()
 
-    if args.n_runs < 2:
-        print("[error] --n-runs must be at least 2", file=sys.stderr)
+    if args.n_runs < 1:
+        print("[error] --n-runs must be at least 1", file=sys.stderr)
         sys.exit(1)
 
     run_id = args.run_id or derive_run_id(args.original)

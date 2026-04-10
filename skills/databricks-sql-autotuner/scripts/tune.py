@@ -402,8 +402,8 @@ def main() -> None:
     if not table_stats_only:
         if not args.explain_only and not args.optimized:
             parser.error("--optimized is required unless --explain-only or --table-stats is set")
-        if args.n_runs < 2 and not args.explain_only:
-            parser.error("--n-runs must be at least 2 for meaningful statistics")
+        if args.n_runs < 1 and not args.explain_only:
+            parser.error("--n-runs must be at least 1")
 
     print(f"[connect] Connecting (profile={args.profile}, cluster={args.cluster_id})...", file=sys.stderr)
     spark = get_spark(args.profile, args.cluster_id)

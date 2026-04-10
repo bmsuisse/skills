@@ -127,7 +127,7 @@ databricks auth login --profile <name>
 ```
 
 After discovery, ask the user:
-> **How many benchmark runs per variant? (default: 3, minimum: 2)**
+> **How many benchmark runs per variant? (default: 3, minimum: 1)**
 
 Record as `N_RUNS`. Then present the full summary from the JSON and wait for confirmation.
 
