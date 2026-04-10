@@ -404,15 +404,12 @@ Commit **before** benchmarking so every attempt is in the git log regardless of 
 $TUNE \
   --profile <PROFILE> \
   --cluster-id <CLUSTER_ID> \
-  --original @$QUERY_FILE \
+  --original @$ORIGINAL_FILE \
   --optimized @$QUERY_FILE \
   --catalog <CATALOG> \
   --schema <SCHEMA> \
   --n-runs <N_RUNS> > $LOG_FILE 2>&1
 ```
-
-(Both `--original` and `--optimized` point to the same file — tune.py compares the
-current version to the baseline it runs internally.)
 
 The script outputs JSON with:
 - `validation.passed` — whether results are byte-for-byte identical
