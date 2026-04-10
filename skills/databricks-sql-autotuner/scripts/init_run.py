@@ -108,6 +108,8 @@ def main() -> None:
     if args.n_runs < 1:
         print("[error] --n-runs must be at least 1", file=sys.stderr)
         sys.exit(1)
+    if args.n_runs == 1:
+        print("[warn] --n-runs 1: single run — for meaningful statistics use 2 or more", file=sys.stderr)
 
     run_id = args.run_id or derive_run_id(args.original)
     results_file = f"sqltune-{run_id}.tsv"
