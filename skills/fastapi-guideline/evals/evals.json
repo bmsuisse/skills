@@ -36,11 +36,23 @@
       "files": [],
       "expectations": [
         "All route handlers use `async def` (no sync def routes)",
-        "Uses psycopg (AsyncConnectionPool or get_pg_connection) — NOT SQLAlchemy",
+        "Uses psycopg (AsyncConnectionPool or get_pg_connection) \u2014 NOT SQLAlchemy",
         "Repository methods are all `async def` and call `get_pg_connection()` directly",
         "Route handlers do NOT take a `db` session as a Depends parameter",
         "Pydantic schemas or models defined for request/response",
         "Uses pg_* helpers (pg_insert, pg_retrieve, pg_delete) or psycopg cursor for queries"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "I'm running my FastAPI app on Windows with Granian and the `--workers 4` flag I saw in the docs causes an error: 'RuntimeError: This platform does not support fork()'. How do I run it properly on Windows?",
+      "expected_output": "Claude explains that Granian on Windows cannot fork processes, so --workers > 1 uses threading instead of multiprocessing. Recommends using --threads N for concurrency instead of --workers N on Windows, or using a single worker with async concurrency which is already efficient. Notes that production Windows deployments typically use threading mode.",
+      "files": [],
+      "expectations": [
+        "Explains that --workers > 1 via fork is not supported on Windows",
+        "Recommends --threads N as the Windows-compatible concurrency option",
+        "Notes that a single async worker with high --threads is the recommended Windows production pattern",
+        "Does not tell the user to abandon Windows or switch to Linux as the only solution"
       ]
     }
   ]

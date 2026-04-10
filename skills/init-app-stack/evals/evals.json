@@ -24,6 +24,19 @@
         "The four installed skills are named: nuxt-ui, nuxt, frontend-design, fastapi-templates",
         "The install locations (.agents/skills etc.) are mentioned"
       ]
+    },
+    {
+      "id": 3,
+      "prompt": "I'm on Windows and trying to scaffold a new app called 'task-manager'. The create.py script fails when it tries to run `bun create nuxt`. bun isn't found even though I installed it. Also the backend setup with uv seems to work. How do I get the frontend part working?",
+      "expected_output": "Claude diagnoses that bun on Windows requires either (1) the Windows native bun installer from bun.sh (not brew), or (2) running in WSL2. Explains how to install bun on Windows via PowerShell: `powershell -c \"irm bun.sh/install.ps1|iex\"`. Alternatively shows how to use npm as a fallback if bun is unavailable, noting bun is strongly preferred.",
+      "files": [],
+      "expectations": [
+        "Correctly identifies that bun on Windows requires the Windows-native installer (not brew)",
+        "Provides the PowerShell bun install command: irm bun.sh/install.ps1|iex",
+        "Mentions WSL2 as an alternative if native Windows bun is problematic",
+        "Notes that uv works cross-platform so the backend part is fine",
+        "Does not suggest replacing bun with npm as the default \u2014 bun is still preferred"
+      ]
     }
   ]
 }

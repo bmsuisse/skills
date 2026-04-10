@@ -16,7 +16,7 @@
     },
     {
       "id": 2,
-      "prompt": "I wrote a migration script at /tmp/migrate_customers.py that needs to run on the Databricks cluster — specifically on the general-purpose cluster (not the GPU one). It reads from a ARGS dict so I need to pass catalog='prod' and dry_run=True to it. Profile is premium.",
+      "prompt": "I wrote a migration script at /tmp/migrate_customers.py that needs to run on the Databricks cluster \u2014 specifically on the general-purpose cluster (not the GPU one). It reads from a ARGS dict so I need to pass catalog='prod' and dry_run=True to it. Profile is premium.",
       "expected_output": "The assistant uses scripts/cli.py run with --file, --args JSON, --cluster-id for the general-purpose cluster, and --profile premium.",
       "files": [],
       "expectations": [
@@ -36,7 +36,7 @@
         "Uses databricks api get /api/2.1/jobs/runs/get-output with the task run ID",
         "Explains the difference between the top-level run_id and the task run_id",
         "Reads error and error_trace fields from the response",
-        "Explains the fix → re-upload → rerun cycle",
+        "Explains the fix \u2192 re-upload \u2192 rerun cycle",
         "Uses --profile premium"
       ]
     },
@@ -79,8 +79,8 @@
         "Passes --profile premium",
         "Mentions that the context will remain open for further commands"
       ]
-    }
-    ,{
+    },
+    {
       "id": 7,
       "prompt": "What tables are available in the analytics schema of the prod catalog? Profile is premium.",
       "expected_output": "The assistant uses scripts/cli.py tables to list all tables in prod.analytics as a formatted table showing name, type, and description.",
@@ -102,6 +102,18 @@
         "Passes the fully qualified name prod.analytics.customer_orders as a positional argument",
         "Passes --profile premium",
         "Shows columns with types, nullable flag, and descriptions"
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "I'm on Windows and trying to run the Databricks CLI script. The scripts/cli.py uses a shebang line `#!/usr/bin/env python3` and when I run it directly it fails. Also `python3` isn't a thing on Windows. How do I run it?",
+      "expected_output": "Claude explains: (1) shebang lines are ignored on Windows \u2014 run the script as `python scripts/cli.py` or `uv run python scripts/cli.py` instead of `./scripts/cli.py`; (2) use `python` not `python3` on Windows, or use `uv run` which is cross-platform; (3) alternatively set up a PowerShell alias. Shows the corrected invocation for all subsequent CLI commands using `uv run python scripts/cli.py run ...`.",
+      "files": [],
+      "expectations": [
+        "Explains that shebang lines are ignored on Windows",
+        "Shows the correct Windows invocation: python scripts/cli.py or uv run python scripts/cli.py",
+        "Does not suggest installing WSL as the only option",
+        "Demonstrates that subsequent commands (run, etc.) work the same way with the corrected invocation"
       ]
     }
   ]

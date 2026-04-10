@@ -16,10 +16,10 @@
     {
       "id": 2,
       "prompt": "I'm about to add a caching layer to our API. Can you run me through the proactive deslop loop so I don't end up with slop in the PR?",
-      "expected_output": "The assistant walks through the Research → Plan → Execute → Review → Revise loop applied to the caching task, asking clarifying questions about existing patterns, trust boundaries, and naming conventions before suggesting any code.",
+      "expected_output": "The assistant walks through the Research \u2192 Plan \u2192 Execute \u2192 Review \u2192 Revise loop applied to the caching task, asking clarifying questions about existing patterns, trust boundaries, and naming conventions before suggesting any code.",
       "files": [],
       "expectations": [
-        "The assistant references the Research → Plan → Execute → Review → Revise loop by name",
+        "The assistant references the Research \u2192 Plan \u2192 Execute \u2192 Review \u2192 Revise loop by name",
         "The Research step asks about or identifies existing patterns in the codebase",
         "The Plan step identifies naming/style/error-handling conventions to follow",
         "The Revise step is mentioned as a way to feed learnings back into project rules"
@@ -35,6 +35,19 @@
         "Redundant comment at the top is removed",
         "Over-defensive optional chaining or null checks are simplified",
         "A deslop report with Removed / Changed sections is produced"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Can you deslop this Python utility? It was AI-generated and I'm on Windows \u2014 some things already broke:\n\n```python\nimport os\nimport subprocess\n\ndef process_file(filename: str) -> str:\n    # Create temp directory for processing\n    tmp_dir = '/tmp/processor_cache'\n    os.makedirs(tmp_dir, exist_ok=True)\n    output_path = tmp_dir + '/' + filename + '.out'\n    \n    # Run the processing command\n    result = subprocess.run(\n        ['process_tool', filename],\n        shell=True,\n        capture_output=True,\n        text=True\n    )\n    \n    with open(output_path, 'w') as f:\n        f.write(result.stdout)\n    \n    return output_path\n```",
+      "expected_output": "Claude applies the deslop checklist and also catches cross-platform slop: hardcoded /tmp/ path (should use tempfile.gettempdir() or pathlib.Path), string path concatenation (should use pathlib.Path /), shell=True with a list command (redundant and platform-fragile on Windows). Produces cleaned version using pathlib and tempfile, removes shell=True, removes the redundant comment.",
+      "files": [],
+      "expectations": [
+        "Replaces /tmp/ hardcode with tempfile.gettempdir() or pathlib.Path(tempfile.gettempdir())",
+        "Replaces string path concatenation (tmp_dir + '/' + filename) with pathlib.Path",
+        "Removes shell=True from subprocess.run() that takes a list (not a string)",
+        "Removes the redundant comment that just restates what makedirs does",
+        "Produces a deslop report with cross-platform issues flagged"
       ]
     }
   ]

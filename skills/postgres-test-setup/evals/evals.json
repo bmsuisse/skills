@@ -53,7 +53,7 @@
         },
         {
           "id": "no_force_reset",
-          "description": "Does NOT suggest --force-reset-db (this is an additive change — reset is not needed)"
+          "description": "Does NOT suggest --force-reset-db (this is an additive change \u2014 reset is not needed)"
         }
       ]
     },
@@ -122,6 +122,30 @@
         {
           "id": "no_production_commands",
           "description": "Issues no commands that would affect production"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "I'm on Windows with Docker Desktop and the postgres test setup fails. The start_postgres.py script uses the Docker socket at /var/run/docker.sock but on Windows Docker Desktop uses a named pipe. The error is 'FileNotFoundError: /var/run/docker.sock'. How do I fix this?",
+      "expected_output": "Claude explains that on Windows, Docker Desktop exposes a named pipe (`//./pipe/docker_engine`) rather than the Unix socket. The fix: use the `docker` Python SDK which auto-detects the platform (it tries the named pipe on Windows and the Unix socket on Linux/Mac). Shows how to create the Docker client with `docker.from_env()` which handles cross-platform detection automatically. No hardcoded socket path needed.",
+      "files": [],
+      "assertions": [
+        {
+          "id": "identifies_windows_docker_pipe",
+          "description": "Identifies that Windows Docker Desktop uses a named pipe, not a Unix socket"
+        },
+        {
+          "id": "recommends_from_env",
+          "description": "Recommends docker.from_env() as the cross-platform client creation method"
+        },
+        {
+          "id": "no_hardcoded_socket",
+          "description": "Does not suggest hardcoding //./pipe/docker_engine \u2014 recommends from_env() instead"
+        },
+        {
+          "id": "docker_desktop_running",
+          "description": "Mentions that Docker Desktop must be running (not just installed) for the pipe to exist"
         }
       ]
     }

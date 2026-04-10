@@ -4,43 +4,43 @@
     {
       "id": 1,
       "prompt": "My ETL pipeline takes about 90 seconds to process our daily CSV dump. I want you to keep trying different optimizations until it's under 30s. The entry point is `pipeline/run.py`, measurements via `hyperfine --warmup 2 'python pipeline/run.py'`. Don't touch the tests or the schema.",
-      "expected_output": "Agent runs the setup phase, confirms parameters, creates autoresearch branch, establishes baseline, then runs the experiment loop autonomously — editing pipeline/run.py, committing, timing, keeping or reverting. Produces a results.tsv and final report.",
+      "expected_output": "Agent runs the setup phase, confirms parameters, creates autoresearch branch, establishes baseline, then runs the experiment loop autonomously \u2014 editing pipeline/run.py, committing, timing, keeping or reverting. Produces a results.tsv and final report.",
       "assertions": []
     },
     {
       "id": 2,
       "prompt": "We have 47 pyright errors in our codebase after a big refactor. Can you iterate autonomously to get that count to zero? Files under `src/` are fair game, don't touch `tests/`.",
-      "expected_output": "Agent sets up with `pyright 2>&1 | grep -c 'error:'` as metric (lower is better), creates branch, baselines at 47 errors, then iteratively fixes type errors one experiment at a time — committing each batch, re-running pyright, keeping improvements.",
+      "expected_output": "Agent sets up with `pyright 2>&1 | grep -c 'error:'` as metric (lower is better), creates branch, baselines at 47 errors, then iteratively fixes type errors one experiment at a time \u2014 committing each batch, re-running pyright, keeping improvements.",
       "assertions": []
     },
     {
       "id": 3,
       "prompt": "Our pytest suite sits at 68% pass rate after a dependency upgrade broke things. Run autoresearch to climb that back toward 100%. Metric: count of passing tests from `pytest --tb=no -q`. Scope is everything under `src/`. Constraints: don't delete tests, don't change test assertions.",
-      "expected_output": "Agent guides through setup confirmation, creates branch, establishes baseline pass count, then runs loop fixing failures — each experiment commits a targeted fix, measures pytest output, keeps on improvement, reverts on regression.",
+      "expected_output": "Agent guides through setup confirmation, creates branch, establishes baseline pass count, then runs loop fixing failures \u2014 each experiment commits a targeted fix, measures pytest output, keeps on improvement, reverts on regression.",
       "assertions": []
     },
     {
       "id": 4,
-      "prompt": "I have a slow SQL query that aggregates sales data — takes about 800ms on our staging Postgres. I want to hill-climb it to under 100ms. The query is in `queries/sales_summary.sql`. Measure with EXPLAIN ANALYZE via psql.",
-      "expected_output": "Agent sets up with PostgreSQL EXPLAIN ANALYZE timing as metric, creates branch, baselines at ~800ms, then iterates: adding indexes, rewriting CTEs, changing join order — each experiment measured, kept or reverted.",
+      "prompt": "I have a slow SQL query that aggregates sales data \u2014 takes about 800ms on our staging Postgres. I want to hill-climb it to under 100ms. The query is in `queries/sales_summary.sql`. Measure with EXPLAIN ANALYZE via psql.",
+      "expected_output": "Agent sets up with PostgreSQL EXPLAIN ANALYZE timing as metric, creates branch, baselines at ~800ms, then iterates: adding indexes, rewriting CTEs, changing join order \u2014 each experiment measured, kept or reverted.",
       "assertions": []
     },
     {
       "id": 5,
       "prompt": "Training my sklearn model takes 4 minutes and achieves 0.71 F1. I want to autonomously experiment to push F1 above 0.80 without going over 5 minutes of training time. Model code is in `model/classifier.py`.",
-      "expected_output": "Agent sets up dual constraints (F1 higher-is-better as primary metric, training time as a constraint), creates branch, baselines both values, then experiments with hyperparameters, feature engineering, model selection — keeping only improvements that stay within the time constraint.",
+      "expected_output": "Agent sets up dual constraints (F1 higher-is-better as primary metric, training time as a constraint), creates branch, baselines both values, then experiments with hyperparameters, feature engineering, model selection \u2014 keeping only improvements that stay within the time constraint.",
       "assertions": []
     },
     {
       "id": 6,
-      "prompt": "I have a slow pandas DataFrame pipeline in `etl/transform.py` — takes 45 seconds on a 500k-row CSV. I want to get it under 10 seconds. You can search the web for optimization ideas. Metric: `hyperfine --warmup 2 'python etl/transform.py'`.",
+      "prompt": "I have a slow pandas DataFrame pipeline in `etl/transform.py` \u2014 takes 45 seconds on a 500k-row CSV. I want to get it under 10 seconds. You can search the web for optimization ideas. Metric: `hyperfine --warmup 2 'python etl/transform.py'`.",
       "expected_output": "Agent asks about web search permission, records WEB_SEARCH=yes, includes it in the confirmation table. During the experiment loop, when stuck or exploring new techniques (e.g. vectorization, polars migration, dtype optimization), performs targeted web searches and cites the source URL in the TSV description. Runs the full autoresearch loop: branch, baseline, iterate, report.",
       "assertions": []
     },
     {
       "id": 7,
       "prompt": "I want to run two autoresearch experiments in parallel: one optimizing `etl/transform.py` for runtime, another reducing pyright errors in `src/`. Can you set up both to run simultaneously?",
-      "expected_output": "Agent explains the git worktree approach, creates two worktrees (one per run with unique RUN_IDs), confirms non-overlapping IN_SCOPE for each, then starts both loops — each in its own worktree directory on its own branch. Does NOT start the second loop in the same working directory as the first.",
+      "expected_output": "Agent explains the git worktree approach, creates two worktrees (one per run with unique RUN_IDs), confirms non-overlapping IN_SCOPE for each, then starts both loops \u2014 each in its own worktree directory on its own branch. Does NOT start the second loop in the same working directory as the first.",
       "assertions": [
         "Agent uses `git worktree add` to create two separate directories",
         "Each run gets a unique RUN_ID and branch name (autoresearch/<run-id>)",
@@ -72,7 +72,7 @@
     },
     {
       "id": 10,
-      "prompt": "I accidentally set up two parallel autoresearch runs with overlapping IN_SCOPE — both are editing `src/utils.py`. What should I do?",
+      "prompt": "I accidentally set up two parallel autoresearch runs with overlapping IN_SCOPE \u2014 both are editing `src/utils.py`. What should I do?",
       "expected_output": "Agent flags the conflict risk clearly: overlapping IN_SCOPE means the two loops will overwrite each other's changes and produce unreliable metrics. Recommends stopping both runs, picking one scope per run, and restarting with clean worktrees. Does not suggest continuing with overlapping scopes.",
       "assertions": [
         "Agent clearly warns that overlapping IN_SCOPE invalidates both runs",
@@ -84,7 +84,7 @@
     {
       "id": 11,
       "prompt": "I have a PySpark ETL notebook at `notebooks/2.1-customer-features.py` that takes about 4 minutes end-to-end. It runs locally via Spark Connect against our Databricks cluster. I want to iterate autonomously to get it under 90 seconds. Measure with `hyperfine --warmup 1 'uv run python notebooks/2.1-customer-features.py'`. Scope: the notebook file only. Don't break schema or output table structure.",
-      "expected_output": "Agent recognizes this is a Spark Connect / Databricks autoresearch run. Sets up with hyperfine as the metric command (lower is better), acknowledges cold-start overhead, creates the branch, establishes baseline, then iterates — trying things like SQL rewrites, caching, partition pruning, pushdown predicates. Uses `spark.sql()` style where appropriate. Explains cluster warm-up considerations.",
+      "expected_output": "Agent recognizes this is a Spark Connect / Databricks autoresearch run. Sets up with hyperfine as the metric command (lower is better), acknowledges cold-start overhead, creates the branch, establishes baseline, then iterates \u2014 trying things like SQL rewrites, caching, partition pruning, pushdown predicates. Uses `spark.sql()` style where appropriate. Explains cluster warm-up considerations.",
       "assertions": [
         "Agent uses hyperfine with --warmup 1 (not higher) given cluster cost",
         "Agent acknowledges that cluster cold-starts may inflate early measurements",
@@ -95,13 +95,19 @@
     {
       "id": 12,
       "prompt": "My ML training notebook `notebooks/3.2-model-training.py` logs val_f1 to MLflow. It's currently hitting 0.73. I want to autoresearch to push it above 0.82. Metric: latest val_f1 from the MLflow run. The notebook connects to Databricks via Spark Connect (.env has DATABRICKS_PROFILE=<your-profile>, DATABRICKS_CLUSTER_ID=<your-cluster-id>). Scope: the notebook. Max 15 experiments.",
-      "expected_output": "Agent sets up MLflow metric extraction as METRIC_COMMAND, records DATABRICKS_PROFILE and DATABRICKS_CLUSTER_ID from the .env context, sets MAX_EXPERIMENTS=15, creates branch, baselines val_f1, then iterates — trying hyperparameter changes, feature engineering, model architecture. Reads MLflow to extract the metric after each run. Keeps only experiments that improve val_f1.",
+      "expected_output": "Agent sets up MLflow metric extraction as METRIC_COMMAND, records DATABRICKS_PROFILE and DATABRICKS_CLUSTER_ID from the .env context, sets MAX_EXPERIMENTS=15, creates branch, baselines val_f1, then iterates \u2014 trying hyperparameter changes, feature engineering, model architecture. Reads MLflow to extract the metric after each run. Keeps only experiments that improve val_f1.",
       "assertions": [
         "Agent records MAX_EXPERIMENTS=15 from the user's constraint",
         "Agent uses MLflow client to extract val_f1 as the metric (not stdout parsing alone)",
         "Agent recognizes DATABRICKS_PROFILE and DATABRICKS_CLUSTER_ID as the Spark Connect credentials",
         "Agent does not touch files outside the notebook scope"
       ]
+    },
+    {
+      "id": 13,
+      "prompt": "I'm on Windows trying to use autoresearch to optimize a script. The metric command `hyperfine --warmup 2 'python3 pipeline/run.py'` fails because `python3` is not recognized on Windows (only `python` exists). Also hyperfine isn't installed. What should I use instead?",
+      "expected_output": "Claude adapts the autoresearch workflow for Windows: replaces python3 with python (or uv run python), installs hyperfine via winget/scoop, or substitutes a Python timeit-based measurement command. Still runs the full autonomous optimization loop.",
+      "assertions": []
     }
   ]
 }

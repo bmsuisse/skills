@@ -37,14 +37,16 @@
       "id": 2,
       "prompt": "/databricks-sql-autotuner @evals/fixtures/slow_report.sql",
       "expected_output": "Claude reads the fixture SQL file, then follows the full workflow: profile/cluster discovery, env setup, EXPLAIN, optimization, validation, benchmark. Works identically to the inline SQL path.",
-      "files": ["evals/fixtures/slow_report.sql"],
+      "files": [
+        "evals/fixtures/slow_report.sql"
+      ],
       "assertions": [
         {
           "text": "Read the .sql file via @file syntax rather than treating the path as inline SQL",
           "type": "behavior"
         },
         {
-          "text": "Ran the full workflow (explain → optimize → validate → benchmark)",
+          "text": "Ran the full workflow (explain \u2192 optimize \u2192 validate \u2192 benchmark)",
           "type": "behavior"
         },
         {
@@ -148,7 +150,7 @@
           "type": "output"
         },
         {
-          "text": "Still ran validation (result equivalence check) — not skipped because of --timing-count",
+          "text": "Still ran validation (result equivalence check) \u2014 not skipped because of --timing-count",
           "type": "behavior"
         }
       ]
@@ -169,6 +171,26 @@
         },
         {
           "text": "Logged '[cleanup] Dropping global temp tables' after benchmarking",
+          "type": "output"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "I'm on Windows and when the autotuner tries to run tune.py it says '.venv_autotuner/bin/python' is not recognized. How do I fix this?",
+      "expected_output": "Claude explains that on Windows the venv Python path is .venv_autotuner\\Scripts\\python.exe (not bin/python). It suggests running the autotuner with the correct Windows path, or using `uv run` which resolves the venv automatically on all platforms.",
+      "files": [],
+      "assertions": [
+        {
+          "text": "Identified that the Windows venv path is Scripts\\python.exe not bin/python",
+          "type": "output"
+        },
+        {
+          "text": "Suggested either using the correct Windows path (.venv_autotuner\\Scripts\\python.exe) or using uv run as a cross-platform alternative",
+          "type": "output"
+        },
+        {
+          "text": "Did not suggest hardcoding a Unix path in a script meant to run on Windows",
           "type": "output"
         }
       ]

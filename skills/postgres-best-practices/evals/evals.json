@@ -55,7 +55,7 @@
     },
     {
       "id": 3,
-      "prompt": "We need to search users by a dynamically chosen column — it could be either 'email' or 'display_name' depending on a runtime parameter. How should I implement this safely with psycopg? We're on Python 3.13.",
+      "prompt": "We need to search users by a dynamically chosen column \u2014 it could be either 'email' or 'display_name' depending on a runtime parameter. How should I implement this safely with psycopg? We're on Python 3.13.",
       "expected_output": "Uses psycopg.sql (not t-strings, since Python < 3.14). sql.Identifier for the column name, %(value)s for the search value. Explains why f-strings are dangerous here. Shows the Python code.",
       "files": [],
       "assertions": [
@@ -79,8 +79,8 @@
     },
     {
       "id": 4,
-      "prompt": "I need to check if a user exists by their username. It's a single-column lookup and the query is trivial — just `SELECT id FROM users WHERE username = ?`. Can I write this inline in Python instead of creating a .sql file?",
-      "expected_output": "Yes — short trivial queries of up to 4 lines are allowed inline. The response should show the inline query using named parameter style %(username)s, confirm this is acceptable per the guidelines, and note that a .sql file is still required once a query involves JOINs, CTEs, aggregations, or becomes multi-condition.",
+      "prompt": "I need to check if a user exists by their username. It's a single-column lookup and the query is trivial \u2014 just `SELECT id FROM users WHERE username = ?`. Can I write this inline in Python instead of creating a .sql file?",
+      "expected_output": "Yes \u2014 short trivial queries of up to 4 lines are allowed inline. The response should show the inline query using named parameter style %(username)s, confirm this is acceptable per the guidelines, and note that a .sql file is still required once a query involves JOINs, CTEs, aggregations, or becomes multi-condition.",
       "files": [],
       "assertions": [
         {
@@ -118,6 +118,30 @@
         {
           "text": "Does not use f-string or string concatenation for the dynamic values",
           "type": "qualitative"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "I'm on Windows and my psycopg connection is failing with 'SSL SYSCALL error: EOF detected' when I use sslmode=require. On Mac my colleague's same connection string works fine. What's different about Windows?",
+      "expected_output": "Claude diagnoses that Windows uses a different SSL certificate store than Linux/Mac. The fix is either: (1) set sslmode=verify-ca with an explicit sslrootcert path pointing to the Windows certificate bundle (e.g. from certifi: `certifi.where()`); (2) or set sslmode=prefer to downgrade for development. For production, use certifi to get the correct CA bundle cross-platform. Shows how to build the connection string with the certifi path.",
+      "files": [],
+      "assertions": [
+        {
+          "text": "Identified that Windows uses a different SSL certificate bundle than Mac/Linux",
+          "type": "output"
+        },
+        {
+          "text": "Mentioned certifi.where() as a cross-platform way to get the correct CA bundle path",
+          "type": "output"
+        },
+        {
+          "text": "Did not tell user to simply disable SSL (sslmode=disable) as the solution",
+          "type": "output"
+        },
+        {
+          "text": "Provided a connection string or DSN example that works on Windows using certifi or explicit sslrootcert",
+          "type": "output"
         }
       ]
     }

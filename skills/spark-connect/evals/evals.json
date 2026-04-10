@@ -70,12 +70,23 @@
     {
       "id": 7,
       "prompt": "I want to run the autoresearch optimization loop on my PySpark notebook. How does that work with Spark Connect?",
-      "expected_output": "Agent explains the execution model: the local autoresearch loop edits the script, commits, runs it locally via `uv run python`, which triggers get_spark_session() → Spark Connect → cluster. Advises using hyperfine --warmup 1 (not 3+) due to cluster cost, and accounting for cold-start overhead in the baseline. Points to the autoresearch skill for the full loop protocol.",
+      "expected_output": "Agent explains the execution model: the local autoresearch loop edits the script, commits, runs it locally via `uv run python`, which triggers get_spark_session() \u2192 Spark Connect \u2192 cluster. Advises using hyperfine --warmup 1 (not 3+) due to cluster cost, and accounting for cold-start overhead in the baseline. Points to the autoresearch skill for the full loop protocol.",
       "assertions": [
-        "Agent explains the local loop → Spark Connect → cluster execution chain",
+        "Agent explains the local loop \u2192 Spark Connect \u2192 cluster execution chain",
         "Agent recommends `hyperfine --warmup 1` to limit cluster compute cost",
         "Agent mentions cold-start overhead affecting early measurements",
         "Agent references the autoresearch skill for the full loop protocol"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "I'm setting up Databricks Connect on Windows. The instructions say to run `source .env` but that command doesn't exist in PowerShell. Also `source venv/bin/activate` fails. What's the Windows equivalent?",
+      "expected_output": "Claude explains Windows equivalents: (1) For .env loading, use python-dotenv's `load_dotenv()` in code instead of shell sourcing, or use a `.env` file with uv which reads it automatically. (2) For venv activation in PowerShell use `.venv\\Scripts\\Activate.ps1`. Mentions that `uv run` handles the venv automatically without manual activation.",
+      "assertions": [
+        "Agent explains that `source .env` is bash-only and suggests python-dotenv load_dotenv() or uv's automatic .env support as the Windows-compatible alternative",
+        "Agent gives the correct PowerShell venv activation path: .venv\\Scripts\\Activate.ps1 (not bin/activate)",
+        "Agent mentions that uv run automatically handles venv activation cross-platform",
+        "Agent does not suggest WSL as the only solution \u2014 native Windows alternatives are provided"
       ]
     }
   ]
