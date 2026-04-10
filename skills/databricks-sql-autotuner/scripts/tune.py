@@ -33,6 +33,7 @@ import math
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from pyspark.sql.types import ArrayType, MapType, StructType
 from pathlib import Path
 
 
@@ -247,6 +248,40 @@ def is_significant(orig: dict, opt: dict) -> bool:
     return (opt["mean_s"] + opt["std_s"]) < (orig["mean_s"] - orig["std_s"])
 
 
+def _normalize_expr(expr: str, dtype) -> str:
+    """Recursively build a deterministic SQL expression for non-deterministic types.
+
+    - ArrayType  → array_sort(transform(expr, x -> normalize(x)))
+    - MapType    → cast(expr AS STRING)  (no sort available for maps)
+    - StructType → struct(normalize(field1) AS field1, ...)
+    - other      → expr unchanged
+    """
+    if isinstance(dtype, ArrayType):
+        inner = _normalize_expr("x", dtype.elementType)
+        if inner == "x":
+            return f"array_sort({expr})"
+        return f"array_sort(transform({expr}, x -> {inner}))"
+    elif isinstance(dtype, MapType):
+        return f"cast({expr} AS STRING)"
+    elif isinstance(dtype, StructType):
+        fields = ", ".join(
+            f"{_normalize_expr(f'{expr}.`{f.name}`', f.dataType)} AS `{f.name}`"
+            for f in dtype.fields
+        )
+        return f"struct({fields})"
+    return expr
+
+
+def _normalized_select(schema) -> str:
+    """SELECT clause that normalizes array/map/struct columns for deterministic EXCEPT ALL comparison."""
+    parts = []
+    for field in schema.fields:
+        col = f"`{field.name}`"
+        normalized = _normalize_expr(col, field.dataType)
+        parts.append(f"{normalized} AS {col}" if normalized != col else col)
+    return ", ".join(parts)
+
+
 def validate_queries(spark, original: str, optimized: str) -> dict:
     spark.sql(f"CREATE OR REPLACE TEMP VIEW _tuner_original AS {original}")
     spark.sql(f"CREATE OR REPLACE TEMP VIEW _tuner_optimized AS {optimized}")
@@ -262,10 +297,12 @@ def validate_queries(spark, original: str, optimized: str) -> dict:
             "optimized_rows": opt_count,
         }
 
-    diff_rows = spark.sql("""
-        SELECT * FROM _tuner_original EXCEPT ALL SELECT * FROM _tuner_optimized
+    schema = spark.sql("SELECT * FROM _tuner_original LIMIT 0").schema
+    sel = _normalized_select(schema)
+    diff_rows = spark.sql(f"""
+        SELECT {sel} FROM _tuner_original EXCEPT ALL SELECT {sel} FROM _tuner_optimized
         UNION ALL
-        SELECT * FROM _tuner_optimized EXCEPT ALL SELECT * FROM _tuner_original
+        SELECT {sel} FROM _tuner_optimized EXCEPT ALL SELECT {sel} FROM _tuner_original
     """).limit(10).collect()
 
     if diff_rows:
@@ -297,10 +334,12 @@ def validate_queries_global_temp(spark, original: str, optimized: str) -> dict:
             "optimized_rows": opt_count,
         }
 
-    diff_rows = spark.sql("""
-        SELECT * FROM global_temp._tuner_original EXCEPT ALL SELECT * FROM global_temp._tuner_optimized
+    schema = spark.sql("SELECT * FROM global_temp._tuner_original LIMIT 0").schema
+    sel = _normalized_select(schema)
+    diff_rows = spark.sql(f"""
+        SELECT {sel} FROM global_temp._tuner_original EXCEPT ALL SELECT {sel} FROM global_temp._tuner_optimized
         UNION ALL
-        SELECT * FROM global_temp._tuner_optimized EXCEPT ALL SELECT * FROM global_temp._tuner_original
+        SELECT {sel} FROM global_temp._tuner_optimized EXCEPT ALL SELECT {sel} FROM global_temp._tuner_original
     """).limit(10).collect()
 
     if diff_rows:
