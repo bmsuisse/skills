@@ -14,8 +14,9 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
       - name: Bump minor version tag
-        run: |-
+        run: |
           git fetch --tags
           LATEST=$(git tag --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -1)
           if [ -z "$LATEST" ]; then
@@ -26,7 +27,47 @@ jobs:
             NEW_TAG="v${MAJOR}.$((MINOR + 1)).0"
           fi
           echo "Creating tag: $NEW_TAG"
+          echo "NEW_TAG=$NEW_TAG" >> "$GITHUB_ENV"
+          echo "PREV_TAG=$LATEST" >> "$GITHUB_ENV"
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git tag "$NEW_TAG"
           git push origin "$NEW_TAG"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="$NEW_TAG"
+          PREV="$PREV_TAG"
+
+          if [ -z "$PREV" ]; then
+            LOG=$(git log --pretty=format:"%s" HEAD)
+          else
+            LOG=$(git log --pretty=format:"%s" "${PREV}..${TAG}")
+          fi
+
+          # Parse conventional commits — skip CI noise
+          FEATS=$(echo "$LOG" | grep -E '^feat(\(.+\))?(!)?:' | grep -v '\[skip ci\]' | sed 's/^feat([^)]*): /- /;s/^feat: /- /' || true)
+          FIXES=$(echo "$LOG" | grep -E '^fix(\(.+\))?(!)?:'  | grep -v '\[skip ci\]' | sed 's/^fix([^)]*): /- /;s/^fix: /- /'   || true)
+          PERF=$(echo "$LOG"  | grep -E '^perf(\(.+\))?(!)?:' | grep -v '\[skip ci\]' | sed 's/^perf([^)]*): /- /;s/^perf: /- /'  || true)
+
+          FIRST_FEAT=$(echo "$FEATS" | head -1 | sed 's/^- //')
+          if [ -n "$FIRST_FEAT" ]; then
+            RELEASE_NAME="${TAG} — ${FIRST_FEAT}"
+          else
+            RELEASE_NAME="${TAG}"
+          fi
+
+          BODY="## What's new"$'\n'
+          [ -n "$FEATS" ] && BODY="${BODY}"$'\n'"### Features"$'\n'"${FEATS}"$'\n'
+          [ -n "$FIXES" ] && BODY="${BODY}"$'\n'"### Fixes"$'\n'"${FIXES}"$'\n'
+          [ -n "$PERF"  ] && BODY="${BODY}"$'\n'"### Performance"$'\n'"${PERF}"$'\n'
+          BODY="${BODY}"$'\n'"## Install"$'\n'
+          BODY="${BODY}"'```bash'$'\n'
+          BODY="${BODY}"'npx skills add bmsuisse/skills'$'\n'
+          BODY="${BODY}"'```'
+
+          gh release create "${TAG}" \
+            --title "${RELEASE_NAME}" \
+            --notes "${BODY}"
