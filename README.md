@@ -178,9 +178,22 @@ The helper script at `skills/bms/scripts/load_skills.py` concatenates the releva
 
 ### Install
 
+**Plugin (recommended)** — installs bms + all sub-skills as a self-contained plugin:
+
+```bash
+claude plugin marketplace add bmsuisse/skills
+claude plugin install bms@bmsuisse-skills
+```
+
+**skills CLI** — installs the bms skill only (sub-skills must already be installed):
+
 ```bash
 npx skills add https://github.com/bmsuisse/skills --skill bms
 ```
+
+### Plugin path resolution
+
+When installed as a plugin, `load_skills.py` resolves sub-skill paths via the `CLAUDE_PLUGIN_ROOT` environment variable that Claude Code injects at runtime. In the repo, it falls back to the repo-relative path. This means the script works correctly in both contexts without configuration.
 
 ---
 
