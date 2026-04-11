@@ -1,0 +1,11 @@
+{
+  "eval_id": 11,
+  "eval_name": "compare-checksum-strategy",
+  "prompt": "/databricks-sql-autotuner --compare-strategy checksum --profile prod --cluster-id 0408-195905-abc --original \"SELECT region_id, product_id, SUM(revenue) AS total_revenue, AVG(quantity) AS avg_qty, COUNT(*) AS n FROM fact_sales GROUP BY region_id, product_id\" --optimized \"SELECT /*+ BROADCAST(r) */ f.region_id, f.product_id, SUM(f.revenue) AS total_revenue, AVG(f.quantity) AS avg_qty, COUNT(*) AS n FROM fact_sales f GROUP BY f.region_id, f.product_id\"",
+  "assertions": [
+    {"text": "Passed --compare-strategy checksum to tune.py for the benchmark run", "type": "behavior"},
+    {"text": "Logged 'strategy=checksum' in the validation output", "type": "output"},
+    {"text": "Validation result includes 'columns_checked' listing the numeric/boolean columns that were verified", "type": "output"},
+    {"text": "Did NOT run a full EXCEPT ALL diff (no rows collected to driver for validation)", "type": "behavior"}
+  ]
+}

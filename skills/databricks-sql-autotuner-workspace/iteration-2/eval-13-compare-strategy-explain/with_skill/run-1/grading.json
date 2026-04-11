@@ -1,0 +1,81 @@
+{
+  "expectations": [
+    {
+      "text": "Explained that checksum only covers numeric and boolean columns",
+      "passed": true,
+      "evidence": "Report states: 'Columns covered: numeric types (INT, BIGINT, DOUBLE, DECIMAL, etc.) and boolean columns' and 'Limitation: String columns, date/timestamp columns, and other non-numeric types are not included in the checksum.' The comparison table also lists 'Numeric and boolean only' for checksum coverage."
+    },
+    {
+      "text": "Explained that row_hash covers all column types via xxhash64",
+      "passed": true,
+      "evidence": "Report states: 'The row hash strategy computes SUM(xxhash64(*)) \u2014 it hashes every row across all columns into a single 64-bit integer' and 'Columns covered: all columns, regardless of type (strings, dates, timestamps, numerics, structs)'. The aggregate used is described as 'SUM(xxhash64(col1, col2, ..., colN))'."
+    },
+    {
+      "text": "Gave guidance on when to use each (e.g. checksum for numeric aggregations, row_hash for full coverage)",
+      "passed": true,
+      "evidence": "Report includes a 'When to use each' section with a table mapping situations to recommended strategies, e.g. 'Large result set, mostly numeric/boolean columns \u2192 checksum' and 'Large result set with string, date, or mixed-type columns \u2192 row_hash'. Also includes a decision rule: 'If you are unsure, prefer row_hash.'"
+    },
+    {
+      "text": "Mentioned that both strategies avoid collecting rows to the driver",
+      "passed": true,
+      "evidence": "Report states in the Overview: 'Both operate entirely on the cluster using aggregation \u2014 neither collects rows to the driver.' It also has a dedicated section 'Do both strategies avoid driver row collection?' answering 'Yes. Both checksum and row_hash avoid collecting rows to the driver entirely.' The comparison table also lists 'None' for driver row collection for both strategies."
+    }
+  ],
+  "summary": {
+    "passed": 4,
+    "failed": 0,
+    "total": 4,
+    "pass_rate": 1.0
+  },
+  "execution_metrics": {
+    "total_tokens": 23692,
+    "output_chars": 2817,
+    "transcript_chars": null
+  },
+  "timing": {
+    "executor_duration_seconds": 55.2,
+    "total_duration_seconds": 55.2
+  },
+  "claims": [
+    {
+      "claim": "checksum computes SUM and COUNT per numeric/boolean column plus overall COUNT(*)",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Report states: 'Aggregates used: SUM(col) and COUNT(col) per numeric/boolean column, plus an overall COUNT(*)'"
+    },
+    {
+      "claim": "row_hash uses a single aggregation pass",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Report states: 'Aggregates used: SUM(xxhash64(col1, col2, ..., colN)) \u2014 a single pass' and table shows 'Single aggregation pass' for row_hash"
+    },
+    {
+      "claim": "checksum is faster than row_hash",
+      "type": "quality",
+      "verified": false,
+      "evidence": "The report suggests checksum may be preferred when 'slightly faster aggregation is preferred', but does not provide benchmark data to verify this claim. It is a reasonable heuristic but unverified."
+    },
+    {
+      "claim": "Both strategies are appropriate for large/huge datasets where full or extend would be too expensive",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Report explicitly states: 'This is why they are appropriate for large and huge datasets where full (EXCEPT ALL symmetric diff) or extend (EXCEPT ALL via global temp tables) would be too expensive.'"
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [],
+    "needs_review": [],
+    "workarounds": []
+  },
+  "eval_feedback": {
+    "suggestions": [
+      {
+        "reason": "All four assertions check for presence of information but none verify factual accuracy. For example, assertion 2 passes as long as xxhash64 is mentioned in connection with row_hash \u2014 but the report could mention it incorrectly (e.g., wrong function signature) and still pass. Consider adding an assertion that verifies the technical claim is correct, e.g. 'correctly described xxhash64 as hashing all columns into a 64-bit integer before summing'."
+      },
+      {
+        "reason": "No assertion checks that the response correctly distinguishes the two strategies' strength of equivalence guarantees (partial vs full). The report handles this well with the table entry 'Partial (non-numeric columns not checked)' vs 'Full (all columns hashed)', but this important correctness dimension is not tested."
+      }
+    ],
+    "overall": "Assertions are well-targeted and all pass with clear, substantive evidence. The report is thorough and accurate. The main gap is that assertions test presence of information rather than factual correctness \u2014 a response that mentioned the right keywords but got technical details wrong could still pass."
+  }
+}

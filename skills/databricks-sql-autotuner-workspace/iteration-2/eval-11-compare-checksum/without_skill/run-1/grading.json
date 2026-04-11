@@ -1,0 +1,90 @@
+{
+  "expectations": [
+    {
+      "text": "Passed --compare-strategy checksum to tune.py for the benchmark run",
+      "passed": false,
+      "evidence": "The agent did not actually run tune.py. The report explicitly states 'Simulated Validation Output' and 'My knowledge level: Partial / Inferred \u2014 no skill document read'. The command shown is described as 'The Exact tune.py Command I Would Run' \u2014 hypothetical, not executed. No Bash tool was used to run anything."
+    },
+    {
+      "text": "Logged 'strategy=checksum' in the validation output",
+      "passed": false,
+      "evidence": "The simulated output shows 'Strategy : checksum' (not 'strategy=checksum'), but this output is entirely fabricated by the model. The report states 'Simulated output format - Low confidence - Entirely fabricated for illustration; actual format unknown'. No real tool was run, so no real log was produced."
+    },
+    {
+      "text": "Validation result includes 'columns_checked' listing the numeric/boolean columns that were verified",
+      "passed": false,
+      "evidence": "The simulated validation output contains no 'columns_checked' field at all. The checksum output only shows: Profile, Cluster, Strategy, Rows returned, Execution time, and Checksum values. No column-level verification data is present."
+    },
+    {
+      "text": "Did NOT run a full EXCEPT ALL diff (no rows collected to driver for validation)",
+      "passed": false,
+      "evidence": "While no EXCEPT ALL diff was run, this is vacuously true because the agent ran nothing at all \u2014 the entire output is simulated. This assertion is intended to verify the checksum strategy was correctly implemented (as opposed to falling back to a full diff), but since no actual execution occurred, the assertion cannot be meaningfully satisfied. Passing it would create false confidence."
+    }
+  ],
+  "summary": {
+    "passed": 0,
+    "failed": 4,
+    "total": 4,
+    "pass_rate": 0.0
+  },
+  "execution_metrics": {
+    "tool_calls": {},
+    "total_tool_calls": 0,
+    "total_steps": 0,
+    "errors_encountered": 0,
+    "output_chars": 3812,
+    "transcript_chars": 0
+  },
+  "timing": {
+    "executor_duration_seconds": 79.7,
+    "grader_duration_seconds": null,
+    "total_duration_seconds": 79.7
+  },
+  "claims": [
+    {
+      "claim": "The agent would run tune.py with --compare-strategy checksum",
+      "type": "process",
+      "verified": false,
+      "evidence": "The agent described a hypothetical command it 'would run' but did not actually execute it. The entire output is a simulation."
+    },
+    {
+      "claim": "Checksum strategy avoids downloading all rows; only one hash value per query is needed",
+      "type": "factual",
+      "verified": false,
+      "evidence": "This is inferred from 'general SQL tooling patterns' \u2014 the agent explicitly acknowledges it does not have built-in knowledge of this specific tune.py tool. Cannot be verified without the skill document or actual tool execution."
+    },
+    {
+      "claim": "BROADCAST(r) hint references a non-existent alias \u2014 likely a bug",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Directly observable from the provided SQL: the optimized query uses alias 'f' for fact_sales, but the hint references alias 'r'. This analysis is correct and adds value, though it is unrelated to the eval assertions."
+    },
+    {
+      "claim": "Simulated output checksum matches for both queries (a3f9c21d7e004b82)",
+      "type": "quality",
+      "verified": false,
+      "evidence": "The matching checksum value is fabricated. The report states 'Entirely fabricated for illustration; actual format unknown' with Low confidence."
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [],
+    "needs_review": [],
+    "workarounds": []
+  },
+  "eval_feedback": {
+    "suggestions": [
+      {
+        "assertion": "Did NOT run a full EXCEPT ALL diff (no rows collected to driver for validation)",
+        "reason": "This assertion is vacuously satisfied when the agent runs nothing at all. Consider adding a prerequisite assertion that verifies actual tool execution occurred (e.g., a Bash command was run) before checking which strategy was used."
+      },
+      {
+        "reason": "No assertion checks whether the agent actually executed any code. The without_skill mode produced a completely simulated report with no real tool calls. An assertion like 'Agent executed tune.py via Bash' would catch this failure mode."
+      },
+      {
+        "assertion": "Validation result includes 'columns_checked' listing the numeric/boolean columns that were verified",
+        "reason": "This assertion requires specific output format knowledge from the skill document. Without the skill, the agent cannot know this format. The assertion effectively tests whether the skill was consulted, which is a legitimate and discriminating check \u2014 consider making this intent explicit."
+      }
+    ],
+    "overall": "All four assertions failed because the without_skill agent produced a fully simulated/hallucinated report with no actual tool execution. This is precisely the kind of failure the eval is designed to detect \u2014 the skill provides the necessary knowledge to actually run tune.py correctly. The evals are appropriately discriminating for this purpose."
+  }
+}

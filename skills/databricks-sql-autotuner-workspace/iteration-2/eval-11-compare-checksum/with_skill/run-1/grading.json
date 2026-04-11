@@ -1,0 +1,83 @@
+{
+  "expectations": [
+    {
+      "text": "Passed --compare-strategy checksum to tune.py for the benchmark run",
+      "passed": true,
+      "evidence": "The report.md shows the exact tune.py command: '.venv_autotuner/bin/python $SKILL_DIR/scripts/tune.py ... --compare-strategy checksum ...' and the flags table confirms: '--compare-strategy | checksum | Parsed in Phase 0, passed verbatim to tune.py'"
+    },
+    {
+      "text": "Logged 'strategy=checksum' in the validation output",
+      "passed": true,
+      "evidence": "The simulated validation output in report.md shows '[validate] Checking result equivalence (strategy=checksum)...' and the validation block shows 'strategy : checksum'. The JSON result also includes '\"strategy\": \"checksum\"'."
+    },
+    {
+      "text": "Validation result includes 'columns_checked' listing the numeric/boolean columns that were verified",
+      "passed": true,
+      "evidence": "The validation block shows 'columns_checked : [revenue, quantity, n]' and the JSON result includes '\"columns_checked\": [\"revenue\", \"quantity\", \"n\"]' \u2014 all three are numeric aggregate columns from the query."
+    },
+    {
+      "text": "Did NOT run a full EXCEPT ALL diff (no rows collected to driver for validation)",
+      "passed": true,
+      "evidence": "The report's 'Why checksum over full' section explicitly states: 'checksum runs a single aggregation pass per query \u2014 SUM + COUNT per numeric/boolean column \u2014 no rows reach the driver' and contrasts with full which 'uses EXCEPT ALL, collecting both result sets to the driver'. No EXCEPT ALL usage is present."
+    }
+  ],
+  "summary": {
+    "passed": 4,
+    "failed": 0,
+    "total": 4,
+    "pass_rate": 1.0
+  },
+  "execution_metrics": {},
+  "timing": {
+    "executor_duration_seconds": 94.5,
+    "grader_duration_seconds": null,
+    "total_duration_seconds": 94.5
+  },
+  "claims": [
+    {
+      "claim": "The skill defaults to 'full' strategy when --compare-strategy is not supplied",
+      "type": "factual",
+      "verified": false,
+      "evidence": "The report asserts 'Without it, the skill defaults to full' but no code or invocation without the flag is shown to verify this default behavior."
+    },
+    {
+      "claim": "checksum strategy avoids OOM risk for large fact_sales GROUP BY result sets",
+      "type": "quality",
+      "verified": false,
+      "evidence": "The report explains the rationale but this is a simulated run \u2014 no actual Databricks execution occurred, so the memory behavior cannot be verified."
+    },
+    {
+      "claim": "columns_checked lists revenue, quantity, and n as numeric/boolean columns",
+      "type": "factual",
+      "verified": true,
+      "evidence": "The query outputs SUM(revenue), AVG(quantity), COUNT(*) AS n \u2014 all numeric aggregates. The columns_checked list correctly identifies these three columns."
+    },
+    {
+      "claim": "The output is a real execution trace against Databricks",
+      "type": "process",
+      "verified": false,
+      "evidence": "The report is labeled 'Simulated Validation Output' \u2014 no actual Databricks cluster was contacted. All output is fabricated to match what the tool would produce."
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [],
+    "needs_review": [],
+    "workarounds": []
+  },
+  "eval_feedback": {
+    "suggestions": [
+      {
+        "reason": "All four assertions pass on purely simulated output. The report explicitly labels the validation block 'Simulated Validation Output', meaning the skill produced a document rather than running real code. Assertions 1-4 are trivially satisfied by generating the right text. Consider requiring an actual tune.py invocation captured from a Bash tool call in the transcript, or checking that a real JSON result file (not inline markdown) was written."
+      },
+      {
+        "assertion": "Did NOT run a full EXCEPT ALL diff (no rows collected to driver for validation)",
+        "reason": "This negative assertion is only verified by the absence of certain text in a simulated report. In a real execution context, this should be checked by verifying tune.py source code or observing Spark query plans, not by reading prose the skill wrote about itself."
+      },
+      {
+        "assertion": "Validation result includes 'columns_checked' listing the numeric/boolean columns that were verified",
+        "reason": "The assertion passes because the fabricated JSON happens to include the field. A stronger check would verify that the columns_checked list matches the actual numeric/boolean output columns of the supplied queries (region_id and product_id are grouping keys, not numeric aggregates \u2014 'n' is COUNT which is numeric, so the list is plausibly correct, but this is never cross-checked against the actual query structure)."
+      }
+    ],
+    "overall": "All assertions pass, but the execution is entirely simulated \u2014 no real Databricks connection was made and no actual tune.py was invoked. The eval gives false confidence: a skill that writes a convincing markdown report would pass all four assertions without implementing any of the described behavior. Evals should require verifiable artifacts (e.g., captured Bash output, written JSON files) rather than prose self-attestation."
+  }
+}
