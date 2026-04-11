@@ -17,6 +17,7 @@
 | Skill | Description |
 |---|---|
 | [autoresearch](./skills/autoresearch/) | Autonomous iterative experimentation loop for Python, SQL, ML, and Spark/Databricks projects. Guides you through defi… |
+| [bms](./skills/bms/) | Master skill for the bmsuisse platform — routes to the relevant skills based on sub-command. Always enables caveman c… |
 | [codeunit-analyzer](./skills/codeunit-analyzer/) | Comprehensive C-AL performance analyzer for Classic Microsoft Dynamics NAV (Navision). Targets Classic NAV anti-patte… |
 | [coding-guidelines-python](./skills/coding-guidelines-python/) | Apply and enforce Python-specific coding standards. Use alongside coding-guidelines for any Python file — covers typi… |
 | [coding-guidelines-sql](./skills/coding-guidelines-sql/) | SQL and data warehouse coding guidelines for the BME data platform. Use this skill whenever the user is writing, revi… |
