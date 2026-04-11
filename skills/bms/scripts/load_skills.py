@@ -16,10 +16,17 @@ Usage:
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
-SKILLS_ROOT = Path(__file__).parent.parent.parent  # skills/
+# When installed as a plugin, CLAUDE_PLUGIN_ROOT points to the plugin root.
+# Fall back to repo-relative path for local development.
+_plugin_root = os.environ.get("CLAUDE_PLUGIN_ROOT")
+if _plugin_root:
+    SKILLS_ROOT = Path(_plugin_root).parent  # plugin root is skills/bms, parent is skills/
+else:
+    SKILLS_ROOT = Path(__file__).parent.parent.parent  # skills/bms/scripts → skills/
 
 MODES: dict[str, list[str]] = {
     "base": [

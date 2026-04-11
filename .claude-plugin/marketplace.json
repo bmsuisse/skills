@@ -80,6 +80,20 @@
         "./remove-ai-writing",
         "./scientific-revision"
       ]
+    },
+    {
+      "name": "bms",
+      "description": "BMsuisse master skill — /bms activates all core coding guidelines at once. Sub-commands: /bms sql, /bms python, /bms data. Always enables caveman communication style.",
+      "source": "./",
+      "skills": [
+        "./bms",
+        "./coding-guidelines-sql",
+        "./coding-guidelines-python",
+        "./coding-guidelines-typescript",
+        "./sql-optimization",
+        "./data-modeling-dimensional",
+        "./fabricks-glossary"
+      ]
     }
   ]
 }
