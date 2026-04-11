@@ -30,10 +30,14 @@ import argparse
 import importlib.util
 import json
 import math
+import re
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from pyspark.sql.types import ArrayType, MapType, StructType
+from pyspark.sql.types import (
+    ArrayType, BooleanType, ByteType, DecimalType, DoubleType, FloatType,
+    IntegerType, LongType, MapType, ShortType, StructType,
+)
 from pathlib import Path
 
 
@@ -67,8 +71,11 @@ def load_session_udfs(spark) -> None:
         return
     print("[udfs] Loading udf_setup.py...", file=sys.stderr)
     spec = importlib.util.spec_from_file_location("udf_setup", udf_file)
+    if spec is None or spec.loader is None:
+        print("[udfs] Warning: could not load spec for udf_setup.py", file=sys.stderr)
+        return
     mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
+    spec.loader.exec_module(mod)  # type: ignore[union-attr]
     if hasattr(mod, "register_udfs"):
         mod.register_udfs(spark)
         print("[udfs] register_udfs() called.", file=sys.stderr)
@@ -353,6 +360,114 @@ def validate_queries_global_temp(spark, original: str, optimized: str) -> dict:
     return {"passed": True, "row_count": orig_count}
 
 
+def validate_queries_checksum(spark, original: str, optimized: str) -> dict:
+    """Validate by comparing aggregate checksums on numeric and boolean columns only.
+
+    Suitable for large tables where full EXCEPT ALL is too expensive.
+    Checks row count, then SUM + COUNT of every numeric/boolean column.
+    """
+    _NUMERIC = (ByteType, ShortType, IntegerType, LongType, FloatType, DoubleType, DecimalType)
+
+    spark.sql(f"CREATE OR REPLACE TEMP VIEW _tuner_original AS {original}")
+    spark.sql(f"CREATE OR REPLACE TEMP VIEW _tuner_optimized AS {optimized}")
+
+    orig_count = spark.sql("SELECT COUNT(*) AS n FROM _tuner_original").collect()[0]["n"]
+    opt_count = spark.sql("SELECT COUNT(*) AS n FROM _tuner_optimized").collect()[0]["n"]
+
+    if orig_count != opt_count:
+        return {
+            "passed": False,
+            "reason": f"Row count mismatch: original={orig_count}, optimized={opt_count}",
+            "original_rows": orig_count,
+            "optimized_rows": opt_count,
+            "strategy": "checksum",
+        }
+
+    schema = spark.sql("SELECT * FROM _tuner_original LIMIT 0").schema
+    agg_exprs: list[str] = []
+    checksum_cols: list[str] = []
+
+    for field in schema.fields:
+        col = f"`{field.name}`"
+        safe = re.sub(r"[^a-zA-Z0-9]", "_", field.name)
+        if isinstance(field.dataType, _NUMERIC):
+            agg_exprs += [f"SUM({col}) AS sum_{safe}", f"COUNT({col}) AS cnt_{safe}"]
+            checksum_cols.append(field.name)
+        elif isinstance(field.dataType, BooleanType):
+            agg_exprs += [f"SUM(CAST({col} AS BIGINT)) AS sum_{safe}", f"COUNT({col}) AS cnt_{safe}"]
+            checksum_cols.append(field.name)
+
+    if not checksum_cols:
+        return {
+            "passed": True,
+            "row_count": orig_count,
+            "strategy": "checksum",
+            "note": "No numeric/boolean columns — row count only",
+        }
+
+    agg_sql = ", ".join(agg_exprs)
+    orig_agg = spark.sql(f"SELECT {agg_sql} FROM _tuner_original").collect()[0].asDict()
+    opt_agg = spark.sql(f"SELECT {agg_sql} FROM _tuner_optimized").collect()[0].asDict()
+
+    mismatches = {
+        k: {"original": orig_agg[k], "optimized": opt_agg[k]}
+        for k in orig_agg
+        if orig_agg[k] != opt_agg[k]
+    }
+
+    if mismatches:
+        return {
+            "passed": False,
+            "reason": "Checksum mismatch on numeric/boolean columns",
+            "row_count": orig_count,
+            "mismatches": mismatches,
+            "strategy": "checksum",
+            "columns_checked": checksum_cols,
+        }
+
+    return {"passed": True, "row_count": orig_count, "strategy": "checksum", "columns_checked": checksum_cols}
+
+
+def validate_queries_row_hash(spark, original: str, optimized: str) -> dict:
+    """Validate using a commutative row hash for huge tables.
+
+    Computes SUM(xxhash64(col1, col2, ...)) across all rows — a single aggregation
+    pass per query, order-independent, and handles all column types.
+    Catches any value-level difference without collecting rows to the driver.
+    """
+    spark.sql(f"CREATE OR REPLACE TEMP VIEW _tuner_original AS {original}")
+    spark.sql(f"CREATE OR REPLACE TEMP VIEW _tuner_optimized AS {optimized}")
+
+    orig_count = spark.sql("SELECT COUNT(*) AS n FROM _tuner_original").collect()[0]["n"]
+    opt_count = spark.sql("SELECT COUNT(*) AS n FROM _tuner_optimized").collect()[0]["n"]
+
+    if orig_count != opt_count:
+        return {
+            "passed": False,
+            "reason": f"Row count mismatch: original={orig_count}, optimized={opt_count}",
+            "original_rows": orig_count,
+            "optimized_rows": opt_count,
+            "strategy": "row_hash",
+        }
+
+    schema = spark.sql("SELECT * FROM _tuner_original LIMIT 0").schema
+    col_list = ", ".join(f"`{f.name}`" for f in schema.fields)
+    hash_sql = f"SELECT SUM(xxhash64({col_list})) AS row_hash FROM"
+
+    orig_hash = spark.sql(f"{hash_sql} _tuner_original").collect()[0]["row_hash"]
+    opt_hash = spark.sql(f"{hash_sql} _tuner_optimized").collect()[0]["row_hash"]
+
+    if orig_hash != opt_hash:
+        return {
+            "passed": False,
+            "reason": f"Row hash mismatch: original={orig_hash}, optimized={opt_hash}",
+            "row_count": orig_count,
+            "strategy": "row_hash",
+        }
+
+    return {"passed": True, "row_count": orig_count, "strategy": "row_hash"}
+
+
 def time_query_global_temp(spark, query: str, n_runs: int, label: str) -> list[float]:
     """Time query by materializing into a cached global temp table — avoids driver collection."""
     name = f"_tuner_{label}"
@@ -388,6 +503,19 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--global-temp", action="store_true", dest="global_temp",
                    help="Materialize results into cached global temp tables on the cluster instead of "
                         "collecting to the driver (use when result sets are too large even for COUNT(*))")
+    p.add_argument(
+        "--compare-strategy",
+        dest="compare_strategy",
+        choices=["full", "extend", "checksum", "row_hash"],
+        default=None,
+        help=(
+            "Validation strategy: "
+            "'full' = EXCEPT ALL symmetric diff (default, precise, small-medium tables); "
+            "'extend' = EXCEPT ALL via on-cluster global temp tables (medium tables); "
+            "'checksum' = SUM+COUNT per numeric/boolean column (large tables, no row collection); "
+            "'row_hash' = SUM(xxhash64(all_cols)) single-pass (huge tables, fastest)."
+        ),
+    )
     p.add_argument("--table-stats", nargs="+", dest="table_stats", metavar="TABLE",
                    help="Collect metadata + stats for tables (fully qualified or unqualified)")
     return p
@@ -444,13 +572,24 @@ def main() -> None:
         print(explain_query(spark, original))
         return
 
+    assert optimized is not None, "--optimized required (enforced by parser.error above)"
+
     print("\n[explain] Running EXPLAIN EXTENDED on original...", file=sys.stderr)
     plan = explain_query(spark, original)
 
-    print("\n[validate] Checking result equivalence...", file=sys.stderr)
+    # Resolve compare strategy: explicit flag > --global-temp backward-compat > default full
+    compare_strategy = args.compare_strategy
+    if compare_strategy is None:
+        compare_strategy = "extend" if args.global_temp else "full"
+
+    print(f"\n[validate] Checking result equivalence (strategy={compare_strategy})...", file=sys.stderr)
     try:
-        if args.global_temp:
+        if compare_strategy == "extend":
             validation = validate_queries_global_temp(spark, original, optimized)
+        elif compare_strategy == "checksum":
+            validation = validate_queries_checksum(spark, original, optimized)
+        elif compare_strategy == "row_hash":
+            validation = validate_queries_row_hash(spark, original, optimized)
         else:
             validation = validate_queries(spark, original, optimized)
         print(f"[validate] {'PASS' if validation['passed'] else 'FAIL'}", file=sys.stderr)

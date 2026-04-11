@@ -230,6 +230,78 @@
           "type": "output"
         }
       ]
+    },
+    {
+      "id": 11,
+      "prompt": "/databricks-sql-autotuner --compare-strategy checksum --profile prod --cluster-id 0408-195905-abc --original \"SELECT region_id, product_id, SUM(revenue) AS total_revenue, AVG(quantity) AS avg_qty, COUNT(*) AS n FROM fact_sales GROUP BY region_id, product_id\" --optimized \"SELECT /*+ BROADCAST(r) */ f.region_id, f.product_id, SUM(f.revenue) AS total_revenue, AVG(f.quantity) AS avg_qty, COUNT(*) AS n FROM fact_sales f GROUP BY f.region_id, f.product_id\"",
+      "expected_output": "Claude passes --compare-strategy checksum to tune.py so validation computes SUM and COUNT aggregates for each numeric column (revenue, quantity, n) rather than performing a full EXCEPT ALL diff. The result log shows strategy=checksum and lists the columns checked. Timing benchmark runs normally.",
+      "files": [],
+      "assertions": [
+        {
+          "text": "Passed --compare-strategy checksum to tune.py for the benchmark run",
+          "type": "behavior"
+        },
+        {
+          "text": "Logged 'strategy=checksum' in the validation output",
+          "type": "output"
+        },
+        {
+          "text": "Validation result includes 'columns_checked' listing the numeric/boolean columns that were verified",
+          "type": "output"
+        },
+        {
+          "text": "Did NOT run a full EXCEPT ALL diff (no rows collected to driver for validation)",
+          "type": "behavior"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "prompt": "our fact table has 5 billion rows and validation crashes the driver no matter what we try — --timing-count, --global-temp, everything. optimize this query and use row_hash validation.\n\nSELECT d.date_key, p.product_key, SUM(f.sales_amount) AS revenue, COUNT(f.transaction_id) AS txn_count FROM fact_sales_5b f JOIN dim_date d ON f.date_key = d.date_key JOIN dim_product p ON f.product_key = p.product_key WHERE d.year = 2024 GROUP BY d.date_key, p.product_key",
+      "expected_output": "Claude recognizes this as a huge-table validation scenario and uses --compare-strategy row_hash so tune.py computes SUM(xxhash64(all_cols)) in a single aggregation pass per query. No rows are collected to the driver at any point. Timing also uses --timing-count or --global-temp to avoid driver OOM. The validation output shows strategy=row_hash.",
+      "files": [],
+      "assertions": [
+        {
+          "text": "Passed --compare-strategy row_hash to tune.py",
+          "type": "behavior"
+        },
+        {
+          "text": "Logged 'strategy=row_hash' in the validation output",
+          "type": "output"
+        },
+        {
+          "text": "Also used --timing-count or --global-temp to avoid driver OOM during timing runs",
+          "type": "behavior"
+        },
+        {
+          "text": "Did NOT attempt to collect result rows to the driver for validation",
+          "type": "behavior"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "prompt": "what's the difference between --compare-strategy checksum and --compare-strategy row_hash? when should I use each?",
+      "expected_output": "Claude explains: checksum computes SUM+COUNT per numeric/boolean column — catches value-level changes in those columns but ignores string/date columns and doesn't detect row reordering within a column. row_hash computes SUM(xxhash64(all_cols)) — a single-pass commutative hash that covers every column type and catches any value change anywhere, order-independent. Use checksum when numeric consistency is what matters (e.g. financial aggregations). Use row_hash when you need full coverage with minimum driver load.",
+      "files": [],
+      "assertions": [
+        {
+          "text": "Explained that checksum only covers numeric and boolean columns",
+          "type": "output"
+        },
+        {
+          "text": "Explained that row_hash covers all column types via xxhash64",
+          "type": "output"
+        },
+        {
+          "text": "Gave guidance on when to use each (e.g. checksum for numeric aggregations, row_hash for full coverage)",
+          "type": "output"
+        },
+        {
+          "text": "Mentioned that both strategies avoid collecting rows to the driver",
+          "type": "output"
+        }
+      ]
     }
   ]
 }

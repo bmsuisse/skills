@@ -115,6 +115,18 @@ not supplied, run the normal discovery step.
 | `--optimized <path>` | `--optimized out.sql` | Write optimized query to a separate file instead of editing the original in place |
 | `--timing-count` | `--timing-count` | Wrap timing runs in `COUNT(*)` to avoid collecting large result sets to the driver (use when query returns millions of rows) |
 | `--global-temp` | `--global-temp` | Materialize results into cached global temp tables on the cluster (`global_temp._tuner_*`) instead of collecting to the driver. Applies to both timing and validation. Use when the result set is too large even for `COUNT(*)` or when you want to keep intermediate results on the cluster for inspection. |
+| `--compare-strategy` | `--compare-strategy checksum` | Validation strategy for result equivalence. Choose based on table size — see table below. |
+
+**Compare strategy selection guide:**
+
+| Strategy | Flag value | Table size | How it works |
+|:---------|:-----------|:-----------|:-------------|
+| Full | `full` (default) | Small–medium | EXCEPT ALL symmetric diff — byte-for-byte identical |
+| Extend | `extend` | Medium | EXCEPT ALL via on-cluster global temp tables — no driver collection |
+| Checksum | `checksum` | Large | SUM + COUNT per numeric/boolean column — single aggregation pass, no rows collected |
+| Row hash | `row_hash` | Huge | `SUM(xxhash64(all_cols))` — fastest single-pass hash, handles all column types |
+
+Use `--compare-strategy checksum` or `--compare-strategy row_hash` when `--timing-count` or `--global-temp` is not enough — i.e., when even collecting a diff of rows is too expensive.
 
 The `--query` value:
 - `@path/to/file.sql` → read the file
