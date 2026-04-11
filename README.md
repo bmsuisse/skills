@@ -140,6 +140,49 @@ Start a new session and ask your agent something that should trigger the skill.
 
 ---
 
+## 🧭 BMS Master Skill
+
+`/bms` is a master skill that activates the full bmsuisse coding context in one command. It routes to the relevant sub-skills based on a sub-command and always enables caveman communication style.
+
+### Sub-commands
+
+| Command | Loads | Good for |
+|---|---|---|
+| `/bms` | coding-guidelines-sql · coding-guidelines-python · coding-guidelines-typescript · fabricks-glossary | General session — all core standards active |
+| `/bms sql` | coding-guidelines-sql · sql-optimization · fabricks-glossary | SQL authoring, reviews, refactoring |
+| `/bms python` | coding-guidelines-python | Python development, PR reviews |
+| `/bms data` | data-modeling-dimensional · fabricks-glossary | Designing or reviewing fact/dim tables |
+
+For deep optimization work, chain with the specialized skills:
+- SQL benchmarking → `/databricks-sql-autotuner`
+- Python benchmarking → `/python-autotuner`
+
+### How it works
+
+```
+/bms sql
+  │
+  ├─ reads bms/SKILL.md          (master router, ~2.5k chars)
+  │
+  ├─ runs load_skills.py sql     (helper script)
+  │     └─ concatenates:
+  │           coding-guidelines-sql/SKILL.md
+  │           sql-optimization/SKILL.md
+  │           fabricks-glossary/SKILL.md
+  │
+  └─ applies all rules + caveman mode → "BMS SQL active."
+```
+
+The helper script at `skills/bms/scripts/load_skills.py` concatenates the relevant `SKILL.md` files and prints them as combined content. Each sub-skill remains the single source of truth — no duplication.
+
+### Install
+
+```bash
+npx skills add https://github.com/bmsuisse/skills --skill bms
+```
+
+---
+
 ## 🛠️ Adding a Skill
 
 Use **skill-creator** to guide you through the full lifecycle — drafting, test cases, evaluation, and iteration:

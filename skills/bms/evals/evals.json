@@ -1,0 +1,88 @@
+{
+  "skill_name": "bms",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "/bms\n\nWhat are the key SQL naming conventions I should follow on this platform?",
+      "expected_output": "Terse caveman-style response covering: lowercase snake_case, singular names, _sk/_bk/_key suffixes, is_ prefix for booleans, nr for number, English only",
+      "files": [],
+      "expectations": [
+        "Response is terse — no pleasantries, no hedging, no articles where avoidable",
+        "Mentions snake_case and lowercase",
+        "Mentions singular naming (sales_order not sales_orders)",
+        "Mentions _sk for surrogate keys in fact tables",
+        "Mentions _bk for business keys in fact tables",
+        "Mentions is_ prefix for boolean flags",
+        "Mentions nr not num/no for number"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "/bms sql\n\nWrite a query that finds the top 1 most recent order per customer from fact_sales_order. The table has customer_nr and order_date columns.",
+      "expected_output": "Uses QUALIFY with row_number() — not a wrapper CTE. Lowercase SQL. GROUP BY if needed. Meaningful alias.",
+      "files": [],
+      "expectations": [
+        "Uses QUALIFY to filter the window function result",
+        "Does NOT wrap in a CTE just to filter row_number",
+        "Uses row_number() over (partition by customer_nr order by order_date desc) = 1",
+        "All keywords and identifiers are lowercase",
+        "Meaningful table alias (not single letters like 'a')",
+        "Response is terse and caveman-style"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "/bms python\n\nWrite a function that takes a list of order IDs and returns the filtered ones where the ID starts with 'ORD'. Make it properly typed.",
+      "expected_output": "Function with full type annotations, from __future__ import annotations, X | None pattern if applicable, no Any",
+      "files": [],
+      "expectations": [
+        "Includes 'from __future__ import annotations' at top",
+        "Function has explicit parameter type annotation (list[str])",
+        "Function has explicit return type annotation (list[str])",
+        "No 'Any' type used",
+        "Response is terse and caveman-style"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "/bms data\n\nI need to add a new dimension table for suppliers. Suppliers can change their name and address over time and we need history. Which layers do I create files in?",
+      "expected_output": "SCD2 recommendation. Files needed: gold/transf/scd2/supplier.sql, gold/core/dim/supplier.sql. Mentions __valid_from/__valid_to, __is_current, __identity. Never backward layer dependencies.",
+      "files": [],
+      "expectations": [
+        "Recommends SCD Type 2 (history needed)",
+        "Mentions gold/transf/scd2/ as the right layer for the historized source",
+        "Mentions gold/core/dim/ for the conformed dimension with __identity",
+        "Mentions __valid_from and __valid_to columns",
+        "Mentions __is_current flag",
+        "Mentions __identity as surrogate key provided by framework",
+        "Response is terse and caveman-style"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "/bms\n\nReview this Python function and tell me what's wrong:\n\ndef get_orders(filters: dict = {}) -> dict:\n    filters['status'] = 'active'\n    return filters",
+      "expected_output": "Flags: mutable default argument (dict = {}), dict[str, Any] as data carrier, missing type annotations, return type too broad. Terse, direct, no fluff.",
+      "files": [],
+      "expectations": [
+        "Flags mutable default argument (dict = {} shared across calls)",
+        "Suggests None default with internal dict creation",
+        "Flags untyped dict — suggests TypedDict or dataclass",
+        "Response is terse with no pleasantries",
+        "Does NOT say 'Sure!' or 'Great question' or similar"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "/bms sql\n\nIs this join correct?\n\nSELECT *\nFROM fact_sales fs\nLEFT OUTER JOIN dim_item i ON LOWER(fs.item_bk) = LOWER(i.item_key)\nGROUP BY fs.cost_center, fs.region, fs.fiscal_year",
+      "expected_output": "Flags: LEFT OUTER JOIN (use LEFT JOIN), SELECT *, UPPER() case on join (prefer collation), GROUP BY should be GROUP BY ALL. Terse.",
+      "files": [],
+      "expectations": [
+        "Flags 'LEFT OUTER JOIN' — should be 'LEFT JOIN'",
+        "Flags 'SELECT *' — should use explicit column list",
+        "Flags or notes LOWER() on join columns — prefer collation for performance",
+        "Suggests GROUP BY ALL instead of repeating columns",
+        "Response is terse, uses fragment style, no hedging"
+      ]
+    }
+  ]
+}
