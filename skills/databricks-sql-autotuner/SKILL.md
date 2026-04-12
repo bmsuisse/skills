@@ -102,7 +102,8 @@ Record as `GOALS` (default: `speed`). Accepted values:
 | 2 — Env setup (venv) | ✅ | ✅ | ✅ | ✅ |
 | 2b — Branch & baseline benchmark | ✅ | ✅ | ✅ | ⛔ skip |
 | 3 — Query analysis (EXPLAIN) | ✅ | ✅ | ✅ | ✅ (as error capture) |
-| 3.3 — Attack plan | ✅ | ✅ | ✅ | ⛔ skip |
+| 3.3 — Questioner profiling | ✅ | ✅ | ✅ | ⛔ skip |
+| 3.4 — Attack plan | ✅ | ✅ | ✅ | ⛔ skip |
 | **Phase Fix** — diagnose + repair | ⛔ skip | ⛔ skip | ⛔ skip | ✅ |
 | 4 — SQL optimization | ✅ | ✅ | ✅ | ⛔ skip |
 | 5 — Benchmark loop | ✅ | ✅ | ✅ | ⛔ skip |
@@ -338,7 +339,35 @@ Use these facts to make decisions:
 
 ---
 
-## Phase 3.3 — Build an attack plan
+## Phase 3.3 — Questioner — structured profiling
+
+Before building the attack plan, run the Questioner protocol to surface non-obvious
+optimization opportunities. Ask these structured questions and record answers:
+
+1. **What does the plan actually do?** — Trace the physical plan top-to-bottom.
+   Which stages dominate estimated cost? Where are the Exchanges (shuffles)?
+2. **What are the data shapes?** — Table sizes, row counts, partition counts.
+   Is anything surprisingly large or small relative to what the query needs?
+3. **What assumptions does the query make?** — Does it assume uniqueness?
+   Non-null join keys? Specific partition layout? Are those assumptions valid?
+4. **What does the plan NOT do?** — Is predicate pushdown happening? Are
+   partition filters being applied? Is broadcast being used where it should be?
+5. **Are there view definitions hiding complexity?** — If a join target is a
+   SubqueryAlias, read the view definition. Is it doing unnecessary work?
+
+Record as `QUESTIONER_NOTES`. Use domain reasoning vocabulary:
+
+| Signal | Keywords to use in attack plan |
+|:-------|:------------------------------|
+| Shuffle bottleneck | cardinality, skew, partition pruning, salting |
+| Join strategy | broadcast threshold, sort-merge overhead, hash join |
+| Scan inefficiency | predicate pushdown, file-skipping, partition filter |
+| Aggregation | pre-aggregation, partial aggregate, distinct elimination |
+| Data shape | fan-out, null density, key distribution, selectivity |
+
+---
+
+## Phase 3.4 — Build an attack plan
 
 Before writing a single line of optimized SQL, write a short numbered list of the
 specific changes you intend to make and why. Show it to the user (or include it
@@ -546,21 +575,50 @@ The script outputs JSON with:
 - `speedup` — ratio of original mean to optimized mean
 - `statistically_significant` — true if optimized CI is entirely below original CI
 
-### 5.3 Decide: keep or revert
+### 5.3 Inspector — validate beyond the metric
+
+Before deciding keep/revert, run the Inspector checklist. A change that improves
+speed but fails inspection gets rejected.
+
+**Inspector checklist:**
+
+| Check | Pass condition |
+|:------|:---------------|
+| Results identical | `validation.passed = true` (byte-for-byte match) |
+| Speedup real | `statistically_significant = true` (CIs don't overlap) |
+| Change is focused | One optimization idea per attempt — no bundled rewrites |
+| SQL is readable | Query structure is clear; a DBA would approve it |
+| No hint abuse | Hints match actual table sizes; no BROADCAST on large tables |
+| No semantic drift | Column order, names, types, and NULL handling unchanged |
+| Maintainability | No deeply nested subqueries replacing simple joins; CTEs have clear names |
+| No benchmark gaming | Optimization works for general data, not just current sample |
+| Description accurate | Commit message matches actual SQL change (no hallucinated rewrites) |
+| Improvement is real | Speedup is genuine, not cluster variance or warm-up artifact |
+
+**Inspector verdict:**
+- `PASS` — all checks satisfied → proceed to DECIDE
+- `FAIL` — record which check(s) failed → force discard with status `inspector-reject`
+- `WARN` — borderline (e.g. hint on table near broadcast threshold) → keep but flag
+
+Record as `INSPECTOR_NOTES` in the attempt log description.
+
+### 5.4 Decide: keep or revert
 
 A speedup is **real** only when:
 1. `validation.passed = true` (identical results)
 2. `speedup > 1.0` (optimized is faster on average)
 3. `statistically_significant = true` (confidence intervals don't overlap)
+4. Inspector verdict is PASS or WARN (not FAIL)
 
 ```
-✅ IMPROVED  → keep commit, update BEST_MEAN = optimized.mean_s
-❌ SAME/WORSE → revert the file to the last kept commit:
-               git checkout HEAD $QUERY_FILE
-💥 VALIDATION FAIL → fix the query and re-benchmark before reverting
+✅ IMPROVED + INSPECTOR PASS  → keep commit, update BEST_MEAN = optimized.mean_s
+❌ SAME/WORSE                 → revert the file to the last kept commit:
+                                git checkout HEAD $QUERY_FILE
+⚠️ IMPROVED + INSPECTOR FAIL  → revert, log status = "inspector-reject"
+💥 VALIDATION FAIL             → fix the query and re-benchmark before reverting
 ```
 
-### 5.4 Log the attempt
+### 5.5 Log the attempt
 
 Append to `$RESULTS_FILE`:
 
@@ -578,50 +636,77 @@ Run continuously after the first benchmark. Never pause to ask "should I continu
 Stop only when the user interrupts or explicitly says they're satisfied.
 
 ```
-THINK   Read $RESULTS_FILE and the current best query.
-        Study the EXPLAIN of the best query so far — not the original.
-        Form a specific hypothesis: "changing X should reduce Y because Z."
-        Follow the strategy priority below.
+QUESTION  (Questioner) Profile the current state before hypothesizing.
+          1. Read $RESULTS_FILE — what patterns emerge? (consecutive keeps/discards)
+          2. Re-EXPLAIN the best query so far — not the original.
+             What changed in the plan since last kept attempt?
+          3. Are there new bottleneck signals? (new Exchange nodes, plan regressions)
+          4. What strategies haven't been tried yet?
+          Use domain vocabulary: cardinality, selectivity, skew, broadcast threshold,
+          partition pruning, predicate pushdown, fan-out, null density.
+          Record as QUESTIONER_NOTES.
 
-EDIT    Edit $QUERY_FILE directly — one focused change per attempt.
-        The branch is isolated; edits are safe to make in place.
+THINK     Synthesize QUESTIONER_NOTES into a hypothesis.
+          Form: "changing X should reduce Y because Z."
+          Follow the strategy priority below.
 
-COMMIT  git add $QUERY_FILE && git commit -m "sql-tune: attempt <N> — <description>"
-        Commit before benchmarking — this records what was tried.
+SCORE     Rate hypothesis before acting (1–10 each):
+          - Impact: how much speedup/simplification expected?
+          - Feasibility: how likely to preserve result equivalence?
+          - Novelty: how different from prior attempts? (check $RESULTS_FILE)
+          Average ≥ 5 → proceed. Below 5 → generate better hypothesis.
+          Skip on attempt #1 (no prior data).
 
-RUN     $TUNE \
-          --profile <PROFILE> --cluster-id <CLUSTER_ID> \
-          --original @$ORIGINAL_FILE --optimized @$QUERY_FILE \
-          --catalog <CATALOG> --schema <SCHEMA> \
-          --n-runs <N_RUNS> > $LOG_FILE 2>&1
+REFLECT   Self-check before editing:
+          - What assumption about the data or plan could be wrong?
+          - Has a similar rewrite already failed? (scan $RESULTS_FILE)
+          - Could this change break result equivalence in an edge case?
+          - Am I chasing diminishing returns? (last 3 speedups all < 5%)
+          If reflection reveals a flaw → revise hypothesis and re-SCORE.
 
-        # For simplicity / both goals, also score complexity
-        python3 "$SKILL_DIR/scripts/complexity.py" --json $QUERY_FILE > complexity.json
+EDIT      Edit $QUERY_FILE directly — one focused change per attempt.
+          The branch is isolated; edits are safe to make in place.
 
-MEASURE Extract from $LOG_FILE (timing) and complexity.json (score).
-        On crash: read last 50 lines for the error. Attempt up to 2 quick fixes,
-        amend the commit, re-run. If still broken, revert and discard.
+COMMIT    git add $QUERY_FILE && git commit -m "sql-tune: attempt <N> — <description>"
+          Commit before benchmarking — this records what was tried.
 
-        Metric to optimize depends on GOALS:
-        ┌──────────────────────┬────────────────────────────────────────────────────┐
-        │ speed                │ optimized.mean_s  (lower is better)                │
-        │ simplicity           │ complexity score  (lower is better)                │
-        │ speed,simplicity     │ Phase 1: optimize mean_s (same as speed)           │
-        │                      │ Phase 2: once speed accepted, optimize score        │
-        │                      │          while mean_s stays ≤ BEST_MEAN * 1.10     │
-        └──────────────────────┴────────────────────────────────────────────────────┘
+RUN       $TUNE \
+            --profile <PROFILE> --cluster-id <CLUSTER_ID> \
+            --original @$ORIGINAL_FILE --optimized @$QUERY_FILE \
+            --catalog <CATALOG> --schema <SCHEMA> \
+            --n-runs <N_RUNS> > $LOG_FILE 2>&1
 
-DECIDE  Compare metric to BEST:
-        speed             → ✅ if mean_s improved + statistically significant
-        simplicity        → ✅ if complexity score decreased + validation passes
-        speed,simplicity  → phase 1: same as speed
-                            phase 2: ✅ if score decreased AND mean_s ≤ BEST_MEAN * 1.10
+          # For simplicity / both goals, also score complexity
+          python3 "$SKILL_DIR/scripts/complexity.py" --json $QUERY_FILE > complexity.json
 
-        ❌ no improvement → git checkout HEAD $QUERY_FILE   (revert file, keep commit msg in log)
-        💥 VALIDATION FAIL → fix semantics first, then re-benchmark
+MEASURE   Extract from $LOG_FILE (timing) and complexity.json (score).
+          On crash: read last 50 lines for the error. Attempt up to 2 quick fixes,
+          amend the commit, re-run. If still broken, revert and discard.
 
-LOG     Append to $RESULTS_FILE:
-        <N>\t<sha>\t<mean_s>\t<complexity_score>\t<status>\t<description>
+          Metric to optimize depends on GOALS:
+          ┌──────────────────────┬────────────────────────────────────────────────────┐
+          │ speed                │ optimized.mean_s  (lower is better)                │
+          │ simplicity           │ complexity score  (lower is better)                │
+          │ speed,simplicity     │ Phase 1: optimize mean_s (same as speed)           │
+          │                      │ Phase 2: once speed accepted, optimize score        │
+          │                      │          while mean_s stays ≤ BEST_MEAN * 1.10     │
+          └──────────────────────┴────────────────────────────────────────────────────┘
+
+INSPECT   (Inspector) Validate beyond metric — see Phase 5.3 checklist.
+          Run full inspector checklist. Record verdict as INSPECTOR_NOTES.
+
+DECIDE    Compare metric to BEST (incorporating INSPECTOR_NOTES):
+          speed             → ✅ if mean_s improved + statistically significant + inspector PASS
+          simplicity        → ✅ if complexity score decreased + validation passes + inspector PASS
+          speed,simplicity  → phase 1: same as speed
+                              phase 2: ✅ if score decreased AND mean_s ≤ BEST_MEAN * 1.10
+
+          ⚠️ METRIC UP + INSPECTOR FAIL → revert, log as "inspector-reject"
+          ❌ no improvement → git checkout HEAD $QUERY_FILE   (revert file, keep commit msg in log)
+          💥 VALIDATION FAIL → fix semantics first, then re-benchmark
+
+LOG       Append to $RESULTS_FILE:
+          <N>\t<sha>\t<mean_s>\t<complexity_score>\t<status>\t<description>
 ```
 
 ### Strategy priority
@@ -713,6 +798,21 @@ Validation: PASS — N rows, identical results
 
 ### Additional recommendations (outside SQL scope)
 <Z-ordering, ANALYZE TABLE, cluster sizing, etc. — if applicable>
+
+### Run-level review
+Rate the entire optimization run:
+| Axis           | Score (1–10) | Notes |
+|:---------------|:------------|:------|
+| Soundness      |             | Are speedups real or cluster variance artifacts? |
+| Quality        |             | Would a DBA approve the optimized query? |
+| Significance   |             | Is the speedup worth the added SQL complexity? |
+| Completeness   |             | Were the most promising plan bottlenecks addressed? |
+
+Flags:
+- Fragile speedups (e.g. BROADCAST on table near size threshold)
+- Unexplored directions from the attack plan
+- Inspector-rejected attempts worth revisiting
+- Any sign of cluster warm-up bias in timing
 ```
 
 ---

@@ -351,7 +351,33 @@ python3 "$SKILL_DIR/scripts/complexity.py" --file "$TARGET_FILE" --per-function 
 
 Flag functions with cyclomatic > 10 or nesting > 4.
 
-### 3.5 Attack plan
+### 3.5 Questioner — structured profiling
+
+Before building the attack plan, run the Questioner protocol to surface non-obvious
+bottlenecks. Ask these structured questions and record answers:
+
+1. **Where is time actually spent?** — Read cProfile output (3.3). Which functions
+   dominate cumulative time? Are there surprise entries (e.g. `__hash__`, `copy.deepcopy`)?
+2. **What data shapes drive performance?** — What are typical input sizes? Does the
+   code handle edge cases differently (empty list, single element, very large)?
+3. **What assumptions does the code make?** — Are there implicit invariants
+   (sorted input, unique keys, non-null values) that could be exploited or are violated?
+4. **What does the type checker say?** — ty errors often reveal type confusion that
+   causes unnecessary coercions or defensive checks at runtime.
+5. **What patterns repeat?** — Scan for copy-paste code, repeated computations,
+   redundant validation across functions.
+
+Record as `QUESTIONER_NOTES`. Use domain reasoning vocabulary:
+
+| Signal | Keywords to use in attack plan |
+|:-------|:------------------------------|
+| Slow loop | hot path, tight loop, vectorize, amortize |
+| Memory | peak allocation, object lifetime, allocation pressure |
+| Type issues | coercion overhead, dynamic dispatch, monomorphic |
+| Structure | invariant, precondition, early exit, short-circuit |
+| Data structure | cache locality, hash collision, amortized cost |
+
+### 3.6 Attack plan
 
 Write a numbered list before touching any code:
 
@@ -541,7 +567,33 @@ python3 "$SKILL_DIR/scripts/check_quality.py" --file "$TARGET_FILE" --json
 python3 "$SKILL_DIR/scripts/complexity.py" --file "$TARGET_FILE" --json
 ```
 
-### 5.4 Decide: keep or revert
+### 5.4 Inspector — validate beyond the metric
+
+Before deciding keep/revert, run the Inspector checklist. A change that improves
+the metric but fails inspection gets rejected.
+
+**Inspector checklist:**
+
+| Check | Pass condition |
+|:------|:---------------|
+| Metric improved | Value better than `BEST_*` (or held if simplification pass) |
+| Change is focused | One idea per attempt — no bundled unrelated changes |
+| No complexity explosion | LOC delta and cyclomatic delta proportional to gain |
+| Code is reviewable | A human reviewer would accept this without "what does this do?" |
+| No benchmark gaming | No hardcoded values that only work for the specific test input |
+| No regressions | Test suite green, type checker not worse, no new ruff violations |
+| Maintainability preserved | No `# noqa`, no suppressed warnings, no cryptic variable names |
+| Description accurate | Commit message matches actual code change (no hallucinated improvements) |
+| Improvement is real | Metric delta is genuine, not noise or measurement artifact |
+
+**Inspector verdict:**
+- `PASS` — all checks satisfied → proceed to DECIDE
+- `FAIL` — record which check(s) failed → force discard with status `inspector-reject`
+- `WARN` — borderline (e.g. +15 LOC for 40% speedup) → keep but flag in description
+
+Record as `INSPECTOR_NOTES` in the attempt log description.
+
+### 5.5 Decide: keep or revert
 
 Use `BEST_*` values (start from baseline, updated on each kept improvement):
 
@@ -552,13 +604,16 @@ Use `BEST_*` values (start from baseline, updated on each kept improvement):
 | `simplicity` | `complexity_score < BEST_COMPLEXITY_SCORE` |
 | combined | ALL active goals must improve (or at least not regress) |
 
+Inspector must also pass (see 5.4). A metric improvement with inspector failure = discard.
+
 ```
-✅ IMPROVED  → keep commit, update BEST_* values
-❌ SAME/WORSE → git checkout HEAD "$TARGET_FILE"
-💥 TEST FAIL  → fix or revert, re-run
+✅ IMPROVED + INSPECTOR PASS  → keep commit, update BEST_* values
+❌ SAME/WORSE                 → git checkout HEAD "$TARGET_FILE"
+⚠️ IMPROVED + INSPECTOR FAIL  → git checkout HEAD "$TARGET_FILE", log as "inspector-reject"
+💥 TEST FAIL                   → fix or revert, re-run
 ```
 
-### 5.5 Log the attempt
+### 5.6 Log the attempt
 
 Maintain a TSV log `py-tune-results.tsv`:
 
@@ -566,9 +621,27 @@ Maintain a TSV log `py-tune-results.tsv`:
 N  sha  mean_ms  ruff  ty  complexity  status  description
 ```
 
-### 5.6 Autonomous loop
+### 5.7 Autonomous loop
 
-Run continuously. Never pause to ask "should I continue?". Think → Edit → Commit → Validate → Benchmark → Decide → Log → repeat. Stop only when:
+Run continuously. Never pause to ask "should I continue?". The full iteration is:
+Question → Think → Score → Reflect → Edit → Commit → Validate → Benchmark → Inspect → Decide → Log → repeat.
+
+**SCORE** — Before each edit, rate the hypothesis (1–10 each):
+- **Impact**: how much metric improvement expected?
+- **Feasibility**: how likely to work without breaking tests?
+- **Novelty**: how different from prior attempts? (check `py-tune-results.tsv`)
+
+Average ≥ 5 → proceed. Below 5 → generate better hypothesis. Skip on attempt #1.
+
+**REFLECT** — Self-check before editing:
+- What assumption could be wrong?
+- Has something similar already failed? (scan TSV)
+- Am I stuck in a local optimum? (3+ keeps in same area → switch axis)
+- Could this change break something I won't measure?
+
+If reflection reveals a flaw → revise hypothesis and re-SCORE.
+
+Stop only when:
 - No further improvements found after 2 consecutive failed attempts per remaining goal
 - All goals are satisfied (no violations, no errors, complexity below a reasonable threshold)
 - User interrupts
@@ -663,6 +736,21 @@ Present:
 
 ### Remaining issues (not fixed)
 <anything identified but outside scope or too risky to change>
+
+### Run-level review
+Rate the entire optimization run:
+| Axis           | Score (1–10) | Notes |
+|:---------------|:------------|:------|
+| Soundness      |             | Are improvements real or measurement artifacts? |
+| Quality        |             | Would a senior engineer approve the final diff? |
+| Significance   |             | Is the improvement worth the complexity added? |
+| Completeness   |             | Were the most promising directions explored? |
+
+Flags:
+- Fragile improvements (metric up but change may not generalize)
+- Unexplored promising directions
+- Inspector-rejected experiments worth revisiting
+- Any sign of overfitting to benchmark input
 ```
 
 ---

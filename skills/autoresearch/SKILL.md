@@ -250,42 +250,98 @@ Run continuously. Never pause to ask "should I continue?". Stop only when:
 ### Each iteration
 
 ```
-THINK   Analyze prior results + current code.
-        Form a specific hypothesis: "X should improve Y because Z."
-        If WEB_SEARCH is `yes` or `ask` and you are stuck or entering a new
-        domain (e.g. unfamiliar library, ML algorithm, SQL planner behavior),
-        search the web for relevant techniques, docs, or benchmarks before
-        forming the hypothesis. For `ask`, state the proposed query and wait
-        for confirmation. Log the source URL in the description column of the
-        TSV when a web result directly inspired the experiment.
-        Follow experiment strategy priority below.
+QUESTION  (Questioner) Profile the current state before hypothesizing.
+          Ask structured questions about the code/data to surface bottlenecks:
+          1. What changed since last iteration? (diff awareness)
+          2. Where is time/resource actually spent? (profile or re-read metrics)
+          3. What patterns in prior results suggest a direction?
+             - 2+ consecutive keeps in same area → probe deeper
+             - 3+ discards → pivot strategy
+             - crash → structural issue, not parameter issue
+          4. Are there external signals to incorporate?
+             (error messages, profiler output, log patterns)
+          Record answers as QUESTIONER_NOTES for this iteration.
 
-EDIT    Make one focused change to in-scope files.
-        Keep it minimal — one idea per experiment.
+THINK     Synthesize QUESTIONER_NOTES into a hypothesis.
+          Use domain reasoning vocabulary (see below) to sharpen the hypothesis.
+          Form: "X should improve Y because Z."
+          If WEB_SEARCH is `yes` or `ask` and you are stuck or entering a new
+          domain (e.g. unfamiliar library, ML algorithm, SQL planner behavior),
+          search the web for relevant techniques, docs, or benchmarks before
+          forming the hypothesis. For `ask`, state the proposed query and wait
+          for confirmation. Log the source URL in the description column of the
+          TSV when a web result directly inspired the experiment.
+          Follow experiment strategy priority below.
 
-COMMIT  Stage only in-scope files, then commit:
-        git add <IN_SCOPE files> && git commit
-        Message format: "experiment: <short description>"
+SCORE     Rate the hypothesis before acting (1–10 each):
+          - Impact: how much metric improvement expected?
+          - Feasibility: how likely to work without breaking things?
+          - Novelty: how different from what was already tried? (check $RESULTS_FILE)
+          Average ≥ 5 → proceed. Below 5 → generate a better hypothesis.
+          Skip SCORE on experiment #1 (no prior data to compare against).
 
-RUN     Execute METRIC_COMMAND, redirect all output:
-        <command> > $LOG_FILE 2>&1
+REFLECT   Self-check before editing:
+          - What assumption am I making that could be wrong?
+          - Has something similar already been tried and failed? (scan $RESULTS_FILE)
+          - Am I stuck in a local optimum? (3+ keeps in same area → try different axis)
+          - Could this change make things worse in a way I won't measure?
+          If reflection reveals a flaw → revise hypothesis and re-SCORE.
 
-MEASURE Extract the metric from $LOG_FILE.
-        On failure: read the last 50 lines of run.log for the error.
+EDIT      Make one focused change to in-scope files.
+          Keep it minimal — one idea per experiment.
 
-DECIDE  Compare to current best:
-        ✅ IMPROVED  → keep commit, update best, log status = "keep"
-        ❌ SAME/WORSE → revert only in-scope files:
-                       git reset HEAD~1               # soft-reset: undo commit, keep working tree
-                       git restore <IN_SCOPE files>   # discard changes to in-scope files only
-                       log status = "discard"
-        💥 CRASH     → attempt up to 2 quick fixes (typo, import, simple error),
-                       amend commit, re-run. If still broken, soft-reset and
-                       restore only in-scope files; log status = "crash".
+COMMIT    Stage only in-scope files, then commit:
+          git add <IN_SCOPE files> && git commit
+          Message format: "experiment: <short description>"
 
-LOG     Append to results.tsv:
-        <N>	<commit>	<value>	<status>	<description>
+RUN       Execute METRIC_COMMAND, redirect all output:
+          <command> > $LOG_FILE 2>&1
+
+MEASURE   Extract the metric from $LOG_FILE.
+          On failure: read the last 50 lines of run.log for the error.
+
+INSPECT   (Inspector) Validate the experiment beyond just the metric.
+          Checklist — all must pass for a "keep" decision:
+          ☐ Metric improved (or held, if simplification pass)
+          ☐ Change is minimal and focused (one idea, not a kitchen sink)
+          ☐ No unrelated regressions introduced (test suite, type checker)
+          ☐ Code complexity did not increase disproportionately to the gain
+          ☐ The change is understandable — would a reviewer accept it?
+          ☐ No hardcoded magic values that only work for the benchmark
+          ☐ Description matches actual change (no hallucinated improvements)
+          ☐ Metric improvement is real, not positive spin on noise
+          If any check fails, downgrade to "discard" even if metric improved.
+          Record inspector verdict as INSPECTOR_NOTES.
+
+DECIDE    Compare to current best (incorporating INSPECTOR_NOTES):
+          ✅ IMPROVED  → keep commit, update best, log status = "keep"
+          ❌ SAME/WORSE → revert only in-scope files:
+                         git reset HEAD~1               # soft-reset: undo commit, keep working tree
+                         git restore <IN_SCOPE files>   # discard changes to in-scope files only
+                         log status = "discard"
+          ⚠️ METRIC UP BUT INSPECTOR FAIL → revert, log status = "inspector-reject"
+                         Record why: "metric +12% but added 40 LOC of unmaintainable code"
+          💥 CRASH      → attempt up to 2 quick fixes (typo, import, simple error),
+                         amend commit, re-run. If still broken, soft-reset and
+                         restore only in-scope files; log status = "crash".
+
+LOG       Append to results.tsv:
+          <N>	<commit>	<value>	<status>	<description>
 ```
+
+### Domain reasoning vocabulary
+
+Insert these domain-specific keywords into your THINK step to sharpen hypothesis
+quality. Using precise terminology activates better reasoning patterns.
+
+| Domain | Keywords to use in hypotheses |
+| ------ | ---------------------------- |
+| **Python perf** | bottleneck, hot path, cache locality, allocation pressure, GIL contention, vectorize, amortize |
+| **SQL perf** | cardinality, selectivity, partition pruning, predicate pushdown, shuffle, skew, broadcast threshold |
+| **ML training** | learning rate schedule, gradient norm, batch size saturation, overfitting signal, regularization strength |
+| **Test coverage** | uncovered branch, edge case, boundary condition, error path, mock boundary |
+| **Memory** | peak allocation, fragmentation, object lifetime, reference cycle, weak reference |
+| **General** | invariant, precondition, tight loop, early exit, short-circuit, amortized cost |
 
 ### Experiment strategy
 
@@ -324,6 +380,26 @@ When the loop ends (budget reached or interrupted), work through all four sub-ph
    ```bash
    git log --oneline <start-commit>..HEAD
    ```
+
+### 4.1b Run-level review
+
+After reporting results, perform a structured review of the entire optimization run.
+Rate the run on these axes (1–10):
+
+| Axis | Question |
+| ---- | -------- |
+| **Soundness** | Are the metric improvements real and reproducible, or could they be measurement artifacts? |
+| **Quality** | Is the final code better than baseline? Would a senior engineer approve the diff? |
+| **Significance** | Is the improvement meaningful enough to justify the complexity introduced? |
+| **Completeness** | Were the most promising directions explored, or did the loop get stuck early? |
+
+Present scores and a 2–3 sentence summary. Flag:
+- Experiments where metric improved but the change may be fragile
+- Promising directions that were not explored (ideas scored but never tried)
+- Any sign of overfitting to the specific benchmark input
+- Inspector-rejected experiments that might be worth revisiting with a different approach
+
+If the run-level review reveals concerns, note them in the report before cleanup.
 
 ### 4.2 Cleanup
 
@@ -555,6 +631,7 @@ experiment	commit	metric	status	description
 2	c3d4e5f	145.0	discard	switch to numpy vectorization (slower on small data)
 3	d4e5f6g	0.0	crash	add numba jit (import error, unfixable)
 4	e5f6g7h	131.4	keep	cache repeated db lookups with lru_cache
+5	f6g7h8i	128.9	inspector-reject	inline dict — metric +2% but +40 LOC unmaintainable
 ```
 
 ---
