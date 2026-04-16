@@ -1,0 +1,29 @@
+{
+  "skill_name": "kendo-ui-angular",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I have an Angular 17 standalone component that needs to show a kendo-grid with server-side paging, sorting, and filtering. The data comes from a REST API at /api/orders that accepts skip, take, sort, and filter query params and returns { data: Order[], total: number }. Each order has: id (number), customer (string), amount (number), status (string). I need the grid to show a loading indicator while data is being fetched. Show me the full component TypeScript and template.",
+      "expected_output": "A complete Angular standalone component using KENDO_GRID with BehaviorSubject/switchMap RxJS pattern, HttpClient, DataStateChangeEvent, GridDataResult type, [loading] binding, and correct server-side fetch with URL params. Should include OnPush change detection and AsyncPipe.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "I'm building an org chart viewer in Angular. I have employee data from an API as a flat array where each employee has an id and a managerId (null for the CEO). I want to use kendo-treelist to show this as an expandable table with Name, Title, and Department columns. The user should also be able to filter and sort by any column. Show me a complete standalone Angular component.",
+      "expected_output": "A complete Angular standalone component using KENDO_TREELIST with kendoTreeListFlatBinding directive, idField and parentIdField bindings, [expandable] on the first column, plus [sortable] and [filterable] inputs on the treelist.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "I need a kendo-treeview component in Angular that loads its categories lazily from the server. Root categories come from GET /api/categories?parentId=null, and children come from GET /api/categories?parentId=:id. Each category has { id, name, hasChildren }. The user should be able to expand nodes to load their children on demand. Show me the complete Angular standalone component.",
+      "expected_output": "Angular standalone component using KENDO_TREEVIEW with [loadOnDemand]='true', a [fetchChildren] function returning Observable from HttpClient, [hasChildren] function, textField='name', and kendoTreeViewExpandable directive.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "I need a search field in my Angular form that uses kendo-autocomplete. The user types a product name, suggestions come from /api/products/search?q=term (returns array of {id, name}). I want: debounced requests (don't fire until 2+ chars), a loading spinner while fetching, and the bound value should be the product name string. Using reactive forms with a FormControl. Show me the complete component.",
+      "expected_output": "Angular standalone component using KENDO_AUTOCOMPLETE with ReactiveFormsModule, Subject + debounceTime + switchMap RxJS pattern, HttpClient, [loading] binding, valueField='name', minimum filter length guard (>= 2 chars), and a FormControl binding.",
+      "files": []
+    }
+  ]
+}
