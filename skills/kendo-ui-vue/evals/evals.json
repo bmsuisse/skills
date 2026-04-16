@@ -1,0 +1,29 @@
+{
+  "skill_name": "kendo-ui-vue",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I'm building a Vue 3 app with a Kendo UI grid that shows orders from our database. Right now I'm loading all 50,000 orders at once and the page is super slow. I need to switch to server-side paging, filtering, and sorting. Show me how to do this with @progress/kendo-vue-grid using script setup and TypeScript. My API returns { data: Order[], total: number }.",
+      "expected_output": "A complete Vue 3 <script setup lang='ts'> + template example using onDataStateChange event, state management with skip/take/sort/filter, fetch call with serialized state, binding :total for accurate pager, and :loading state. Should use GridDataStateChangeEvent type.",
+      "assertions": []
+    },
+    {
+      "id": 2,
+      "prompt": "I have a Kendo UI Vue grid showing a list of employees. I want users to be able to click an Edit button on each row, edit the fields inline, then Save or Cancel. Also need an Add New button in the toolbar. Using Vue 3 script setup and TypeScript with @progress/kendo-vue-grid.",
+      "expected_output": "A complete inline editing example using editField='inEdit', GridToolbar, GridColumn with #cell slot for command buttons, @itemchange handler, and clone-on-edit pattern for cancel support. Should cover Add/Edit/Save/Cancel/Delete.",
+      "assertions": []
+    },
+    {
+      "id": 3,
+      "prompt": "In my Kendo UI Vue grid I want to show a colored status badge in one of the columns based on the row's status field (can be 'active', 'inactive', 'pending'). The other columns should still be sortable. How do I do this with Vue 3 script setup?",
+      "expected_output": "Example using GridColumn with #cell slot (or cell prop with a component), rendering a <td> with a styled <span> badge. Should keep field set for sorting. Should use Vue 3 script setup.",
+      "assertions": []
+    },
+    {
+      "id": 4,
+      "prompt": "I want to add an Export to Excel button to my Kendo UI Vue grid. The grid is server-paged so I need to export ALL data, not just the current page. How do I do this?",
+      "expected_output": "Example using saveExcel from @progress/kendo-vue-excel-export, GridToolbar with export button, and guidance about fetching the full dataset before calling saveExcel when the grid is server-paged.",
+      "assertions": []
+    }
+  ]
+}
