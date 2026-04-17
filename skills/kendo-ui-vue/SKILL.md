@@ -50,8 +50,10 @@ Grid Props (most commonly used)
 :filter              CompositeFilterDescriptor  Current filter state
 :group               GroupDescriptor[]       Current group state
 :edit-field          string                  Property name that tracks edit mode ('inEdit')
-:selectable          true | SelectSettings   Enable row selection
-:selected-field      string                  Property that tracks selection state
+:selectable          GridSelectableSettings  { enabled, mode, drag, cell } — enable row/cell selection
+:select              SelectDescriptor       Controlled selection state: { [key]: true }
+:default-select      SelectDescriptor       Uncontrolled initial selection (no event handler needed)
+data-item-key        string                 Key field used for selection tracking (required when using selection)
 :detail              Component               Component rendered in expand detail row
 :expand-field        string                  Property name for expand state ('expanded')
 :row-height          number                  Required for virtual scrolling
@@ -64,15 +66,20 @@ Grid Events
 @pagechange          Page changed
 @groupchange         Grouping changed
 @itemchange          A cell value changed during inline editing
-@selectionchange     Row selection changed
-@headerselectionchange  Header checkbox toggled
+@selectionchange     event.select contains new selection state — assign to your select ref
+@headerselectionchange  event.select contains new selection state — assign to your select ref
 @expandchange        Master-detail row expanded/collapsed
+
+Column definition (in :columns array)
+─────────────────────────────────────────────────
+{ columnType: 'checkbox' }               Checkbox column with select-all header (for multi-select)
+{ field, title, width, format, ... }     Standard data column
 
 Sub-components (import from '@progress/kendo-vue-grid')
 ─────────────────────────────────────────────────
 GridToolbar          Toolbar rendered inside the grid header
 GridNoRecords        Custom empty-state content
-GridColumn           Template-based column with #cell, #headerCell slots
+GridColumn           Template-based column with cells.cell / cells.headerCell props for custom rendering
 ```
 
 ## Code Samples
