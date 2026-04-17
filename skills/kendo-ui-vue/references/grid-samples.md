@@ -144,17 +144,17 @@ onMounted(fetchData);
 
 ## 3. Inline Row Editing — Add / Edit / Save / Cancel / Delete
 
-This is the most common CRUD pattern. Each data item carries an optional `inEdit` flag; the Grid uses `edit-field="inEdit"` to know which row is being edited. The `@itemchange` event fires when any editable cell changes.
+Each data item carries an optional `inEdit` flag; the Grid uses `:edit-field="'inEdit'"` to know which row is being edited. The command column is defined via `{ cell: 'commandCell' }` in the `:columns` array — `commandCell` is a named slot on `<Grid>` that receives `{ props }`.
 
 **Key points:**
 - Clone items when entering edit mode so Cancel can restore the original values
-- Use `<GridColumn>` with `#cell` slot for the command column (gives access to parent scope)
 - Remove the `inEdit` flag (and the backup clone) on save or cancel
+- The named slot (`<template #commandCell>`) receives `props.dataItem` with full reactive access
 
 ```vue
 <script setup lang="ts">
-import { ref } from 'vue';
-import { Grid, GridToolbar, GridColumn } from '@progress/kendo-vue-grid';
+import { ref, computed } from 'vue';
+import { Grid, GridToolbar } from '@progress/kendo-vue-grid';
 import type { GridItemChangeEvent } from '@progress/kendo-vue-grid';
 
 interface Product {
@@ -162,27 +162,33 @@ interface Product {
   name: string;
   price: number;
   inEdit?: boolean;
-  // used internally to roll back on Cancel:
   _original?: Omit<Product, 'inEdit' | '_original'>;
 }
 
-let nextId = 10;
 const data = ref<Product[]>([
   { id: 1, name: 'Chai',         price: 18.00 },
   { id: 2, name: 'Chang',        price: 19.00 },
   { id: 3, name: 'Aniseed Syrup',price: 10.00 },
 ]);
 
-// Enter edit mode: clone the original so we can roll back on Cancel
+const hasItemsInEdit = computed(() => data.value.some(d => d.inEdit));
+
+const columns = [
+  { field: 'id',    title: 'ID',    width: '70px',  editable: false },
+  { field: 'name',  title: 'Name'  },
+  { field: 'price', title: 'Price', format: '{0:c}', editor: 'numeric' },
+  { cell: 'commandCell', filterable: false, width: '200px' },  // named slot reference
+];
+
 function editItem(item: Product) {
   item._original = { id: item.id, name: item.name, price: item.price };
   item.inEdit = true;
 }
 
 function saveItem(item: Product) {
-  // Persist to server here, then clean up
   delete item.inEdit;
   delete item._original;
+  // PUT /api/products/:id
 }
 
 function cancelItem(item: Product) {
@@ -190,7 +196,6 @@ function cancelItem(item: Product) {
     Object.assign(item, item._original);
     delete item._original;
   }
-  // New (unsaved) items have no _original → remove them
   if (!item.id) {
     data.value = data.value.filter(d => d !== item);
   } else {
@@ -200,20 +205,16 @@ function cancelItem(item: Product) {
 
 function removeItem(item: Product) {
   data.value = data.value.filter(d => d.id !== item.id);
-  // Call DELETE /api/products/:id here
+  // DELETE /api/products/:id
 }
 
 function addNew() {
-  const newItem: Product = { id: 0, name: '', price: 0, inEdit: true };
-  data.value = [newItem, ...data.value];
+  data.value = [{ id: 0, name: '', price: 0, inEdit: true }, ...data.value];
 }
 
-// Fires when the user types in an editable cell
 function handleItemChange(e: GridItemChangeEvent) {
   const match = data.value.find(d => d.id === (e.dataItem as Product).id);
-  if (match) {
-    (match as any)[e.field!] = e.value;
-  }
+  if (match) (match as any)[e.field!] = e.value;
 }
 </script>
 
@@ -221,51 +222,44 @@ function handleItemChange(e: GridItemChangeEvent) {
   <Grid
     :data-items="data"
     :edit-field="'inEdit'"
-    style="height: 400px;"
+    :columns="columns"
+    :style="{ height: '400px' }"
     @itemchange="handleItemChange"
   >
     <GridToolbar>
       <button
         class="k-button k-button-md k-rounded-md k-button-solid k-button-solid-primary"
         @click="addNew"
-      >
-        Add New
-      </button>
+      >Add New</button>
     </GridToolbar>
 
-    <GridColumn field="id"    title="ID"    width="70px"  :editable="false" />
-    <GridColumn field="name"  title="Name"  />
-    <GridColumn field="price" title="Price" format="{0:c}" editor="numeric" />
-
-    <!-- Command column — uses slot to access parent-scope handlers -->
-    <GridColumn title="Actions" :width="'180px'">
-      <template #cell="{ dataItem }">
-        <td>
-          <template v-if="(dataItem as Product).inEdit">
-            <button
-              class="k-button k-button-sm k-rounded-md k-button-solid k-button-solid-primary"
-              @click="saveItem(dataItem as Product)"
-            >Update</button>
-            <button
-              class="k-button k-button-sm k-rounded-md k-button-solid k-button-solid-base"
-              style="margin-left:4px"
-              @click="cancelItem(dataItem as Product)"
-            >Cancel</button>
-          </template>
-          <template v-else>
-            <button
-              class="k-button k-button-sm k-rounded-md k-button-solid k-button-solid-primary"
-              @click="editItem(dataItem as Product)"
-            >Edit</button>
-            <button
-              class="k-button k-button-sm k-rounded-md k-button-solid k-button-solid-error"
-              style="margin-left:4px"
-              @click="removeItem(dataItem as Product)"
-            >Delete</button>
-          </template>
-        </td>
-      </template>
-    </GridColumn>
+    <!-- Named slot referenced by { cell: 'commandCell' } in columns array -->
+    <template #commandCell="{ props }">
+      <td>
+        <template v-if="(props.dataItem as Product).inEdit">
+          <button
+            class="k-button k-button-sm k-rounded-md k-button-solid k-button-solid-primary"
+            @click="saveItem(props.dataItem as Product)"
+          >Update</button>
+          <button
+            class="k-button k-button-sm k-rounded-md k-button-solid k-button-solid-base"
+            style="margin-left:4px"
+            @click="cancelItem(props.dataItem as Product)"
+          >Cancel</button>
+        </template>
+        <template v-else>
+          <button
+            class="k-button k-button-sm k-rounded-md k-button-solid k-button-solid-primary"
+            @click="editItem(props.dataItem as Product)"
+          >Edit</button>
+          <button
+            class="k-button k-button-sm k-rounded-md k-button-solid k-button-solid-error"
+            style="margin-left:4px"
+            @click="removeItem(props.dataItem as Product)"
+          >Delete</button>
+        </template>
+      </td>
+    </template>
   </Grid>
 </template>
 ```
@@ -585,18 +579,20 @@ const onHeaderSelectionChange = (e: GridHeaderSelectionChangeEvent) => {
 
 ## 5. Custom Cell Template (Status Badge Example)
 
-Use the `#cell` slot on `<GridColumn>` when a column needs custom rendering — icons, badges, links, progress bars, etc. Always keep the `field` set even on custom cells so sorting and filtering still work.
+Set `cell: 'slotName'` on a column definition to use a named slot for that column's cells. The slot receives `{ props }` where `props.dataItem` is the row's data. Keep `field` set even on custom cells so sorting and filtering still work.
 
 ```vue
 <script setup lang="ts">
 import { ref } from 'vue';
-import { Grid, GridColumn } from '@progress/kendo-vue-grid';
+import { Grid } from '@progress/kendo-vue-grid';
+
+type Status = 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
 
 interface Order {
   id: number;
   customer: string;
   amount: number;
-  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+  status: Status;
 }
 
 const data = ref<Order[]>([
@@ -607,41 +603,42 @@ const data = ref<Order[]>([
   { id: 1005, customer: 'Hooli',         amount: 75.00,   status: 'cancelled'  },
 ]);
 
-const statusColors: Record<Order['status'], string> = {
+const statusColors: Record<Status, string> = {
   pending:    '#f59e0b',
   processing: '#3b82f6',
   shipped:    '#8b5cf6',
   delivered:  '#10b981',
   cancelled:  '#ef4444',
 };
+
+const columns = [
+  { field: 'id',       title: 'Order #',  width: '100px' },
+  { field: 'customer', title: 'Customer' },
+  { field: 'amount',   title: 'Amount',   format: '{0:c}', filter: 'numeric' },
+  { field: 'status',   title: 'Status',   width: '150px', cell: 'statusCell' },  // named slot
+];
 </script>
 
 <template>
-  <Grid :data-items="data" style="height: 400px;">
-    <GridColumn field="id"       title="Order #"  width="100px" />
-    <GridColumn field="customer" title="Customer" />
-    <GridColumn field="amount"   title="Amount"   format="{0:c}" filter="numeric" />
-
-    <!-- Custom status badge cell -->
-    <GridColumn field="status" title="Status" width="140px">
-      <template #cell="{ dataItem }">
-        <td>
-          <span
-            :style="{
-              background: statusColors[(dataItem as Order).status],
-              color: '#fff',
-              padding: '2px 10px',
-              borderRadius: '12px',
-              fontSize: '12px',
-              fontWeight: 600,
-              textTransform: 'capitalize',
-            }"
-          >
-            {{ (dataItem as Order).status }}
-          </span>
-        </td>
-      </template>
-    </GridColumn>
+  <Grid :data-items="data" :columns="columns" :style="{ height: '400px' }">
+    <!-- Named slot matching { cell: 'statusCell' } in columns array -->
+    <template #statusCell="{ props }">
+      <td :class="props.className">
+        <span
+          :style="{
+            background: statusColors[(props.dataItem as Order).status],
+            color: '#fff',
+            padding: '2px 10px',
+            borderRadius: '12px',
+            fontSize: '12px',
+            fontWeight: 600,
+            textTransform: 'capitalize',
+          }"
+        >
+          {{ (props.dataItem as Order).status }}
+        </span>
+      </td>
+    </template>
   </Grid>
 </template>
 ```

@@ -10,13 +10,13 @@
     {
       "id": 2,
       "prompt": "I have a Kendo UI Vue grid showing a list of employees. I want users to be able to click an Edit button on each row, edit the fields inline, then Save or Cancel. Also need an Add New button in the toolbar. Using Vue 3 script setup and TypeScript with @progress/kendo-vue-grid.",
-      "expected_output": "A complete inline editing example using editField='inEdit', GridToolbar, GridColumn with #cell slot for command buttons, @itemchange handler, and clone-on-edit pattern for cancel support. Should cover Add/Edit/Save/Cancel/Delete.",
+      "expected_output": "A complete inline editing example using editField='inEdit', GridToolbar, { cell: 'slotName' } in columns array for the command column, named slot on Grid for command buttons, @itemchange handler, and clone-on-edit pattern for cancel support. Should cover Add/Edit/Save/Cancel/Delete. No GridColumn component.",
       "assertions": []
     },
     {
       "id": 3,
       "prompt": "In my Kendo UI Vue grid I want to show a colored status badge in one of the columns based on the row's status field (can be 'active', 'inactive', 'pending'). The other columns should still be sortable. How do I do this with Vue 3 script setup?",
-      "expected_output": "Example using GridColumn with #cell slot (or cell prop with a component), rendering a <td> with a styled <span> badge. Should keep field set for sorting. Should use Vue 3 script setup.",
+      "expected_output": "Example using { field: 'status', cell: 'statusCell' } in the :columns array and a named slot on Grid (<template #statusCell='{ props }'>), rendering a <td> with a styled <span> badge. Should keep field set for sorting. Should use Vue 3 script setup. No GridColumn component.",
       "assertions": []
     },
     {
