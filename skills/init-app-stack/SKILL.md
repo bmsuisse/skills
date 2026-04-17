@@ -8,7 +8,7 @@ description: Use this skill whenever the user wants to bootstrap, scaffold, or i
 
 Bootstrap a full-stack project with:
 
-- **Frontend**: Vite + React + TanStack Router + TanStack Query + Zustand + **shadcn/ui** + TailwindCSS v4, managed with **bun**
+- **Frontend**: Vite **8+** + React + TanStack Router + TanStack Query + Zustand + **shadcn/ui** + TailwindCSS v4, managed with **bun**
 - **Backend**: FastAPI + Granian + raw **asyncpg** (Postgres), managed with **uv**, targeting **Python 3.14** (PEP 750 t-strings for SQL)
 - **DB**: Postgres 17 via `docker-compose.yml`
 - **Types**: `openapi-typescript` generates a typed client from FastAPI's OpenAPI schema
