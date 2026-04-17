@@ -5,7 +5,7 @@
  ██╔══██╗██║╚██╔╝██║╚════██║    ╚════██║██╔═██╗ ██║██║     ██║     ╚════██║
  ██████╔╝██║ ╚═╝ ██║███████║    ███████║██║  ██╗██║███████╗███████╗███████║
  ╚═════╝ ╚═╝     ╚═╝╚══════╝    ╚══════╝╚═╝  ╚═╝╚═╝╚══════╝╚══════╝╚══════╝
- ```
+```
 
 > Reusable AI agent skills for our engineering team — composable instructions that extend coding agents (Claude Code, Cursor, Codex CLI, etc.) with company-specific workflows and best practices.
 
@@ -14,29 +14,31 @@
 ## 📦 Available Skills
 
 <!-- SKILLS_TABLE_START -->
-| Skill | Description |
-|---|---|
-| [autoresearch](./skills/autoresearch/) | Autonomous iterative experimentation loop for Python, SQL, ML, and Spark/Databricks projects. Guides you through defi… |
-| [bms](./skills/bms/) | Master skill for the bmsuisse platform — routes to the relevant skills based on sub-command. Always enables caveman c… |
-| [codeunit-analyzer](./skills/codeunit-analyzer/) | Comprehensive C-AL performance analyzer for Classic Microsoft Dynamics NAV (Navision). Targets Classic NAV anti-patte… |
-| [coding-guidelines-python](./skills/coding-guidelines-python/) | Apply and enforce Python-specific coding standards. Use alongside coding-guidelines for any Python file — covers typi… |
-| [coding-guidelines-sql](./skills/coding-guidelines-sql/) | SQL and data warehouse coding guidelines for the BME data platform. Use this skill whenever the user is writing, revi… |
+
+| Skill                                                                  | Description                                                                                                            |
+| ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| [autoresearch](./skills/autoresearch/)                                 | Autonomous iterative experimentation loop for Python, SQL, ML, and Spark/Databricks projects. Guides you through defi… |
+| [bms](./skills/bms/)                                                   | Master skill for the bmsuisse platform — routes to the relevant skills based on sub-command. Always enables caveman c… |
+| [codeunit-analyzer](./skills/codeunit-analyzer/)                       | Comprehensive C-AL performance analyzer for Classic Microsoft Dynamics NAV (Navision). Targets Classic NAV anti-patte… |
+| [coding-guidelines-python](./skills/coding-guidelines-python/)         | Apply and enforce Python-specific coding standards. Use alongside coding-guidelines for any Python file — covers typi… |
+| [coding-guidelines-sql](./skills/coding-guidelines-sql/)               | SQL and data warehouse coding guidelines for the BME data platform. Use this skill whenever the user is writing, revi… |
 | [coding-guidelines-typescript](./skills/coding-guidelines-typescript/) | Apply and enforce TypeScript-specific coding standards. Use alongside coding-guidelines for any TypeScript file — cov… |
-| [data-modeling-dimensional](./skills/data-modeling-dimensional/) | Dimensional data modeling guide for the Fabricks platform — covers the full pipeline from staging through raw, transf… |
-| [databricks-cli](./skills/databricks-cli/) | Databricks CLI operations: auth, profiles, data exploration, bundles, and notebook execution. Use this skill for ANY… |
-| [databricks-sql-autotuner](./skills/databricks-sql-autotuner/) | Databricks SQL query optimizer and error fixer: analyzes a slow or broken SQL query, rewrites it for speed using SQL-… |
-| [deslop](./skills/deslop/) | Remove AI slop from code and pull requests. Use this skill whenever the user wants to clean up AI-generated code, rev… |
-| [fabricks-glossary](./skills/fabricks-glossary/) | Use this skill whenever company-specific jargon, acronyms, or domain terminology is needed to answer correctly. |
-| [fabricks-sql-analyzer](./skills/fabricks-sql-analyzer/) | Analyzes all SQL files in the Fabricks.Runtime repository, builds a dependency DAG, runs performance heuristics, and… |
-| [fastapi-guideline](./skills/fastapi-guideline/) | Use this skill whenever working with FastAPI — building APIs, adding routes, structuring projects, streaming response… |
-| [init-app-stack](./skills/init-app-stack/) | Use this skill whenever the user wants to bootstrap, scaffold, or initialize a new full-stack app with a Nuxt + Nuxt… |
-| [postgres-best-practices](./skills/postgres-best-practices/) | PostgreSQL coding standards for Python projects using psycopg (no ORM). Use this skill whenever the user is writing o… |
-| [postgres-test-setup](./skills/postgres-test-setup/) | Set up and work with a local PostgreSQL test database in Docker for integration/e2e tests. Use this skill whenever th… |
-| [python-autotuner](./skills/python-autotuner/) | Python code optimizer and error fixer: analyzes a Python file or function, rewrites it for speed and quality using on… |
-| [remove-ai-writing](./skills/remove-ai-writing/) | "Detect and surgically fix AI writing patterns in English, German, French, or Italian text. Use this skill whenever t… |
-| [scientific-revision](./skills/scientific-revision/) | Use this skill whenever the user wants to verify, revise, or improve a scientific essay, academic paper, or any writt… |
-| [spark-connect](./skills/spark-connect/) | Guide for running PySpark code locally against a remote Databricks cluster via Spark Connect (databricks-connect). Us… |
-| [sql-optimization](./skills/sql-optimization/) | "Universal SQL performance optimization assistant for comprehensive query tuning, indexing strategies, and database p… |
+| [data-modeling-dimensional](./skills/data-modeling-dimensional/)       | Dimensional data modeling guide for the Fabricks platform — covers the full pipeline from staging through raw, transf… |
+| [databricks-cli](./skills/databricks-cli/)                             | Databricks CLI operations: auth, profiles, data exploration, bundles, and notebook execution. Use this skill for ANY…  |
+| [databricks-sql-autotuner](./skills/databricks-sql-autotuner/)         | Databricks SQL query optimizer and error fixer: analyzes a slow or broken SQL query, rewrites it for speed using SQL-… |
+| [deslop](./skills/deslop/)                                             | Remove AI slop from code and pull requests. Use this skill whenever the user wants to clean up AI-generated code, rev… |
+| [fabricks-glossary](./skills/fabricks-glossary/)                       | Use this skill whenever company-specific jargon, acronyms, or domain terminology is needed to answer correctly.        |
+| [fabricks-sql-analyzer](./skills/fabricks-sql-analyzer/)               | Analyzes all SQL files in the Fabricks.Runtime repository, builds a dependency DAG, runs performance heuristics, and…  |
+| [fastapi-guideline](./skills/fastapi-guideline/)                       | Use this skill whenever working with FastAPI — building APIs, adding routes, structuring projects, streaming response… |
+| [init-app-stack](./skills/init-app-stack/)                             | Use this skill whenever the user wants to bootstrap, scaffold, or initialize a new full-stack app with a Nuxt + Nuxt…  |
+| [postgres-best-practices](./skills/postgres-best-practices/)           | PostgreSQL coding standards for Python projects using psycopg (no ORM). Use this skill whenever the user is writing o… |
+| [postgres-test-setup](./skills/postgres-test-setup/)                   | Set up and work with a local PostgreSQL test database in Docker for integration/e2e tests. Use this skill whenever th… |
+| [python-autotuner](./skills/python-autotuner/)                         | Python code optimizer and error fixer: analyzes a Python file or function, rewrites it for speed and quality using on… |
+| [remove-ai-writing](./skills/remove-ai-writing/)                       | "Detect and surgically fix AI writing patterns in English, German, French, or Italian text. Use this skill whenever t… |
+| [scientific-revision](./skills/scientific-revision/)                   | Use this skill whenever the user wants to verify, revise, or improve a scientific essay, academic paper, or any writt… |
+| [spark-connect](./skills/spark-connect/)                               | Guide for running PySpark code locally against a remote Databricks cluster via Spark Connect (databricks-connect). Us… |
+| [sql-optimization](./skills/sql-optimization/)                         | "Universal SQL performance optimization assistant for comprehensive query tuning, indexing strategies, and database p… |
+
 <!-- SKILLS_TABLE_END -->
 
 ---
@@ -67,12 +69,12 @@ Add to `~/.claude/settings.json` to install all plugins:
 }
 ```
 
-| Plugin | Contents |
-|---|---|
-| `coding@bmsuisse-skills` | Python, TypeScript, FastAPI, Postgres, and general coding skills |
-| `onetrade@bmsuisse-skills` | C-AL / Classic NAV codeunit analysis |
-| `fabricks-data@bmsuisse-skills` | Fabricks / Databricks data skills |
-| `writing@bmsuisse-skills` | Scientific and academic writing revision |
+| Plugin                          | Contents                                                         |
+| ------------------------------- | ---------------------------------------------------------------- |
+| `coding@bmsuisse-skills`        | Python, TypeScript, FastAPI, Postgres, and general coding skills |
+| `onetrade@bmsuisse-skills`      | C-AL / Classic NAV codeunit analysis                             |
+| `fabricks-data@bmsuisse-skills` | Fabricks / Databricks data skills                                |
+| `writing@bmsuisse-skills`       | Scientific and academic writing revision                         |
 
 Then run these commands in Claude Code to apply the configuration:
 
@@ -90,14 +92,14 @@ Then run these commands in Claude Code to apply the configuration:
 /reload-plugins
 ```
 
-| Command | Description |
-|---|---|
-| `/plugin` | Open the interactive plugin manager (browse, install, enable/disable) |
-| `/plugin install <name>@bmsuisse-skills` | Install a specific plugin |
-| `/plugin uninstall <name>@bmsuisse-skills` | Remove a plugin |
-| `/plugin enable <name>@bmsuisse-skills` | Re-enable a disabled plugin |
-| `/plugin disable <name>@bmsuisse-skills` | Disable without uninstalling |
-| `/reload-plugins` | Reload all active plugins without restarting Claude Code |
+| Command                                    | Description                                                           |
+| ------------------------------------------ | --------------------------------------------------------------------- |
+| `/plugin`                                  | Open the interactive plugin manager (browse, install, enable/disable) |
+| `/plugin install <name>@bmsuisse-skills`   | Install a specific plugin                                             |
+| `/plugin uninstall <name>@bmsuisse-skills` | Remove a plugin                                                       |
+| `/plugin enable <name>@bmsuisse-skills`    | Re-enable a disabled plugin                                           |
+| `/plugin disable <name>@bmsuisse-skills`   | Disable without uninstalling                                          |
+| `/reload-plugins`                          | Reload all active plugins without restarting Claude Code              |
 
 ---
 
@@ -119,13 +121,13 @@ npx skills add https://github.com/bmsuisse/skills
 
 The CLI auto-detects your agent platform and installs into the right directory:
 
-| Platform | Directory |
-|---|---|
-| Claude Code | `.claude/skills/` |
-| Cursor | `.cursor/rules/` |
-| Codex CLI | `~/.codex/skills/` |
+| Platform    | Directory                             |
+| ----------- | ------------------------------------- |
+| Claude Code | `.claude/skills/`                     |
+| Cursor      | `.cursor/rules/`                      |
+| Codex CLI   | `~/.codex/skills/`                    |
 | Antigravity | `.agents/skills/` or `.agent/skills/` |
-| Gemini CLI | auto-detected |
+| Gemini CLI  | auto-detected                         |
 
 ### 🔍 Browse on skills.sh
 
@@ -147,14 +149,15 @@ Start a new session and ask your agent something that should trigger the skill.
 
 ### Sub-commands
 
-| Command | Loads | Good for |
-|---|---|---|
-| `/bms` | coding-guidelines-sql · coding-guidelines-python · coding-guidelines-typescript · fabricks-glossary | General session — all core standards active |
-| `/bms sql` | coding-guidelines-sql · sql-optimization · fabricks-glossary | SQL authoring, reviews, refactoring |
-| `/bms python` | coding-guidelines-python | Python development, PR reviews |
-| `/bms data` | data-modeling-dimensional · fabricks-glossary | Designing or reviewing fact/dim tables |
+| Command       | Loads                                                                                               | Good for                                    |
+| ------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| `/bms`        | coding-guidelines-sql · coding-guidelines-python · coding-guidelines-typescript · fabricks-glossary | General session — all core standards active |
+| `/bms sql`    | coding-guidelines-sql · sql-optimization · fabricks-glossary                                        | SQL authoring, reviews, refactoring         |
+| `/bms python` | coding-guidelines-python                                                                            | Python development, PR reviews              |
+| `/bms data`   | data-modeling-dimensional · fabricks-glossary                                                       | Designing or reviewing fact/dim tables      |
 
 For deep optimization work, chain with the specialized skills:
+
 - SQL benchmarking → `/databricks-sql-autotuner`
 - Python benchmarking → `/python-autotuner`
 
@@ -205,7 +208,16 @@ Use **skill-creator** to guide you through the full lifecycle — drafting, test
 npx skills add https://github.com/anthropics/skills --skill skill-creator
 ```
 
-Then ask your agent: *"Help me create a skill for X"* and it will walk you through intent capture, writing the `SKILL.md`, running test cases, reviewing results, and iterating until the skill is ready.
+Then ask your agent: _"Help me create a skill for X"_ and it will walk you through intent capture, writing the `SKILL.md`, running test cases, reviewing results, and iterating until the skill is ready.
+
+Also helpful is the playwright-cli skill, which you can install like this:
+
+```bash
+bun install -g @playwright/cli@latest
+bunx playwright-cli install --skills
+```
+
+You can give a hint to the agent to use playwright cli to query complex web pages with javascript.
 
 ### Structure
 
