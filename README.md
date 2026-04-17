@@ -26,12 +26,14 @@
 | [databricks-cli](./skills/databricks-cli/) | Databricks CLI operations: auth, profiles, data exploration, bundles, and notebook execution. Use this skill for ANY… |
 | [databricks-sql-autotuner](./skills/databricks-sql-autotuner/) | Databricks SQL query optimizer and error fixer: analyzes a slow or broken SQL query, rewrites it for speed using SQL-… |
 | [deslop](./skills/deslop/) | Remove AI slop from code and pull requests. Use this skill whenever the user wants to clean up AI-generated code, rev… |
+| [duckdb](./skills/duckdb/) | Guide for working with DuckDB — CLI usage, SQL execution, reading files (CSV, Parquet, JSON, Excel), extensions (http… |
 | [fabricks-glossary](./skills/fabricks-glossary/) | Use this skill whenever company-specific jargon, acronyms, or domain terminology is needed to answer correctly. |
 | [fabricks-sql-analyzer](./skills/fabricks-sql-analyzer/) | Analyzes all SQL files in the Fabricks.Runtime repository, builds a dependency DAG, runs performance heuristics, and… |
 | [fastapi-guideline](./skills/fastapi-guideline/) | Use this skill whenever working with FastAPI — building APIs, adding routes, structuring projects, streaming response… |
 | [init-app-stack](./skills/init-app-stack/) | Use this skill whenever the user wants to bootstrap, scaffold, or initialize a new full-stack app with a Vite + React… |
 | [kendo-ui-angular](./skills/kendo-ui-angular/) | Use this skill whenever the user is working with Kendo UI for Angular — including the Data Grid, TreeList, TreeView,… |
 | [kendo-ui-vue](./skills/kendo-ui-vue/) | Use this skill whenever the user is working with Kendo UI for Vue — including the Data Grid, DropDownList, ComboBox,… |
+| [nicegui](./skills/nicegui/) | Build Python web UIs with NiceGUI — covering layout, widgets, data binding, routing, and the AgGrid data grid. Use th… |
 | [postgres-best-practices](./skills/postgres-best-practices/) | PostgreSQL coding standards for Python projects using psycopg (no ORM). Use this skill whenever the user is writing o… |
 | [postgres-test-setup](./skills/postgres-test-setup/) | Set up and work with a local PostgreSQL test database in Docker for integration/e2e tests. Use this skill whenever th… |
 | [python-autotuner](./skills/python-autotuner/) | Python code optimizer and error fixer: analyzes a Python file or function, rewrites it for speed and quality using on… |
