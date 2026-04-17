@@ -38,7 +38,7 @@ Grid Props (most commonly used)
 ─────────────────────────────────────────────────
 :data-items          T[]                     Bound data (page-slice for server-side)
 :total               number                  Total record count (server-side only)
-:columns             ColumnDefinition[]      Prop-based column defs (or use <GridColumn>)
+:columns             ColumnDefinition[]      Column defs — use cell: 'slotName' for custom cells
 :pageable            true | PagerSettings    Enable paging
 :sortable            true | SortSettings     Enable sorting
 :filterable          true | FilterSettings   Enable filter row/menu
@@ -79,7 +79,8 @@ Sub-components (import from '@progress/kendo-vue-grid')
 ─────────────────────────────────────────────────
 GridToolbar          Toolbar rendered inside the grid header
 GridNoRecords        Custom empty-state content
-GridColumn           Template-based column with cells.cell / cells.headerCell props for custom rendering
+GridToolbar          Toolbar rendered inside the grid header
+GridNoRecords        Custom empty-state content
 ```
 
 ## Code Samples
