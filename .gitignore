@@ -27,3 +27,4 @@ skills-lock.json
 tmp_alperf
 
 .playwright-cli
+.tmp-check

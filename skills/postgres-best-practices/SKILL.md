@@ -582,6 +582,53 @@ sqlfmt enforces lowercase keywords, trailing commas, and consistent indentation.
 
 ---
 
+## Avoid LATERAL JOIN — use CTEs instead
+
+`LATERAL JOIN` is hard to read and often poorly optimized. Prefer a CTE that pre-aggregates or pre-filters, then join that:
+
+**Avoid:**
+
+```sql
+select
+    u.id,
+    u.email,
+    latest.total
+from users as u
+join lateral (
+    select o.total
+    from orders as o
+    where o.user_id = u.id
+    order by o.created_at desc
+    limit 1
+) as latest on true
+```
+
+**Prefer (CTE with aggregation, then join):**
+
+```sql
+with latest_order as (
+    select
+        o.user_id,
+        o.total,
+        row_number() over (
+            partition by o.user_id order by o.created_at desc
+        ) as rn
+    from orders as o
+)
+select
+    u.id,
+    u.email,
+    lo.total
+from users as u
+join latest_order as lo
+    on lo.user_id = u.id
+    and lo.rn = 1
+```
+
+The CTE is planned once, is easier to read, and allows the planner to optimise the join independently of the subquery.
+
+---
+
 ## Quick checklist
 
 - [ ] Simple CRUD uses `pg_*` helpers; custom queries use `.sql` files
@@ -591,3 +638,4 @@ sqlfmt enforces lowercase keywords, trailing commas, and consistent indentation.
 - [ ] Results mapped to a Pydantic model in `{topic}_models.py`
 - [ ] Table-mapped models extend `PostgresTableModel`; partial results extend `BaseModel`
 - [ ] Dynamic SQL uses t-strings (3.14+) or `psycopg.sql` — chosen at authoring time based on pyproject.toml
+- [ ] No `LATERAL JOIN` — use a CTE that groups/aggregates first, then join it

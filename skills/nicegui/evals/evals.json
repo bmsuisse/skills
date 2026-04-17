@@ -1,0 +1,53 @@
+{
+  "skill_name": "nicegui",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Build a NiceGUI app that shows a table of employees with columns: name, department, and salary. Add floating filters so the user can filter by name (text) and salary (number). When the user clicks a row, show a notification with the employee's name and salary. Salary values above 80000 should have a green cell background, below 50000 should be red. Pre-populate with at least 5 rows of sample data.",
+      "expected_output": "A NiceGUI script using ui.aggrid with columnDefs including agTextColumnFilter and agNumberColumnFilter with floatingFilter:True, cellClassRules using Tailwind classes (bg-green-300, bg-red-300), an on('cellClicked') event handler calling ui.notify, sample rowData with 5+ employees, and ui.run() at the bottom.",
+      "files": [],
+      "expectations": [
+        "Uses ui.aggrid (not ui.table)",
+        "columnDefs includes 'filter': 'agTextColumnFilter' for name column",
+        "columnDefs includes 'filter': 'agNumberColumnFilter' for salary column",
+        "Both filter columns have 'floatingFilter': True",
+        "cellClassRules uses Tailwind CSS color classes (e.g. bg-green-300, bg-red-300)",
+        "Has .on('cellClicked', ...) event handler",
+        "Event handler calls ui.notify with row data",
+        "rowData has at least 5 rows",
+        "Script ends with ui.run()"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I'm building a NiceGUI app with two pages: a home page at '/' with a welcome message and a nav link, and a data page at '/data' that shows an ag-grid table loaded from a pandas DataFrame. The DataFrame has columns: product, region, revenue. On the data page add a button that downloads the current client-side grid data (including any sorts/filters the user applied) and prints it to the server console. Use a tab-based layout on the data page with two tabs: 'Grid' and 'Summary', where Summary just shows the total revenue as a label.",
+      "expected_output": "Uses @ui.page decorators for '/' and '/data'. Data page uses ui.tabs and ui.tab_panels. Grid tab has ui.aggrid.from_pandas(df). A button uses await grid.get_client_data() and prints result. Summary tab shows total revenue. Includes ui.run() with storage_secret for session support.",
+      "files": [],
+      "expectations": [
+        "Uses @ui.page('/') and @ui.page('/data') decorators",
+        "Uses ui.aggrid.from_pandas(df) to create grid from DataFrame",
+        "DataFrame has product, region, revenue columns",
+        "Uses ui.tabs() and ui.tab_panels() for tab layout",
+        "Has a button that calls await grid.get_client_data() and prints it",
+        "get_client_data handler is an async function",
+        "Summary tab displays total revenue",
+        "Script ends with ui.run()"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Create a NiceGUI CRUD interface for a task list. The UI should have: an ag-grid showing tasks (id, title, done fields) with multiRow selection enabled and getRowId set to the id field; an input field for new task titles; an Add button that appends to the grid; a Delete Selected button that removes selected rows from the grid without a full reload (use run_row_method); a toggle on each row to mark tasks done, updating just that cell. Use a bindable dataclass for app state. Tasks should be persisted to app.storage.user.",
+      "expected_output": "Uses @binding.bindable_dataclass for state. ui.aggrid with ':getRowId', rowSelection multiRow. Add button appends to options['rowData'] and calls grid.update(). Delete uses async get_selected_rows() then run_row_method on each. Storage bound via app.storage.user. Handles tasks as list of dicts.",
+      "files": [],
+      "expectations": [
+        "Uses ui.aggrid with ':getRowId' option pointing to id field",
+        "rowSelection mode is 'multiRow'",
+        "Add button appends a new dict to grid.options['rowData'] and calls grid.update() or run_grid_method",
+        "Delete Selected handler is async and calls await grid.get_selected_rows()",
+        "Delete uses run_row_method (not full grid reload) to remove rows, OR correctly filters rowData and updates",
+        "New task input is a ui.input element",
+        "Tasks are stored/loaded from app.storage.user"
+      ]
+    }
+  ]
+}
