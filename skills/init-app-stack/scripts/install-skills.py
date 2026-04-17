@@ -19,10 +19,6 @@ import sys
 # Skills can be installed via GitHub URL or skills.sh short-form (owner/repo).
 # Browse and discover more at https://skills.sh
 SKILLS = [
-    # https://skills.sh/nuxt/ui/nuxt-ui
-    ("nuxt/ui", "nuxt-ui"),
-    # https://github.com/antfu/skills (not on skills.sh — use full GitHub URL)
-    ("https://github.com/antfu/skills", "nuxt"),
     # https://skills.sh/anthropics/skills/frontend-design
     ("anthropics/skills", "frontend-design"),
     # https://skills.sh/wshobson/agents/fastapi-templates
