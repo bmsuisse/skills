@@ -10,31 +10,57 @@ Use this pattern when all data fits in memory (< ~5,000 rows). The `process()` f
 
 ```vue
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import { Grid } from '@progress/kendo-vue-grid';
-import { process } from '@progress/kendo-data-query';
-import type { DataResult, State } from '@progress/kendo-data-query';
-import type { GridDataStateChangeEvent } from '@progress/kendo-vue-grid';
+import { ref, computed } from "vue";
+import { Grid } from "@progress/kendo-vue-grid";
+import { process } from "@progress/kendo-data-query";
+import type { DataResult, State } from "@progress/kendo-data-query";
+import type { GridDataStateChangeEvent } from "@progress/kendo-vue-grid";
 
-interface Product { id: number; name: string; category: string; price: number; inStock: boolean }
+interface Product {
+  id: number;
+  name: string;
+  category: string;
+  price: number;
+  inStock: boolean;
+}
 
 const rawData: Product[] = [
-  { id: 1, name: 'Chai',         category: 'Beverages', price: 18.00, inStock: true },
-  { id: 2, name: 'Chang',        category: 'Beverages', price: 19.00, inStock: false },
-  { id: 3, name: 'Aniseed Syrup',category: 'Condiments',price: 10.00, inStock: true },
-  { id: 4, name: 'Chef Anton',   category: 'Condiments',price: 21.35, inStock: true },
-  { id: 5, name: 'Gumbo Mix',    category: 'Condiments',price: 17.00, inStock: false },
+  { id: 1, name: "Chai", category: "Beverages", price: 18.0, inStock: true },
+  { id: 2, name: "Chang", category: "Beverages", price: 19.0, inStock: false },
+  {
+    id: 3,
+    name: "Aniseed Syrup",
+    category: "Condiments",
+    price: 10.0,
+    inStock: true,
+  },
+  {
+    id: 4,
+    name: "Chef Anton",
+    category: "Condiments",
+    price: 21.35,
+    inStock: true,
+  },
+  {
+    id: 5,
+    name: "Gumbo Mix",
+    category: "Condiments",
+    price: 17.0,
+    inStock: false,
+  },
 ];
 
 const dataState = ref<State>({ skip: 0, take: 5, sort: [], filter: undefined });
-const dataResult = computed<DataResult>(() => process(rawData, dataState.value));
+const dataResult = computed<DataResult>(() =>
+  process(rawData, dataState.value),
+);
 
 const columns = [
-  { field: 'id',       title: 'ID',       width: '70px', filterable: false },
-  { field: 'name',     title: 'Product Name' },
-  { field: 'category', title: 'Category' },
-  { field: 'price',    title: 'Price',    format: '{0:c}', filter: 'numeric' },
-  { field: 'inStock',  title: 'In Stock', filter: 'boolean', width: '100px' },
+  { field: "id", title: "ID", width: "70px", filterable: false },
+  { field: "name", title: "Product Name" },
+  { field: "category", title: "Category" },
+  { field: "price", title: "Price", format: "{0:c}", filter: "numeric" },
+  { field: "inStock", title: "In Stock", filter: "boolean", width: "100px" },
 ];
 
 const handleDataStateChange = (e: GridDataStateChangeEvent) => {
@@ -52,8 +78,8 @@ const handleDataStateChange = (e: GridDataStateChangeEvent) => {
     :filterable="true"
     :skip="dataState.skip"
     :take="dataState.take"
-    :sort="(dataState.sort as any)"
-    :filter="(dataState.filter as any)"
+    :sort="dataState.sort as any"
+    :filter="dataState.filter as any"
     style="height: 400px;"
     @datastatechange="handleDataStateChange"
   />
@@ -68,12 +94,17 @@ For large datasets, send the grid state to your API and bind only the current pa
 
 ```vue
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { Grid } from '@progress/kendo-vue-grid';
-import type { GridDataStateChangeEvent } from '@progress/kendo-vue-grid';
-import type { State } from '@progress/kendo-data-query';
+import { ref, onMounted } from "vue";
+import { Grid } from "@progress/kendo-vue-grid";
+import type { GridDataStateChangeEvent } from "@progress/kendo-vue-grid";
+import type { State } from "@progress/kendo-data-query";
 
-interface Product { id: number; name: string; category: string; price: number }
+interface Product {
+  id: number;
+  name: string;
+  category: string;
+  price: number;
+}
 
 const dataItems = ref<Product[]>([]);
 const total = ref(0);
@@ -86,10 +117,10 @@ const dataState = ref<State>({
 });
 
 const columns = [
-  { field: 'id',       title: 'ID',       width: '80px', filterable: false },
-  { field: 'name',     title: 'Name' },
-  { field: 'category', title: 'Category' },
-  { field: 'price',    title: 'Price',    format: '{0:c}', filter: 'numeric' },
+  { field: "id", title: "ID", width: "80px", filterable: false },
+  { field: "name", title: "Name" },
+  { field: "category", title: "Category" },
+  { field: "price", title: "Price", format: "{0:c}", filter: "numeric" },
 ];
 
 async function fetchData() {
@@ -97,15 +128,15 @@ async function fetchData() {
   try {
     // Serialize state into query params — adapt to your API's conventions
     const params = new URLSearchParams({
-      skip:   String(dataState.value.skip  ?? 0),
-      take:   String(dataState.value.take  ?? 10),
-      sort:   JSON.stringify(dataState.value.sort   ?? []),
+      skip: String(dataState.value.skip ?? 0),
+      take: String(dataState.value.take ?? 10),
+      sort: JSON.stringify(dataState.value.sort ?? []),
       filter: JSON.stringify(dataState.value.filter ?? null),
     });
     const res = await fetch(`/api/products?${params}`);
     const json = await res.json(); // must be { data: Product[], total: number }
     dataItems.value = json.data;
-    total.value     = json.total;
+    total.value = json.total;
   } finally {
     loading.value = false;
   }
@@ -130,8 +161,8 @@ onMounted(fetchData);
     :filterable="true"
     :skip="dataState.skip"
     :take="dataState.take"
-    :sort="(dataState.sort as any)"
-    :filter="(dataState.filter as any)"
+    :sort="dataState.sort as any"
+    :filter="dataState.filter as any"
     style="height: 500px;"
     @datastatechange="handleDataStateChange"
   />
@@ -147,37 +178,38 @@ onMounted(fetchData);
 Each data item carries an optional `inEdit` flag; the Grid uses `:edit-field="'inEdit'"` to know which row is being edited. The command column is defined via `{ cell: 'commandCell' }` in the `:columns` array — `commandCell` is a named slot on `<Grid>` that receives `{ props }`.
 
 **Key points:**
+
 - Clone items when entering edit mode so Cancel can restore the original values
 - Remove the `inEdit` flag (and the backup clone) on save or cancel
 - The named slot (`<template #commandCell>`) receives `props.dataItem` with full reactive access
 
 ```vue
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import { Grid, GridToolbar } from '@progress/kendo-vue-grid';
-import type { GridItemChangeEvent } from '@progress/kendo-vue-grid';
+import { ref, computed } from "vue";
+import { Grid, GridToolbar } from "@progress/kendo-vue-grid";
+import type { GridItemChangeEvent } from "@progress/kendo-vue-grid";
 
 interface Product {
   id: number;
   name: string;
   price: number;
   inEdit?: boolean;
-  _original?: Omit<Product, 'inEdit' | '_original'>;
+  _original?: Omit<Product, "inEdit" | "_original">;
 }
 
 const data = ref<Product[]>([
-  { id: 1, name: 'Chai',         price: 18.00 },
-  { id: 2, name: 'Chang',        price: 19.00 },
-  { id: 3, name: 'Aniseed Syrup',price: 10.00 },
+  { id: 1, name: "Chai", price: 18.0 },
+  { id: 2, name: "Chang", price: 19.0 },
+  { id: 3, name: "Aniseed Syrup", price: 10.0 },
 ]);
 
-const hasItemsInEdit = computed(() => data.value.some(d => d.inEdit));
+const hasItemsInEdit = computed(() => data.value.some((d) => d.inEdit));
 
 const columns = [
-  { field: 'id',    title: 'ID',    width: '70px',  editable: false },
-  { field: 'name',  title: 'Name'  },
-  { field: 'price', title: 'Price', format: '{0:c}', editor: 'numeric' },
-  { cell: 'commandCell', filterable: false, width: '200px' },  // named slot reference
+  { field: "id", title: "ID", width: "70px", editable: false },
+  { field: "name", title: "Name" },
+  { field: "price", title: "Price", format: "{0:c}", editor: "numeric" },
+  { cell: "commandCell", filterable: false, width: "200px" }, // named slot reference
 ];
 
 function editItem(item: Product) {
@@ -197,23 +229,23 @@ function cancelItem(item: Product) {
     delete item._original;
   }
   if (!item.id) {
-    data.value = data.value.filter(d => d !== item);
+    data.value = data.value.filter((d) => d !== item);
   } else {
     delete item.inEdit;
   }
 }
 
 function removeItem(item: Product) {
-  data.value = data.value.filter(d => d.id !== item.id);
+  data.value = data.value.filter((d) => d.id !== item.id);
   // DELETE /api/products/:id
 }
 
 function addNew() {
-  data.value = [{ id: 0, name: '', price: 0, inEdit: true }, ...data.value];
+  data.value = [{ id: 0, name: "", price: 0, inEdit: true }, ...data.value];
 }
 
 function handleItemChange(e: GridItemChangeEvent) {
-  const match = data.value.find(d => d.id === (e.dataItem as Product).id);
+  const match = data.value.find((d) => d.id === (e.dataItem as Product).id);
   if (match) (match as any)[e.field!] = e.value;
 }
 </script>
@@ -230,7 +262,9 @@ function handleItemChange(e: GridItemChangeEvent) {
       <button
         class="k-button k-button-md k-rounded-md k-button-solid k-button-solid-primary"
         @click="addNew"
-      >Add New</button>
+      >
+        Add New
+      </button>
     </GridToolbar>
 
     <!-- Named slot referenced by { cell: 'commandCell' } in columns array -->
@@ -240,23 +274,31 @@ function handleItemChange(e: GridItemChangeEvent) {
           <button
             class="k-button k-button-sm k-rounded-md k-button-solid k-button-solid-primary"
             @click="saveItem(props.dataItem as Product)"
-          >Update</button>
+          >
+            Update
+          </button>
           <button
             class="k-button k-button-sm k-rounded-md k-button-solid k-button-solid-base"
             style="margin-left:4px"
             @click="cancelItem(props.dataItem as Product)"
-          >Cancel</button>
+          >
+            Cancel
+          </button>
         </template>
         <template v-else>
           <button
             class="k-button k-button-sm k-rounded-md k-button-solid k-button-solid-primary"
             @click="editItem(props.dataItem as Product)"
-          >Edit</button>
+          >
+            Edit
+          </button>
           <button
             class="k-button k-button-sm k-rounded-md k-button-solid k-button-solid-error"
             style="margin-left:4px"
             @click="removeItem(props.dataItem as Product)"
-          >Delete</button>
+          >
+            Delete
+          </button>
         </template>
       </td>
     </template>
@@ -293,29 +335,33 @@ No checkbox column needed — clicking a row selects it. Set `mode: 'single'` an
 
 ```vue
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import { Grid } from '@progress/kendo-vue-grid';
-import type { GridSelectionChangeEvent } from '@progress/kendo-vue-grid';
+import { ref, computed } from "vue";
+import { Grid } from "@progress/kendo-vue-grid";
+import type { GridSelectionChangeEvent } from "@progress/kendo-vue-grid";
 
-interface Employee { id: number; name: string; department: string }
+interface Employee {
+  id: number;
+  name: string;
+  department: string;
+}
 
 const data = ref<Employee[]>([
-  { id: 1, name: 'Alice',   department: 'Engineering' },
-  { id: 2, name: 'Bob',     department: 'Design'      },
-  { id: 3, name: 'Charlie', department: 'Product'     },
-  { id: 4, name: 'Diana',   department: 'Engineering' },
+  { id: 1, name: "Alice", department: "Engineering" },
+  { id: 2, name: "Bob", department: "Design" },
+  { id: 3, name: "Charlie", department: "Product" },
+  { id: 4, name: "Diana", department: "Engineering" },
 ]);
 
 // { [id]: true } for the selected row — single mode keeps at most one entry
 const select = ref<Record<number, boolean>>({});
 
-const selectedEmployee = computed(() =>
-  data.value.find(e => select.value[e.id]) ?? null
+const selectedEmployee = computed(
+  () => data.value.find((e) => select.value[e.id]) ?? null,
 );
 
 const columns = [
-  { field: 'name',       title: 'Name'       },
-  { field: 'department', title: 'Department' },
+  { field: "name", title: "Name" },
+  { field: "department", title: "Department" },
 ];
 
 const onSelectionChange = (e: GridSelectionChangeEvent) => {
@@ -325,7 +371,9 @@ const onSelectionChange = (e: GridSelectionChangeEvent) => {
 
 <template>
   <div>
-    <p>Selected: <strong>{{ selectedEmployee?.name ?? 'none' }}</strong></p>
+    <p>
+      Selected: <strong>{{ selectedEmployee?.name ?? "none" }}</strong>
+    </p>
 
     <Grid
       :data-items="data"
@@ -348,31 +396,37 @@ Add `{ columnType: 'checkbox' }` as the first entry in `:columns` to render per-
 
 ```vue
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import { Grid } from '@progress/kendo-vue-grid';
+import { ref, computed } from "vue";
+import { Grid } from "@progress/kendo-vue-grid";
 import type {
   GridSelectionChangeEvent,
   GridHeaderSelectionChangeEvent,
-} from '@progress/kendo-vue-grid';
+} from "@progress/kendo-vue-grid";
 
-interface Employee { id: number; name: string; department: string }
+interface Employee {
+  id: number;
+  name: string;
+  department: string;
+}
 
 const data = ref<Employee[]>([
-  { id: 1, name: 'Alice',   department: 'Engineering' },
-  { id: 2, name: 'Bob',     department: 'Design'      },
-  { id: 3, name: 'Charlie', department: 'Product'     },
-  { id: 4, name: 'Diana',   department: 'Engineering' },
-  { id: 5, name: 'Eve',     department: 'Design'      },
+  { id: 1, name: "Alice", department: "Engineering" },
+  { id: 2, name: "Bob", department: "Design" },
+  { id: 3, name: "Charlie", department: "Product" },
+  { id: 4, name: "Diana", department: "Engineering" },
+  { id: 5, name: "Eve", department: "Design" },
 ]);
 
 const select = ref<Record<number, boolean>>({});
 
-const selectedItems = computed(() => data.value.filter(e => select.value[e.id]));
+const selectedItems = computed(() =>
+  data.value.filter((e) => select.value[e.id]),
+);
 
 const columns = [
-  { columnType: 'checkbox' },           // renders checkboxes + select-all in header
-  { field: 'name',       title: 'Name'       },
-  { field: 'department', title: 'Department' },
+  { columnType: "checkbox" }, // renders checkboxes + select-all in header
+  { field: "name", title: "Name" },
+  { field: "department", title: "Department" },
 ];
 
 // Both events return the complete new selection state — just assign it
@@ -384,14 +438,16 @@ const onHeaderSelectionChange = (e: GridHeaderSelectionChangeEvent) => {
 };
 
 function deleteSelected() {
-  data.value = data.value.filter(e => !select.value[e.id]);
+  data.value = data.value.filter((e) => !select.value[e.id]);
   select.value = {};
 }
 </script>
 
 <template>
   <div>
-    <div style="margin-bottom: 8px; display: flex; align-items: center; gap: 12px;">
+    <div
+      style="margin-bottom: 8px; display: flex; align-items: center; gap: 12px;"
+    >
       <span>{{ selectedItems.length }} of {{ data.length }} selected</span>
       <button
         v-if="selectedItems.length > 0"
@@ -424,31 +480,37 @@ function deleteSelected() {
 
 ```vue
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import { Grid } from '@progress/kendo-vue-grid';
+import { ref, computed } from "vue";
+import { Grid } from "@progress/kendo-vue-grid";
 import type {
   GridSelectionChangeEvent,
   GridHeaderSelectionChangeEvent,
-} from '@progress/kendo-vue-grid';
+} from "@progress/kendo-vue-grid";
 
-interface Employee { id: number; name: string; department: string }
+interface Employee {
+  id: number;
+  name: string;
+  department: string;
+}
 
 const data = ref<Employee[]>([
-  { id: 1, name: 'Alice',   department: 'Engineering' },
-  { id: 2, name: 'Bob',     department: 'Design'      },
-  { id: 3, name: 'Charlie', department: 'Product'     },
-  { id: 4, name: 'Diana',   department: 'Engineering' },
-  { id: 5, name: 'Eve',     department: 'Design'      },
+  { id: 1, name: "Alice", department: "Engineering" },
+  { id: 2, name: "Bob", department: "Design" },
+  { id: 3, name: "Charlie", department: "Product" },
+  { id: 4, name: "Diana", department: "Engineering" },
+  { id: 5, name: "Eve", department: "Design" },
 ]);
 
 const select = ref<Record<number, boolean>>({});
 
-const selectedItems = computed(() => data.value.filter(e => select.value[e.id]));
+const selectedItems = computed(() =>
+  data.value.filter((e) => select.value[e.id]),
+);
 
 const columns = [
-  { columnType: 'checkbox' },
-  { field: 'name',       title: 'Name'       },
-  { field: 'department', title: 'Department' },
+  { columnType: "checkbox" },
+  { field: "name", title: "Name" },
+  { field: "department", title: "Department" },
 ];
 
 const onSelectionChange = (e: GridSelectionChangeEvent) => {
@@ -460,17 +522,19 @@ const onHeaderSelectionChange = (e: GridHeaderSelectionChangeEvent) => {
 
 // Programmatic helpers — reassign the ref, grid reacts automatically
 function selectAll() {
-  select.value = Object.fromEntries(data.value.map(e => [e.id, true]));
+  select.value = Object.fromEntries(data.value.map((e) => [e.id, true]));
 }
-function clearSelection() { select.value = {}; }
+function clearSelection() {
+  select.value = {};
+}
 function invertSelection() {
   select.value = Object.fromEntries(
-    data.value.filter(e => !select.value[e.id]).map(e => [e.id, true])
+    data.value.filter((e) => !select.value[e.id]).map((e) => [e.id, true]),
   );
 }
 function selectByDept(dept: string) {
   select.value = Object.fromEntries(
-    data.value.filter(e => e.department === dept).map(e => [e.id, true])
+    data.value.filter((e) => e.department === dept).map((e) => [e.id, true]),
   );
 }
 </script>
@@ -478,10 +542,30 @@ function selectByDept(dept: string) {
 <template>
   <div>
     <div style="margin-bottom: 8px; display: flex; gap: 8px; flex-wrap: wrap;">
-      <button class="k-button k-button-sm k-rounded-md k-button-solid k-button-solid-primary" @click="selectAll">Select All</button>
-      <button class="k-button k-button-sm k-rounded-md k-button-solid k-button-solid-base"    @click="clearSelection">Clear</button>
-      <button class="k-button k-button-sm k-rounded-md k-button-solid k-button-solid-base"    @click="invertSelection">Invert</button>
-      <button class="k-button k-button-sm k-rounded-md k-button-solid k-button-solid-base"    @click="selectByDept('Engineering')">Engineering only</button>
+      <button
+        class="k-button k-button-sm k-rounded-md k-button-solid k-button-solid-primary"
+        @click="selectAll"
+      >
+        Select All
+      </button>
+      <button
+        class="k-button k-button-sm k-rounded-md k-button-solid k-button-solid-base"
+        @click="clearSelection"
+      >
+        Clear
+      </button>
+      <button
+        class="k-button k-button-sm k-rounded-md k-button-solid k-button-solid-base"
+        @click="invertSelection"
+      >
+        Invert
+      </button>
+      <button
+        class="k-button k-button-sm k-rounded-md k-button-solid k-button-solid-base"
+        @click="selectByDept('Engineering')"
+      >
+        Engineering only
+      </button>
     </div>
     <p>{{ selectedItems.length }} row(s) selected</p>
 
@@ -507,26 +591,32 @@ Because `select` is key-based (not tied to current page items), it persists acro
 
 ```vue
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import { Grid } from '@progress/kendo-vue-grid';
-import { process } from '@progress/kendo-data-query';
-import type { State, DataResult } from '@progress/kendo-data-query';
+import { ref, computed } from "vue";
+import { Grid } from "@progress/kendo-vue-grid";
+import { process } from "@progress/kendo-data-query";
+import type { State, DataResult } from "@progress/kendo-data-query";
 import type {
   GridDataStateChangeEvent,
   GridSelectionChangeEvent,
   GridHeaderSelectionChangeEvent,
-} from '@progress/kendo-vue-grid';
+} from "@progress/kendo-vue-grid";
 
-interface Employee { id: number; name: string; department: string }
+interface Employee {
+  id: number;
+  name: string;
+  department: string;
+}
 
 const rawData: Employee[] = Array.from({ length: 25 }, (_, i) => ({
   id: i + 1,
   name: `Employee ${i + 1}`,
-  department: ['Engineering', 'Design', 'Product', 'Sales'][i % 4],
+  department: ["Engineering", "Design", "Product", "Sales"][i % 4],
 }));
 
 const dataState = ref<State>({ skip: 0, take: 5 });
-const dataResult = computed<DataResult>(() => process(rawData, dataState.value));
+const dataResult = computed<DataResult>(() =>
+  process(rawData, dataState.value),
+);
 
 // Keys persist across page changes — no re-stamping needed
 const select = ref<Record<number, boolean>>({});
@@ -534,9 +624,9 @@ const select = ref<Record<number, boolean>>({});
 const totalSelected = computed(() => Object.keys(select.value).length);
 
 const columns = [
-  { columnType: 'checkbox' },
-  { field: 'name',       title: 'Name'       },
-  { field: 'department', title: 'Department' },
+  { columnType: "checkbox" },
+  { field: "name", title: "Name" },
+  { field: "department", title: "Department" },
 ];
 
 const onDataStateChange = (e: GridDataStateChangeEvent) => {
@@ -554,7 +644,10 @@ const onHeaderSelectionChange = (e: GridHeaderSelectionChangeEvent) => {
 
 <template>
   <div>
-    <p>{{ totalSelected }} of {{ rawData.length }} total rows selected (across all pages)</p>
+    <p>
+      {{ totalSelected }} of {{ rawData.length }} total rows selected (across
+      all pages)
+    </p>
 
     <Grid
       :data-items="dataResult.data"
@@ -583,10 +676,10 @@ Set `cell: 'slotName'` on a column definition to use a named slot for that colum
 
 ```vue
 <script setup lang="ts">
-import { ref } from 'vue';
-import { Grid } from '@progress/kendo-vue-grid';
+import { ref } from "vue";
+import { Grid } from "@progress/kendo-vue-grid";
 
-type Status = 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+type Status = "pending" | "processing" | "shipped" | "delivered" | "cancelled";
 
 interface Order {
   id: number;
@@ -596,26 +689,26 @@ interface Order {
 }
 
 const data = ref<Order[]>([
-  { id: 1001, customer: 'Acme Corp',     amount: 1250.00, status: 'delivered'  },
-  { id: 1002, customer: 'Globex',        amount: 320.50,  status: 'processing' },
-  { id: 1003, customer: 'Initech',       amount: 899.99,  status: 'pending'    },
-  { id: 1004, customer: 'Umbrella Corp', amount: 4200.00, status: 'shipped'    },
-  { id: 1005, customer: 'Hooli',         amount: 75.00,   status: 'cancelled'  },
+  { id: 1001, customer: "Acme Corp", amount: 1250.0, status: "delivered" },
+  { id: 1002, customer: "Globex", amount: 320.5, status: "processing" },
+  { id: 1003, customer: "Initech", amount: 899.99, status: "pending" },
+  { id: 1004, customer: "Umbrella Corp", amount: 4200.0, status: "shipped" },
+  { id: 1005, customer: "Hooli", amount: 75.0, status: "cancelled" },
 ]);
 
 const statusColors: Record<Status, string> = {
-  pending:    '#f59e0b',
-  processing: '#3b82f6',
-  shipped:    '#8b5cf6',
-  delivered:  '#10b981',
-  cancelled:  '#ef4444',
+  pending: "#f59e0b",
+  processing: "#3b82f6",
+  shipped: "#8b5cf6",
+  delivered: "#10b981",
+  cancelled: "#ef4444",
 };
 
 const columns = [
-  { field: 'id',       title: 'Order #',  width: '100px' },
-  { field: 'customer', title: 'Customer' },
-  { field: 'amount',   title: 'Amount',   format: '{0:c}', filter: 'numeric' },
-  { field: 'status',   title: 'Status',   width: '150px', cell: 'statusCell' },  // named slot
+  { field: "id", title: "Order #", width: "100px" },
+  { field: "customer", title: "Customer" },
+  { field: "amount", title: "Amount", format: "{0:c}", filter: "numeric" },
+  { field: "status", title: "Status", width: "150px", cell: "statusCell" }, // named slot
 ];
 </script>
 
@@ -657,7 +750,7 @@ defineProps<{ dataItem: any }>();
 
 <template>
   <section style="padding: 12px 24px; background: #f9fafb;">
-    <strong>Order Notes:</strong> {{ dataItem.notes || 'None' }}<br />
+    <strong>Order Notes:</strong> {{ dataItem.notes || "None" }}<br />
     <strong>Internal ID:</strong> {{ dataItem.internalId }}
   </section>
 </template>
@@ -666,31 +759,55 @@ defineProps<{ dataItem: any }>();
 ```vue
 <!-- ParentGrid.vue -->
 <script setup lang="ts">
-import { ref } from 'vue';
-import { Grid } from '@progress/kendo-vue-grid';
-import type { GridExpandChangeEvent } from '@progress/kendo-vue-grid';
-import OrderDetail from './OrderDetail.vue';
+import { ref } from "vue";
+import { Grid } from "@progress/kendo-vue-grid";
+import type { GridExpandChangeEvent } from "@progress/kendo-vue-grid";
+import OrderDetail from "./OrderDetail.vue";
 
 interface Order {
-  id: number; customer: string; amount: number;
-  notes?: string; internalId?: string;
+  id: number;
+  customer: string;
+  amount: number;
+  notes?: string;
+  internalId?: string;
   expanded: boolean;
 }
 
 const data = ref<Order[]>([
-  { id: 1001, customer: 'Acme',   amount: 1250, notes: 'Rush delivery', internalId: 'ORD-A1', expanded: false },
-  { id: 1002, customer: 'Globex', amount: 320,  notes: '',              internalId: 'ORD-B2', expanded: false },
-  { id: 1003, customer: 'Hooli',  amount: 75,   notes: 'Gift wrap',     internalId: 'ORD-C3', expanded: false },
+  {
+    id: 1001,
+    customer: "Acme",
+    amount: 1250,
+    notes: "Rush delivery",
+    internalId: "ORD-A1",
+    expanded: false,
+  },
+  {
+    id: 1002,
+    customer: "Globex",
+    amount: 320,
+    notes: "",
+    internalId: "ORD-B2",
+    expanded: false,
+  },
+  {
+    id: 1003,
+    customer: "Hooli",
+    amount: 75,
+    notes: "Gift wrap",
+    internalId: "ORD-C3",
+    expanded: false,
+  },
 ]);
 
 const columns = [
-  { field: 'id',       title: 'Order #', width: '100px' },
-  { field: 'customer', title: 'Customer' },
-  { field: 'amount',   title: 'Amount',  format: '{0:c}' },
+  { field: "id", title: "Order #", width: "100px" },
+  { field: "customer", title: "Customer" },
+  { field: "amount", title: "Amount", format: "{0:c}" },
 ];
 
 function handleExpandChange(e: GridExpandChangeEvent) {
-  const item = data.value.find(r => r.id === (e.dataItem as Order).id);
+  const item = data.value.find((r) => r.id === (e.dataItem as Order).id);
   if (item) item.expanded = !item.expanded;
 }
 </script>
@@ -717,31 +834,40 @@ Use `saveExcel()` to trigger a client-side download. Pass the same column defini
 
 ```vue
 <script setup lang="ts">
-import { ref } from 'vue';
-import { Grid, GridToolbar } from '@progress/kendo-vue-grid';
-import { saveExcel } from '@progress/kendo-vue-excel-export';
+import { ref } from "vue";
+import { Grid, GridToolbar } from "@progress/kendo-vue-grid";
+import { saveExcel } from "@progress/kendo-vue-excel-export";
 
-interface Product { id: number; name: string; category: string; price: number }
+interface Product {
+  id: number;
+  name: string;
+  category: string;
+  price: number;
+}
 
 const data = ref<Product[]>([
-  { id: 1, name: 'Chai',         category: 'Beverages',  price: 18.00 },
-  { id: 2, name: 'Chang',        category: 'Beverages',  price: 19.00 },
-  { id: 3, name: 'Aniseed Syrup',category: 'Condiments', price: 10.00 },
+  { id: 1, name: "Chai", category: "Beverages", price: 18.0 },
+  { id: 2, name: "Chang", category: "Beverages", price: 19.0 },
+  { id: 3, name: "Aniseed Syrup", category: "Condiments", price: 10.0 },
 ]);
 
 const columns = [
-  { field: 'id',       title: 'ID',       width: '80px' },
-  { field: 'name',     title: 'Product Name' },
-  { field: 'category', title: 'Category' },
-  { field: 'price',    title: 'Price',    format: '{0:c}' },
+  { field: "id", title: "ID", width: "80px" },
+  { field: "name", title: "Product Name" },
+  { field: "category", title: "Category" },
+  { field: "price", title: "Price", format: "{0:c}" },
 ];
 
 // For server-side grids, pass the *full* dataset (not just the current page) to saveExcel
 function exportToExcel() {
   saveExcel({
     data: data.value,
-    fileName: 'products',
-    columns: columns.map(c => ({ field: c.field, title: c.title, width: c.width })),
+    fileName: "products",
+    columns: columns.map((c) => ({
+      field: c.field,
+      title: c.title,
+      width: c.width,
+    })),
   });
 }
 </script>
@@ -769,7 +895,7 @@ function exportToExcel() {
 
 ```typescript
 async function exportToExcel() {
-  const res = await fetch('/api/products?take=999999&skip=0');
+  const res = await asafetch('/api/products?take=999999&skip=0');
   const { data: allData } = await res.json();
   saveExcel({ data: allData, fileName: 'products', columns: /* ... */ });
 }
@@ -783,8 +909,8 @@ Row virtualization keeps a constant DOM size by rendering only visible rows. Use
 
 ```vue
 <script setup lang="ts">
-import { ref } from 'vue';
-import { Grid } from '@progress/kendo-vue-grid';
+import { ref } from "vue";
+import { Grid } from "@progress/kendo-vue-grid";
 
 // Generate a large dataset
 const data = ref(
@@ -792,15 +918,15 @@ const data = ref(
     id: i + 1,
     name: `Product ${i + 1}`,
     price: parseFloat((Math.random() * 100).toFixed(2)),
-    category: ['Beverages', 'Condiments', 'Seafood'][i % 3],
-  }))
+    category: ["Beverages", "Condiments", "Seafood"][i % 3],
+  })),
 );
 
 const columns = [
-  { field: 'id',       title: 'ID',       width: '90px' },
-  { field: 'name',     title: 'Name' },
-  { field: 'price',    title: 'Price',    format: '{0:c}' },
-  { field: 'category', title: 'Category' },
+  { field: "id", title: "ID", width: "90px" },
+  { field: "name", title: "Name" },
+  { field: "price", title: "Price", format: "{0:c}" },
+  { field: "category", title: "Category" },
 ];
 </script>
 
@@ -822,6 +948,7 @@ const columns = [
 ```
 
 **Virtualization checklist:**
+
 - Set an explicit `style="height: Npx"` — virtualization requires a fixed height
 - `:row-height` must be accurate — use a value that matches your CSS row height
 - Do **not** combine virtual scrolling with grouping (not supported)

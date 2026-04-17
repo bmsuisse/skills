@@ -1,0 +1,14 @@
+{
+  "name": "skill-check",
+  "version": "1.0.0",
+  "description": "Global type checking tools for Markdown code blocks",
+  "type": "module",
+  "scripts": {
+    "check": "bun run check.ts"
+  },
+  "dependencies": {
+    "typescript": "^5.6.2",
+    "vue": "^3.5.11",
+    "vue-tsc": "^2.1.6"
+  }
+}
