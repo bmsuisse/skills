@@ -108,7 +108,7 @@ See `references/grid-samples.md` for complete code samples:
 1. Client-side sort/filter/page with `process()`
 2. Server-side paging, filtering & sorting with RxJS
 3. Inline row editing (Add / Edit / Save / Cancel / Delete)
-4. Multi-row checkbox selection
+4. Row selection — single-click, multi-checkbox + bulk actions, programmatic, cross-page persistence, drag-to-select
 5. Custom cell template (status badge)
 6. Master-detail expandable rows
 7. Excel export

@@ -81,7 +81,7 @@ See `references/grid-samples.md` for the full set of Grid samples:
 1. Client-side sort/filter/page with `process()`
 2. **Server-side paging, filtering & sorting** (`@datastatechange` + fetch)
 3. **Inline row editing** — Add / Edit / Save / Cancel / Delete
-4. **Multi-row checkbox selection**
+4. **Row selection** — single-click, multi-checkbox + bulk actions, programmatic, cross-page persistence
 5. **Custom cell template** (status badge, linked text, etc.)
 6. **Master-detail expandable rows**
 7. **Excel export** with GridToolbar button

@@ -264,7 +264,22 @@ export class GridEditComponent {
 
 ---
 
-## 4. Multi-Row Checkbox Selection
+## 4. Row Selection — Five Patterns
+
+Angular's key-based selection (`kendoGridSelectBy` + `[selectedKeys]`) stores selected IDs externally, so selection automatically survives page changes without any extra bookkeeping. The `SelectableSettings` object controls behavior:
+
+```
+SelectableSettings reference
+────────────────────────────────────────────────────
+mode          'single' | 'multiple'   Row selection mode
+checkboxOnly  boolean                 Only checkbox clicks toggle selection (disables row-click)
+drag          boolean                 Click-and-drag to select a range of rows
+enabled       boolean                 Toggle selection on/off at runtime
+```
+
+### 4a. Single-Row Click-to-Select
+
+No checkbox column needed. Clicking a row selects it; clicking another row moves the selection.
 
 ```typescript
 import { Component } from '@angular/core';
@@ -276,9 +291,224 @@ interface Employee { id: number; name: string; department: string }
 
 @Component({
   standalone: true,
-  selector: 'app-grid-selection',
+  selector: 'app-grid-single-select',
   imports: [KENDO_GRID, NgIf],
   template: `
+    <p *ngIf="selectedEmployee">
+      Selected: <strong>{{ selectedEmployee.name }}</strong> — {{ selectedEmployee.department }}
+    </p>
+    <p *ngIf="!selectedEmployee">Click a row to select it.</p>
+
+    <kendo-grid
+      [data]="data"
+      [selectable]="selectSettings"
+      [selectedKeys]="selectedKeys"
+      kendoGridSelectBy="id"
+      style="height: 300px"
+      (selectionChange)="onSelectionChange($event)"
+    >
+      <kendo-grid-column field="name"       title="Name"       />
+      <kendo-grid-column field="department" title="Department" />
+    </kendo-grid>
+  `,
+})
+export class GridSingleSelectComponent {
+  data: Employee[] = [
+    { id: 1, name: 'Alice',   department: 'Engineering' },
+    { id: 2, name: 'Bob',     department: 'Design'      },
+    { id: 3, name: 'Charlie', department: 'Product'     },
+    { id: 4, name: 'Diana',   department: 'Engineering' },
+  ];
+
+  selectSettings: SelectableSettings = { mode: 'single', checkboxOnly: false };
+  selectedKeys: number[] = [];
+
+  get selectedEmployee(): Employee | undefined {
+    return this.data.find(e => e.id === this.selectedKeys[0]);
+  }
+
+  onSelectionChange(e: SelectionChangeEvent) {
+    e.selectedRows.forEach(({ dataItem }) => {
+      this.selectedKeys = [(dataItem as Employee).id];
+    });
+    if (e.selectedRows.length === 0) this.selectedKeys = [];
+  }
+}
+```
+
+---
+
+### 4b. Multi-Row Checkbox Selection with Bulk Actions
+
+`kendo-grid-checkbox-column` with `[showSelectAll]="true"` renders a header select-all checkbox. Because selection lives in `selectedKeys` (not on the data items), it survives page navigation automatically.
+
+```typescript
+import { Component } from '@angular/core';
+import { NgIf } from '@angular/common';
+import { KENDO_GRID } from '@progress/kendo-angular-grid';
+import { SelectableSettings, SelectionChangeEvent } from '@progress/kendo-angular-grid';
+
+interface Employee { id: number; name: string; department: string }
+
+@Component({
+  standalone: true,
+  selector: 'app-grid-multi-select',
+  imports: [KENDO_GRID, NgIf],
+  template: `
+    <div style="margin-bottom: 8px; display: flex; align-items: center; gap: 12px;">
+      <span>{{ selectedKeys.length }} of {{ data.length }} selected</span>
+      <button *ngIf="selectedKeys.length > 0"
+        class="k-button k-button-md k-rounded-md k-button-solid k-button-solid-error"
+        (click)="deleteSelected()">
+        Delete Selected ({{ selectedKeys.length }})
+      </button>
+    </div>
+
+    <kendo-grid
+      [data]="data"
+      [selectable]="selectSettings"
+      [selectedKeys]="selectedKeys"
+      kendoGridSelectBy="id"
+      style="height: 350px"
+      (selectionChange)="onSelectionChange($event)"
+    >
+      <kendo-grid-checkbox-column [showSelectAll]="true" [width]="50" />
+      <kendo-grid-column field="name"       title="Name"       />
+      <kendo-grid-column field="department" title="Department" />
+    </kendo-grid>
+  `,
+})
+export class GridMultiSelectComponent {
+  data: Employee[] = [
+    { id: 1, name: 'Alice',   department: 'Engineering' },
+    { id: 2, name: 'Bob',     department: 'Design'      },
+    { id: 3, name: 'Charlie', department: 'Product'     },
+    { id: 4, name: 'Diana',   department: 'Engineering' },
+    { id: 5, name: 'Eve',     department: 'Design'      },
+  ];
+
+  selectSettings: SelectableSettings = { checkboxOnly: true, mode: 'multiple' };
+  selectedKeys: number[] = [];
+
+  onSelectionChange(e: SelectionChangeEvent) {
+    e.selectedRows.forEach(({ dataItem }) => {
+      const id = (dataItem as Employee).id;
+      if (!this.selectedKeys.includes(id)) this.selectedKeys = [...this.selectedKeys, id];
+    });
+    e.deselectedRows.forEach(({ dataItem }) => {
+      const id = (dataItem as Employee).id;
+      this.selectedKeys = this.selectedKeys.filter(k => k !== id);
+    });
+  }
+
+  deleteSelected() {
+    this.data = this.data.filter(e => !this.selectedKeys.includes(e.id));
+    this.selectedKeys = [];
+  }
+}
+```
+
+---
+
+### 4c. Selection Persisting Across Pages
+
+The key-based approach shines here: `selectedKeys` is stored outside the grid, so navigating to a new page does not clear it. The grid uses the key field to re-highlight matching rows on each page automatically.
+
+```typescript
+import { Component } from '@angular/core';
+import { KENDO_GRID } from '@progress/kendo-angular-grid';
+import {
+  SelectableSettings,
+  SelectionChangeEvent,
+  GridDataResult,
+  DataStateChangeEvent,
+} from '@progress/kendo-angular-grid';
+import { process, State } from '@progress/kendo-data-query';
+
+interface Employee { id: number; name: string; department: string }
+
+const ALL_EMPLOYEES: Employee[] = Array.from({ length: 25 }, (_, i) => ({
+  id: i + 1,
+  name: `Employee ${i + 1}`,
+  department: ['Engineering', 'Design', 'Product', 'Sales'][i % 4],
+}));
+
+@Component({
+  standalone: true,
+  selector: 'app-grid-persist-select',
+  imports: [KENDO_GRID],
+  template: `
+    <p>{{ selectedKeys.length }} of {{ allData.length }} rows selected (across all pages)</p>
+
+    <kendo-grid
+      [data]="gridData"
+      [pageSize]="state.take"
+      [skip]="state.skip"
+      [pageable]="{ buttonCount: 5, info: true }"
+      [selectable]="selectSettings"
+      [selectedKeys]="selectedKeys"
+      kendoGridSelectBy="id"
+      style="height: 400px"
+      (dataStateChange)="onStateChange($event)"
+      (selectionChange)="onSelectionChange($event)"
+    >
+      <kendo-grid-checkbox-column [showSelectAll]="true" [width]="50" />
+      <kendo-grid-column field="name"       title="Name"       />
+      <kendo-grid-column field="department" title="Department" />
+    </kendo-grid>
+  `,
+})
+export class GridPersistSelectComponent {
+  allData = ALL_EMPLOYEES;
+  state: State = { skip: 0, take: 5 };
+  gridData: GridDataResult = process(this.allData, this.state);
+
+  selectSettings: SelectableSettings = { checkboxOnly: true, mode: 'multiple' };
+  selectedKeys: number[] = [];
+
+  onStateChange(state: DataStateChangeEvent) {
+    this.state = state;
+    this.gridData = process(this.allData, this.state);
+    // selectedKeys doesn't reset on page change — selection persists automatically
+  }
+
+  onSelectionChange(e: SelectionChangeEvent) {
+    e.selectedRows.forEach(({ dataItem }) => {
+      const id = (dataItem as Employee).id;
+      if (!this.selectedKeys.includes(id)) this.selectedKeys = [...this.selectedKeys, id];
+    });
+    e.deselectedRows.forEach(({ dataItem }) => {
+      const id = (dataItem as Employee).id;
+      this.selectedKeys = this.selectedKeys.filter(k => k !== id);
+    });
+  }
+}
+```
+
+---
+
+### 4d. Programmatic Selection
+
+`selectedKeys` is a plain array — assign to it to select rows without any user interaction:
+
+```typescript
+import { Component } from '@angular/core';
+import { KENDO_GRID } from '@progress/kendo-angular-grid';
+import { SelectableSettings, SelectionChangeEvent } from '@progress/kendo-angular-grid';
+
+interface Employee { id: number; name: string; department: string }
+
+@Component({
+  standalone: true,
+  selector: 'app-grid-prog-select',
+  imports: [KENDO_GRID],
+  template: `
+    <div style="margin-bottom: 8px; display: flex; gap: 8px; flex-wrap: wrap;">
+      <button class="k-button k-button-sm k-rounded-md k-button-solid k-button-solid-primary" (click)="selectAll()">Select All</button>
+      <button class="k-button k-button-sm k-rounded-md k-button-solid k-button-solid-base"    (click)="clearSelection()">Clear</button>
+      <button class="k-button k-button-sm k-rounded-md k-button-solid k-button-solid-base"    (click)="invertSelection()">Invert</button>
+      <button class="k-button k-button-sm k-rounded-md k-button-solid k-button-solid-base"    (click)="selectByDept('Engineering')">Engineering only</button>
+    </div>
     <p>{{ selectedKeys.length }} row(s) selected</p>
 
     <kendo-grid
@@ -295,24 +525,95 @@ interface Employee { id: number; name: string; department: string }
     </kendo-grid>
   `,
 })
-export class GridSelectionComponent {
+export class GridProgSelectComponent {
   data: Employee[] = [
     { id: 1, name: 'Alice',   department: 'Engineering' },
     { id: 2, name: 'Bob',     department: 'Design'      },
     { id: 3, name: 'Charlie', department: 'Product'     },
+    { id: 4, name: 'Diana',   department: 'Engineering' },
+    { id: 5, name: 'Eve',     department: 'Design'      },
   ];
 
-  selectSettings: SelectableSettings = { checkboxOnly: true, mode: 'multiple' };
+  selectSettings: SelectableSettings = { checkboxOnly: false, mode: 'multiple' };
   selectedKeys: number[] = [];
 
   onSelectionChange(e: SelectionChangeEvent) {
     e.selectedRows.forEach(({ dataItem }) => {
-      if (!this.selectedKeys.includes((dataItem as Employee).id)) {
-        this.selectedKeys = [...this.selectedKeys, (dataItem as Employee).id];
-      }
+      const id = (dataItem as Employee).id;
+      if (!this.selectedKeys.includes(id)) this.selectedKeys = [...this.selectedKeys, id];
     });
     e.deselectedRows.forEach(({ dataItem }) => {
-      this.selectedKeys = this.selectedKeys.filter(k => k !== (dataItem as Employee).id);
+      const id = (dataItem as Employee).id;
+      this.selectedKeys = this.selectedKeys.filter(k => k !== id);
+    });
+  }
+
+  selectAll()      { this.selectedKeys = this.data.map(e => e.id); }
+  clearSelection() { this.selectedKeys = []; }
+  invertSelection() {
+    this.selectedKeys = this.data
+      .filter(e => !this.selectedKeys.includes(e.id))
+      .map(e => e.id);
+  }
+  selectByDept(dept: string) {
+    this.selectedKeys = this.data.filter(e => e.department === dept).map(e => e.id);
+  }
+}
+```
+
+---
+
+### 4e. Drag-to-Select
+
+Set `drag: true` in `SelectableSettings` so users can click and drag across rows to select a range — useful for bulk-selection workflows without requiring Ctrl/Shift clicks.
+
+```typescript
+import { Component } from '@angular/core';
+import { KENDO_GRID } from '@progress/kendo-angular-grid';
+import { SelectableSettings, SelectionChangeEvent } from '@progress/kendo-angular-grid';
+
+interface Employee { id: number; name: string; department: string }
+
+@Component({
+  standalone: true,
+  selector: 'app-grid-drag-select',
+  imports: [KENDO_GRID],
+  template: `
+    <p>{{ selectedKeys.length }} row(s) selected — click and drag to select a range</p>
+
+    <kendo-grid
+      [data]="data"
+      [selectable]="selectSettings"
+      [selectedKeys]="selectedKeys"
+      kendoGridSelectBy="id"
+      style="height: 400px"
+      (selectionChange)="onSelectionChange($event)"
+    >
+      <kendo-grid-checkbox-column [width]="50" />
+      <kendo-grid-column field="name"       title="Name"       />
+      <kendo-grid-column field="department" title="Department" />
+    </kendo-grid>
+  `,
+})
+export class GridDragSelectComponent {
+  data: Employee[] = Array.from({ length: 15 }, (_, i) => ({
+    id: i + 1,
+    name: `Employee ${i + 1}`,
+    department: ['Engineering', 'Design', 'Product'][i % 3],
+  }));
+
+  // drag: true enables click-and-drag range selection
+  selectSettings: SelectableSettings = { mode: 'multiple', drag: true, checkboxOnly: false };
+  selectedKeys: number[] = [];
+
+  onSelectionChange(e: SelectionChangeEvent) {
+    e.selectedRows.forEach(({ dataItem }) => {
+      const id = (dataItem as Employee).id;
+      if (!this.selectedKeys.includes(id)) this.selectedKeys = [...this.selectedKeys, id];
+    });
+    e.deselectedRows.forEach(({ dataItem }) => {
+      const id = (dataItem as Employee).id;
+      this.selectedKeys = this.selectedKeys.filter(k => k !== id);
     });
   }
 }

@@ -272,9 +272,69 @@ function handleItemChange(e: GridItemChangeEvent) {
 
 ---
 
-## 4. Multi-Row Checkbox Selection
+## 4. Row Selection — Four Patterns
 
-Track selection with a `selected` boolean on each item. The grid uses that field to reflect checkbox state; you update it on `@selectionchange` and `@headerselectionchange`.
+In all patterns, `:selected-field` names a boolean property on each data item; the grid reads and writes it through `@selectionchange` / `@headerselectionchange`. The `:selectable` prop controls the mode.
+
+```
+SelectSettings reference
+────────────────────────────────────────────────
+mode    'single' | 'multiple'   Row selection mode
+cell    boolean                 Cell-level selection instead of row
+```
+
+### 4a. Single-Row Click-to-Select
+
+Click a row to highlight it; clicking another row moves the highlight. No checkboxes are rendered.
+
+```vue
+<script setup lang="ts">
+import { ref, computed } from 'vue';
+import { Grid, GridColumn } from '@progress/kendo-vue-grid';
+import type { GridSelectionChangeEvent } from '@progress/kendo-vue-grid';
+
+interface Employee { id: number; name: string; department: string; selected: boolean }
+
+const data = ref<Employee[]>([
+  { id: 1, name: 'Alice',   department: 'Engineering', selected: false },
+  { id: 2, name: 'Bob',     department: 'Design',      selected: false },
+  { id: 3, name: 'Charlie', department: 'Product',     selected: false },
+  { id: 4, name: 'Diana',   department: 'Engineering', selected: false },
+]);
+
+const selected = computed(() => data.value.find(r => r.selected) ?? null);
+
+function handleSelectionChange(e: GridSelectionChangeEvent) {
+  // Clear existing selection, then mark the clicked row
+  data.value.forEach(r => (r.selected = false));
+  const item = data.value.find(r => r.id === (e.dataItem as Employee).id);
+  if (item) item.selected = true;
+}
+</script>
+
+<template>
+  <div>
+    <p>Selected: <strong>{{ selected?.name ?? 'none' }}</strong></p>
+
+    <Grid
+      :data-items="data"
+      :selectable="{ mode: 'single' }"
+      :selected-field="'selected'"
+      style="height: 300px;"
+      @selectionchange="handleSelectionChange"
+    >
+      <GridColumn field="name"       title="Name"       />
+      <GridColumn field="department" title="Department" />
+    </Grid>
+  </div>
+</template>
+```
+
+---
+
+### 4b. Multi-Row Checkbox Selection with Bulk Actions
+
+Add a `<GridColumn :selectable="true">` to render checkboxes (including a select-all in the header). Use `:header-selection-value="allSelected"` to drive the header checkbox state.
 
 ```vue
 <script setup lang="ts">
@@ -285,51 +345,226 @@ import type {
   GridHeaderSelectionChangeEvent,
 } from '@progress/kendo-vue-grid';
 
-interface Row { id: number; name: string; role: string; selected: boolean }
+interface Employee { id: number; name: string; department: string; selected: boolean }
 
-const data = ref<Row[]>([
-  { id: 1, name: 'Alice',   role: 'Admin',  selected: false },
-  { id: 2, name: 'Bob',     role: 'Editor', selected: false },
-  { id: 3, name: 'Charlie', role: 'Viewer', selected: false },
+const data = ref<Employee[]>([
+  { id: 1, name: 'Alice',   department: 'Engineering', selected: false },
+  { id: 2, name: 'Bob',     department: 'Design',      selected: false },
+  { id: 3, name: 'Charlie', department: 'Product',     selected: false },
+  { id: 4, name: 'Diana',   department: 'Engineering', selected: false },
+  { id: 5, name: 'Eve',     department: 'Design',      selected: false },
 ]);
 
 const selectedRows = computed(() => data.value.filter(r => r.selected));
+const allSelected  = computed(() => data.value.length > 0 && data.value.every(r => r.selected));
 
-// Are all rows selected? Used to drive the header checkbox tri-state
-const allSelected = computed(() => data.value.every(r => r.selected));
-
-// Row-level checkbox changed
 function handleSelectionChange(e: GridSelectionChangeEvent) {
-  const item = data.value.find(r => r.id === (e.dataItem as Row).id);
+  const item = data.value.find(r => r.id === (e.dataItem as Employee).id);
   if (item) item.selected = !item.selected;
 }
 
-// Header "select all" checkbox
 function handleHeaderSelectionChange(e: GridHeaderSelectionChangeEvent) {
   const checked = (e.nativeEvent.target as HTMLInputElement).checked;
   data.value.forEach(r => (r.selected = checked));
+}
+
+function deleteSelected() {
+  data.value = data.value.filter(r => !r.selected);
 }
 </script>
 
 <template>
   <div>
-    <p>{{ selectedRows.length }} row(s) selected</p>
+    <div style="margin-bottom: 8px; display: flex; align-items: center; gap: 12px;">
+      <span>{{ selectedRows.length }} of {{ data.length }} selected</span>
+      <button
+        v-if="selectedRows.length > 0"
+        class="k-button k-button-md k-rounded-md k-button-solid k-button-solid-error"
+        @click="deleteSelected"
+      >
+        Delete Selected ({{ selectedRows.length }})
+      </button>
+    </div>
 
     <Grid
       :data-items="data"
+      :selectable="{ mode: 'multiple' }"
       :selected-field="'selected'"
       style="height: 350px;"
       @selectionchange="handleSelectionChange"
       @headerselectionchange="handleHeaderSelectionChange"
     >
-      <!-- Checkbox column — selectable:true renders the header select-all checkbox -->
-      <GridColumn
-        :selectable="true"
-        :width="'50px'"
-        :header-selection-value="allSelected"
-      />
-      <GridColumn field="name" title="Name" />
-      <GridColumn field="role" title="Role" />
+      <!-- :selectable="true" on GridColumn renders the checkbox + header select-all -->
+      <GridColumn :selectable="true" width="50px" :header-selection-value="allSelected" />
+      <GridColumn field="name"       title="Name"       />
+      <GridColumn field="department" title="Department" />
+    </Grid>
+  </div>
+</template>
+```
+
+---
+
+### 4c. Programmatic Selection
+
+Because selection is just a boolean field, you can select rows from outside the grid by mutating the field directly — no grid API call needed.
+
+```vue
+<script setup lang="ts">
+import { ref, computed } from 'vue';
+import { Grid, GridColumn } from '@progress/kendo-vue-grid';
+import type {
+  GridSelectionChangeEvent,
+  GridHeaderSelectionChangeEvent,
+} from '@progress/kendo-vue-grid';
+
+interface Employee { id: number; name: string; department: string; selected: boolean }
+
+const data = ref<Employee[]>([
+  { id: 1, name: 'Alice',   department: 'Engineering', selected: false },
+  { id: 2, name: 'Bob',     department: 'Design',      selected: false },
+  { id: 3, name: 'Charlie', department: 'Product',     selected: false },
+  { id: 4, name: 'Diana',   department: 'Engineering', selected: false },
+  { id: 5, name: 'Eve',     department: 'Design',      selected: false },
+]);
+
+const selectedRows = computed(() => data.value.filter(r => r.selected));
+const allSelected  = computed(() => data.value.length > 0 && data.value.every(r => r.selected));
+
+function handleSelectionChange(e: GridSelectionChangeEvent) {
+  const item = data.value.find(r => r.id === (e.dataItem as Employee).id);
+  if (item) item.selected = !item.selected;
+}
+
+function handleHeaderSelectionChange(e: GridHeaderSelectionChangeEvent) {
+  const checked = (e.nativeEvent.target as HTMLInputElement).checked;
+  data.value.forEach(r => (r.selected = checked));
+}
+
+// --- Programmatic selection — mutate the field directly ---
+function selectAll()      { data.value.forEach(r => (r.selected = true)); }
+function clearSelection() { data.value.forEach(r => (r.selected = false)); }
+function invertSelection() { data.value.forEach(r => (r.selected = !r.selected)); }
+function selectByDept(dept: string) {
+  data.value.forEach(r => (r.selected = r.department === dept));
+}
+</script>
+
+<template>
+  <div>
+    <div style="margin-bottom: 8px; display: flex; gap: 8px; flex-wrap: wrap;">
+      <button class="k-button k-button-sm k-rounded-md k-button-solid k-button-solid-primary" @click="selectAll">Select All</button>
+      <button class="k-button k-button-sm k-rounded-md k-button-solid k-button-solid-base"    @click="clearSelection">Clear</button>
+      <button class="k-button k-button-sm k-rounded-md k-button-solid k-button-solid-base"    @click="invertSelection">Invert</button>
+      <button class="k-button k-button-sm k-rounded-md k-button-solid k-button-solid-base"    @click="selectByDept('Engineering')">Engineering only</button>
+    </div>
+    <p>{{ selectedRows.length }} row(s) selected</p>
+
+    <Grid
+      :data-items="data"
+      :selectable="{ mode: 'multiple' }"
+      :selected-field="'selected'"
+      style="height: 350px;"
+      @selectionchange="handleSelectionChange"
+      @headerselectionchange="handleHeaderSelectionChange"
+    >
+      <GridColumn :selectable="true" width="50px" :header-selection-value="allSelected" />
+      <GridColumn field="name"       title="Name"       />
+      <GridColumn field="department" title="Department" />
+    </Grid>
+  </div>
+</template>
+```
+
+---
+
+### 4d. Persisting Selection Across Pages
+
+When paginating, `dataItems` holds only the current page — the `selected` field is lost when the page changes unless you re-apply it. Keep a `Set<id>` as the source of truth and re-stamp the field each time the page slice is computed.
+
+```vue
+<script setup lang="ts">
+import { ref, computed } from 'vue';
+import { Grid, GridColumn } from '@progress/kendo-vue-grid';
+import { process } from '@progress/kendo-data-query';
+import type { State, DataResult } from '@progress/kendo-data-query';
+import type {
+  GridDataStateChangeEvent,
+  GridSelectionChangeEvent,
+  GridHeaderSelectionChangeEvent,
+} from '@progress/kendo-vue-grid';
+
+interface Employee { id: number; name: string; department: string; selected: boolean }
+
+const rawData: Employee[] = Array.from({ length: 25 }, (_, i) => ({
+  id: i + 1,
+  name: `Employee ${i + 1}`,
+  department: ['Engineering', 'Design', 'Product', 'Sales'][i % 4],
+  selected: false,
+}));
+
+const dataState = ref<State>({ skip: 0, take: 5 });
+
+// The Set is the source of truth — it survives page changes
+const selectedIds = ref(new Set<number>());
+
+// Re-stamp selected field on each page slice from the Set
+const dataResult = computed<DataResult>(() => {
+  const result = process(rawData, dataState.value);
+  result.data = result.data.map(item => ({
+    ...item,
+    selected: selectedIds.value.has(item.id),
+  }));
+  return result;
+});
+
+// Are all rows on the current page selected?
+const allPageSelected = computed(() =>
+  dataResult.value.data.length > 0 &&
+  dataResult.value.data.every((r: Employee) => selectedIds.value.has(r.id))
+);
+
+function handleDataStateChange(e: GridDataStateChangeEvent) {
+  dataState.value = e.dataState;
+}
+
+function handleSelectionChange(e: GridSelectionChangeEvent) {
+  const id = (e.dataItem as Employee).id;
+  const next = new Set(selectedIds.value);
+  next.has(id) ? next.delete(id) : next.add(id);
+  selectedIds.value = next; // new reference triggers reactivity
+}
+
+function handleHeaderSelectionChange(e: GridHeaderSelectionChangeEvent) {
+  const checked = (e.nativeEvent.target as HTMLInputElement).checked;
+  const next = new Set(selectedIds.value);
+  dataResult.value.data.forEach((r: Employee) =>
+    checked ? next.add(r.id) : next.delete(r.id)
+  );
+  selectedIds.value = next;
+}
+</script>
+
+<template>
+  <div>
+    <p>{{ selectedIds.size }} of {{ rawData.length }} total rows selected (across all pages)</p>
+
+    <Grid
+      :data-items="dataResult.data"
+      :total="dataResult.total"
+      :selectable="{ mode: 'multiple' }"
+      :selected-field="'selected'"
+      :pageable="{ buttonCount: 5, info: true }"
+      :skip="dataState.skip"
+      :take="dataState.take"
+      style="height: 400px;"
+      @datastatechange="handleDataStateChange"
+      @selectionchange="handleSelectionChange"
+      @headerselectionchange="handleHeaderSelectionChange"
+    >
+      <GridColumn :selectable="true" width="50px" :header-selection-value="allPageSelected" />
+      <GridColumn field="name"       title="Name"       />
+      <GridColumn field="department" title="Department" />
     </Grid>
   </div>
 </template>
