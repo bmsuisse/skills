@@ -29,7 +29,7 @@
 | [fabricks-glossary](./skills/fabricks-glossary/) | Use this skill whenever company-specific jargon, acronyms, or domain terminology is needed to answer correctly. |
 | [fabricks-sql-analyzer](./skills/fabricks-sql-analyzer/) | Analyzes all SQL files in the Fabricks.Runtime repository, builds a dependency DAG, runs performance heuristics, and… |
 | [fastapi-guideline](./skills/fastapi-guideline/) | Use this skill whenever working with FastAPI — building APIs, adding routes, structuring projects, streaming response… |
-| [init-app-stack](./skills/init-app-stack/) | Use this skill whenever the user wants to bootstrap, scaffold, or initialize a new full-stack app with a Nuxt + Nuxt… |
+| [init-app-stack](./skills/init-app-stack/) | Use this skill whenever the user wants to bootstrap, scaffold, or initialize a new full-stack app with a Vite + React… |
 | [kendo-ui-angular](./skills/kendo-ui-angular/) | Use this skill whenever the user is working with Kendo UI for Angular — including the Data Grid, TreeList, TreeView,… |
 | [kendo-ui-vue](./skills/kendo-ui-vue/) | Use this skill whenever the user is working with Kendo UI for Vue — including the Data Grid, DropDownList, ComboBox,… |
 | [postgres-best-practices](./skills/postgres-best-practices/) | PostgreSQL coding standards for Python projects using psycopg (no ORM). Use this skill whenever the user is writing o… |
@@ -100,6 +100,52 @@ Then run these commands in Claude Code to apply the configuration:
 | `/plugin enable <name>@bmsuisse-skills` | Re-enable a disabled plugin |
 | `/plugin disable <name>@bmsuisse-skills` | Disable without uninstalling |
 | `/reload-plugins` | Reload all active plugins without restarting Claude Code |
+
+### Using the Plugin
+
+Once installed, skills are available as **slash commands** in Claude Code. Type `/` to see all available commands, or invoke them directly:
+
+```
+/coding-guidelines-python      # activate Python coding standards
+/fastapi-guideline             # load FastAPI best practices
+/init-app-stack                # scaffold a Vite+React+TanStack+shadcn / FastAPI+asyncpg app
+/databricks-cli                # Databricks CLI operations
+/autoresearch                  # start an autonomous research loop
+/deslop                        # clean AI slop from code or PRs
+```
+
+Skills also **auto-trigger** based on context — if a skill's description matches what you're doing, Claude Code may load it automatically without a slash command.
+
+#### Hooks (automatic tool remapping)
+
+The plugin ships with **PreToolUse hooks** that automatically rewrite shell commands to use preferred tooling:
+
+| You type | Gets remapped to |
+|---|---|
+| `python script.py` | `uv run python script.py` |
+| `python -m pytest` | `uv run -m pytest` |
+| `pip install foo` | `uv add foo` |
+| `pytest`, `ruff`, `pyright` | `uv run pytest`, `uv run ruff`, ... |
+| `npm install` | `bun install` |
+| `npm install foo` | `bun add foo` |
+| `npx foo` | `bunx foo` |
+| `yarn add foo` | `bun add foo` |
+| `pnpm run dev` | `bun run dev` |
+
+This happens transparently — no config needed. The hooks activate for any plugin that includes them (`coding`, `bms`, etc.).
+
+#### Plugin contents
+
+Each plugin bundles a curated set of skills:
+
+| Plugin | Skills included | Use case |
+|---|---|---|
+| `coding` | autoresearch, coding-guidelines-python, coding-guidelines-typescript, deslop, fastapi-guideline, init-app-stack, postgres-best-practices, postgres-test-setup, sql-optimization | General dev work |
+| `onetrade` | codeunit-analyzer | Classic NAV / C-AL analysis |
+| `databricks` | databricks-cli, spark-connect | Databricks & Spark |
+| `fabricks-data` | fabricks-glossary, fabricks-sql-analyzer | Fabricks data platform |
+| `writing` | remove-ai-writing, scientific-revision | Writing & docs |
+| `bms` | bms (master), coding-guidelines-sql, coding-guidelines-python, coding-guidelines-typescript, sql-optimization, data-modeling-dimensional, fabricks-glossary | All BMSuisse standards via `/bms` |
 
 ---
 

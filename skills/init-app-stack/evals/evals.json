@@ -3,39 +3,87 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "Set up a new full-stack app called 'expense-tracker' with a Nuxt frontend and FastAPI backend.",
-      "expected_output": "The assistant runs `uv run python scripts/create.py expense-tracker`, explains what the script creates (Nuxt frontend with bun, FastAPI backend with uv), and provides the dev startup commands for both frontend and backend.",
+      "prompt": "Set up a new full-stack app called 'expense-tracker' with a React frontend and FastAPI backend.",
+      "expected_output": "The assistant runs `uv run python scripts/create.py expense-tracker`, explains what the script creates (Vite + React + TanStack Router + TanStack Query + Zustand on the frontend with bun, FastAPI + asyncpg on Python 3.14 with uv, Postgres 17 via docker-compose), and provides the startup commands: start Postgres with `docker compose up -d db`, backend with `cd expense-tracker/backend && uv run dev`, frontend with `cd expense-tracker/frontend && bun run dev`.",
       "files": [],
       "expectations": [
         "The assistant runs scripts/create.py with expense-tracker as the project name",
-        "bun is used for the frontend (not npm or yarn)",
-        "uv is used for the backend (not pip)",
-        "The assistant provides the frontend dev command: cd expense-tracker/frontend && bun run dev",
-        "The assistant provides the backend dev command: cd expense-tracker/backend && uv run dev"
+        "bun is used for the frontend (not npm, yarn, or pnpm)",
+        "uv is used for the backend (not pip, poetry, or pipenv)",
+        "The frontend stack is identified as Vite + React + TanStack Router + TanStack Query + Zustand + shadcn/ui (not Nuxt, not Next.js, not React Router, not Nuxt UI, not MUI/Chakra/Mantine)",
+        "The backend uses raw asyncpg (no SQLAlchemy, no ORM) and Python 3.14",
+        "Postgres is started via `docker compose up -d db` before the backend",
+        "The backend dev command is `uv run dev` (granian under the hood)",
+        "The frontend dev command is `bun run dev` on port 5173"
       ]
     },
     {
       "id": 2,
       "prompt": "After scaffolding a new app, how do I install the companion skills so the AI has context on the stack?",
-      "expected_output": "The assistant runs `uv run python scripts/install-skills.py` and explains the four skills it installs (nuxt-ui, nuxt, frontend-design, fastapi-templates) and where they are installed (.agents/skills/, .agent/skills/, .claude/skills/).",
+      "expected_output": "The assistant runs `uv run python scripts/install-skills.py` and explains the two skills it installs (frontend-design from anthropics/skills, fastapi-templates from wshobson/agents) and where they are installed (.agents/skills/, .agent/skills/, .claude/skills/).",
       "files": [],
       "expectations": [
         "The assistant runs scripts/install-skills.py",
-        "The four installed skills are named: nuxt-ui, nuxt, frontend-design, fastapi-templates",
-        "The install locations (.agents/skills etc.) are mentioned"
+        "The installed skills are named: frontend-design and fastapi-templates",
+        "The install locations (.agents/skills/, .agent/skills/, .claude/skills/) are mentioned",
+        "No Nuxt or nuxt-ui skill is mentioned (those are from the old stack)"
       ]
     },
     {
       "id": 3,
-      "prompt": "I'm on Windows and trying to scaffold a new app called 'task-manager'. The create.py script fails when it tries to run `bun create nuxt`. bun isn't found even though I installed it. Also the backend setup with uv seems to work. How do I get the frontend part working?",
-      "expected_output": "Claude diagnoses that bun on Windows requires either (1) the Windows native bun installer from bun.sh (not brew), or (2) running in WSL2. Explains how to install bun on Windows via PowerShell: `powershell -c \"irm bun.sh/install.ps1|iex\"`. Alternatively shows how to use npm as a fallback if bun is unavailable, noting bun is strongly preferred.",
+      "prompt": "I need to add a GET /users/{user_id} endpoint to the backend that returns id, email, and name from the users table. Show me the handler using the project's conventions.",
+      "expected_output": "The assistant writes a FastAPI handler that: (1) uses the `pool` and `sql()` helpers from `db.py`, (2) uses a PEP 750 t-string like `sql(t\"SELECT id, email, name FROM users WHERE id = {user_id}\")`, (3) calls `conn.fetchrow(*sql(...))`, (4) wraps the row in a Pydantic `UserOut` response model, (5) raises `HTTPException(404)` when the row is None. The assistant does NOT import SQLAlchemy, does NOT build a string query with f-strings or `.format()`, and does NOT suggest adding an ORM.",
       "files": [],
       "expectations": [
-        "Correctly identifies that bun on Windows requires the Windows-native installer (not brew)",
-        "Provides the PowerShell bun install command: irm bun.sh/install.ps1|iex",
-        "Mentions WSL2 as an alternative if native Windows bun is problematic",
-        "Notes that uv works cross-platform so the backend part is fine",
-        "Does not suggest replacing bun with npm as the default \u2014 bun is still preferred"
+        "Uses `t\"...\"` (PEP 750 template string) inside sql() — not f-strings, not .format(), not % formatting",
+        "Calls the sql() helper from db.py and unpacks its result with `*sql(t\"...\")`",
+        "Acquires a connection via `async with pool.acquire() as conn:`",
+        "Uses `conn.fetchrow(...)` for a single-row query (not fetch, not fetchval)",
+        "Defines a Pydantic `UserOut` model and sets it via `response_model=UserOut`",
+        "Handles the not-found case with `HTTPException(404)`",
+        "Does NOT import or reference SQLAlchemy, sqlmodel, tortoise, or any other ORM",
+        "Does NOT suggest adding Alembic (no SQLAlchemy means no Alembic)"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "I want to add a users list page with search and pagination in the URL so users can share the link. Where does this state live — Zustand, TanStack Query, or TanStack Router?",
+      "expected_output": "The assistant says URL state belongs in TanStack Router search params (not Zustand, not TanStack Query), validated with a Zod schema via `validateSearch`. Server data (the paginated list of users) goes in TanStack Query, keyed on the search params. Zustand is only for cross-component client state that doesn't belong in the URL or server cache. The assistant shows a `createFileRoute` with `validateSearch: z.object({ page: z.number().default(1), q: z.string().default('') })` and a `useQuery` whose queryKey includes the search params.",
+      "files": [],
+      "expectations": [
+        "Identifies URL state (search, pagination) as belonging in TanStack Router search params — NOT in Zustand",
+        "Uses `validateSearch` with a Zod schema on the route definition",
+        "Identifies the paginated server data as belonging in TanStack Query",
+        "The Query's queryKey includes the search params so cache invalidates when they change",
+        "Explicitly notes Zustand is NOT the right tool for this case",
+        "Does not suggest Redux or any other state library"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "I need a Button, Card, and Input for my new users page. How do I add them?",
+      "expected_output": "The assistant instructs the user to run `bunx --bun shadcn@latest add button card input` in the frontend directory, which copies the component source into `src/components/ui/`. Imports use the `@/` alias (e.g. `import { Button } from '@/components/ui/button'`). The assistant does NOT suggest installing MUI, Chakra, Mantine, HeroUI, or any other component library. Tokens like `bg-background`, `text-muted-foreground` are preferred over raw Tailwind palette colors.",
+      "files": [],
+      "expectations": [
+        "Instructs running `bunx --bun shadcn@latest add button card input` (or equivalent shadcn CLI invocation with npx)",
+        "Components land in `src/components/ui/` — the assistant mentions that shadcn copies source into the repo, you own it",
+        "Imports use the `@/components/ui/<name>` path alias (not relative paths)",
+        "Does NOT suggest MUI, Chakra, Mantine, Ant Design, HeroUI, Radix directly, or any other component library",
+        "Styling guidance references semantic tokens (`bg-background`, `text-foreground`, `text-muted-foreground`, `border-border`) — not raw palette classes like `bg-neutral-800` or `text-gray-500`",
+        "Mentions the `cn()` helper from `@/lib/utils` for composing classes"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "I added a new Pydantic response model on a FastAPI endpoint. My frontend still has the old shape in its types. How do I refresh?",
+      "expected_output": "The assistant instructs the user to (1) make sure the backend is running on localhost:8000, (2) run `bun run generate-api` in the frontend directory, which invokes `openapi-typescript http://localhost:8000/openapi.json -o src/lib/api-types.ts`. Explains that `src/lib/api-types.ts` is the regenerated typed client — `components['schemas']['<ModelName>']` is the path to the new type. Mentions that `api-types.ts` is in `.gitignore` because it's derived from the backend.",
+      "files": [],
+      "expectations": [
+        "Instructs the user to run `bun run generate-api` in the frontend directory",
+        "Mentions that the backend must be running (at localhost:8000) for the /openapi.json endpoint to be reachable",
+        "Explains the output path is `src/lib/api-types.ts`",
+        "Shows how to reference the new type: `components['schemas']['<ModelName>']`",
+        "Does NOT suggest manually writing TypeScript types that mirror the Pydantic model"
       ]
     }
   ]
