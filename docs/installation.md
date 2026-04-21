@@ -85,28 +85,105 @@ To enable skills only for a specific project, add to `.claude/settings.json` in 
 
 This is the recommended setup when scaffolding a new app with `init-app-stack` — the companion skills install alongside the project.
 
-## skills CLI (other agents)
+## skills CLI (Cursor, Copilot, Codex, and other agents)
 
-Install a specific skill into any agent platform:
+The `skills` CLI installs skills from any GitHub repo into any AI agent platform — no account needed, no global install required.
 
-```bash
-npx skills add https://github.com/bmsuisse/skills --skill <skill-name>
-```
+### Prerequisites
 
-Install all skills:
+You need **Node.js 18+** and **npm** (or any compatible package manager). Check:
 
 ```bash
-npx skills add https://github.com/bmsuisse/skills
+node --version   # needs 18+
+npm --version
 ```
 
-The CLI auto-detects your platform:
+If you don't have Node.js, download it from [nodejs.org](https://nodejs.org) (LTS version). npm is bundled with Node.js — no separate install needed.
 
-| Platform | Directory |
-|---|---|
-| Claude Code | `.claude/skills/` |
-| Cursor | `.cursor/rules/` |
-| Codex CLI | `~/.codex/skills/` |
-| Gemini CLI | auto-detected |
+You do **not** need to install the `skills` package globally. `npx` downloads and runs it on demand:
+
+```bash
+# npx downloads skills automatically on first run
+npx skills add bmsuisse/skills
+```
+
+### Install all skills
+
+```bash
+npx skills add bmsuisse/skills
+```
+
+This downloads every skill from this repo and writes it into the correct directory for your agent platform (auto-detected — see below).
+
+### Install a specific skill
+
+```bash
+npx skills add bmsuisse/skills --skill coding-guidelines-python
+npx skills add bmsuisse/skills --skill spark-connect
+npx skills add bmsuisse/skills --skill tanstack-best-practices
+```
+
+### How platform detection works
+
+The CLI looks for config files and directories in the current working directory to identify which agent is in use:
+
+| Detected file / folder | Platform | Skills written to |
+|---|---|---|
+| `.claude/` or `.claude/settings.json` | Claude Code | `.claude/skills/` |
+| `.cursor/` or `.cursorrules` | Cursor | `.cursor/rules/` |
+| `.github/copilot-instructions.md` | GitHub Copilot | `.github/instructions/` |
+| `AGENTS.md` or `.codex/` | Codex CLI | `.codex/skills/` |
+| `.gemini/` | Gemini CLI | `.gemini/skills/` |
+| `CLAUDE.md` (root) | Claude Code (root) | `.claude/skills/` |
+
+If multiple platforms are detected, the CLI asks which one to install into. If none is detected, it falls back to creating `.claude/skills/` (the most common case).
+
+### What gets written
+
+For each skill, the CLI writes a `SKILL.md` file into the target directory:
+
+```
+.claude/skills/
+├── coding-guidelines-python.md
+├── coding-guidelines-typescript.md
+├── tanstack-best-practices.md
+└── spark-connect.md
+```
+
+The agent platform reads these files at startup and makes the skills available as slash commands and auto-triggers.
+
+### Update installed skills
+
+```bash
+npx skills update
+```
+
+Re-downloads all previously installed skills from their source repos and overwrites the local copies with the latest version.
+
+### Disable telemetry
+
+The CLI collects anonymous install telemetry (skill name + timestamp) by default. Opt out:
+
+```bash
+DISABLE_TELEMETRY=1 npx skills add bmsuisse/skills
+```
+
+Or set permanently in your shell profile:
+
+```bash
+export DISABLE_TELEMETRY=1
+```
+
+### Browse on skills.sh
+
+Every skill in this repo is listed at:
+
+```
+https://skills.sh/bmsuisse/skills
+https://skills.sh/bmsuisse/skills/<skill-name>
+```
+
+The leaderboard updates automatically based on install telemetry.
 
 ## Verify
 
