@@ -146,22 +146,58 @@ See the **databricks-cli** skill for full CLI reference and auth setup.
 
 ---
 
-### Installing the dependency
+### Version alignment — critical
 
+`databricks-connect` **must exactly match the cluster's DBR major.minor**.
+Mismatches cause silent failures or connection errors.
+
+Use the bundled helper script to check and fix this automatically:
+
+```bash
+# From your project root (reads .env for profile + cluster ID)
+python <skill-path>/scripts/check_spark_env.py
+```
+
+What it does:
+1. Fetches the cluster's DBR version via `databricks clusters get`
+2. Compares against the installed `databricks-connect` version
+3. If aligned → prints `✓ Aligned` and exits
+4. If mismatched → creates `.venv_spark_<major>_<minor>/` with the correct version and prints the activate command
+
+Example output when mismatched:
+
+```
+Profile  : my-profile
+Cluster  : 1234-567890-abc123
+Cluster DBR : 17.4
+Installed   : databricks-connect 16.4.1 (16.4)
+
+✗ Mismatch: cluster=17.4, installed=16.4
+
+Creating .venv_spark_17_4 with databricks-connect==17.4.*
+...
+Activate with:
+  .venv_spark_17_4\Scripts\activate   (Windows)
+  source .venv_spark_17_4/bin/activate (Linux/Mac)
+```
+
+The versioned venv name (`.venv_spark_17_4`) makes it easy to maintain multiple
+clusters with different DBR versions side by side.
+
+### Manual install
 
 ```bash
 uv add databricks-connect==<dbr-version>.*
 ```
 
-The version **must match the Databricks Runtime (DBR)** of the target cluster.
-
 | DBR version | Package |
 |:---|:---|
+| 17.4 | `databricks-connect==17.4.*` |
 | 17.3 | `databricks-connect==17.3.*` |
 | 16.4 | `databricks-connect==16.4.*` |
 | 15.4 | `databricks-connect==15.4.*` |
 
-Find the cluster's DBR version:
+Find the cluster's DBR version manually:
 
 ```bash
 databricks clusters get --cluster-id <your-cluster-id> --profile <your-profile> \
@@ -236,6 +272,6 @@ Local machine (autoresearch loop)
 | `Failed to connect via Databricks Connect` | Check `.env`: `DATABRICKS_PROFILE`, `DATABRICKS_CLUSTER_ID` |
 | `Cannot configure default credentials` | Run `databricks auth login --profile <your-profile>` |
 | `Cluster not found` | Verify `DATABRICKS_CLUSTER_ID` matches a running cluster |
-| Version mismatch | Ensure `databricks-connect` version matches cluster DBR |
+| Version mismatch | Run `check_spark_env.py` — it creates a matching `.venv_spark_<major>_<minor>/` |
 | `DATABRICKS_RUNTIME_VERSION` missing locally | Expected — means you're running locally, Connect is used |
 | Cluster terminated | Start the cluster manually or via `databricks clusters start --cluster-id <id>` |

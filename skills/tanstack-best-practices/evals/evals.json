@@ -1,0 +1,44 @@
+{
+  "skill_name": "tanstack-best-practices",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I'm building a React app with TanStack Query. We have a /users endpoint and a /users/:id endpoint. Right now every developer hardcodes their own string query keys like ['user', id] or ['users-list'] and the invalidation after mutations keeps breaking. How should we structure our query keys and mutations properly? Show me the code.",
+      "expected_output": "A query key factory object (userKeys) with hierarchical keys (all, lists, list with filters, detail), combined with queryOptions factory. Mutation that calls invalidateQueries using the factory keys. Explanation of why scattered string keys break invalidation.",
+      "files": [],
+      "expectations": [
+        "Defines a query key factory object (e.g. userKeys) with hierarchical structure using spread arrays",
+        "Uses queryOptions() from @tanstack/react-query to combine key factory with queryFn",
+        "Shows a useMutation with onSuccess that calls invalidateQueries using the factory keys",
+        "Explains why scattered/inconsistent query keys cause invalidation bugs",
+        "All key entries use 'as const' or equivalent TypeScript typing"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "We have a TanStack Router app. The /products route has page, sort, order, and category search params. Users sometimes paste old links with invalid values and the app crashes. Also, when I update the category filter I accidentally lose the current page and sort values. Show me how to fix both problems.",
+      "expected_output": "A route definition with validateSearch using Zod (.catch() for defaults), Route.useSearch() for typed access, and a navigate updater function that spreads prev search to preserve other params.",
+      "files": [],
+      "expectations": [
+        "Uses validateSearch on the route definition with a Zod schema or manual validation",
+        "Uses .catch() or equivalent fallback to provide defaults for invalid URL values",
+        "Accesses search params via Route.useSearch() (not raw URLSearchParams)",
+        "Shows navigate with updater function form: search: (prev) => ({ ...prev, ... }) to preserve other params",
+        "Resets page to 1 when filters change, or mentions this pattern"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "I'm using TanStack Router + TanStack Query together. My route loaders currently call fetch() directly, and SSR hydration is broken — data flashes on the client after hydration. Also I want the route data to be available the moment the component mounts without showing a loading spinner. Walk me through the correct setup for the QueryClient, the router, and the loader/component pattern.",
+      "expected_output": "Router setup with createRootRouteWithContext passing QueryClient in context. Router created with setupRouterSsrQueryIntegration. Loader using context.queryClient.ensureQueryData(). Component using useSuspenseQuery with the same queryOptions object.",
+      "files": [],
+      "expectations": [
+        "Uses createRootRouteWithContext with a RouterContext interface containing queryClient",
+        "Creates QueryClient inside getRouter() or equivalent per-request factory (not a global singleton)",
+        "Calls setupRouterSsrQueryIntegration from @tanstack/react-router-ssr-query (or explains its purpose)",
+        "Loader accesses queryClient via context parameter and calls ensureQueryData (not prefetchQuery or fetch)",
+        "Component uses useSuspenseQuery with the same queryOptions object used in the loader"
+      ]
+    }
+  ]
+}

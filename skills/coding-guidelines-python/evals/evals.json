@@ -1,0 +1,44 @@
+{
+  "skill_name": "coding-guidelines-python",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I need a quick function that caches API responses. Here's what I'm thinking:\n\ndef get_user(user_id, cache={}):\n    if user_id not in cache:\n        cache[user_id] = api.fetch_user(user_id)\n    return cache[user_id]\n\nCan you review this and add an export_users function that dumps all cached users to a JSON file?",
+      "expected_output": "The agent should surface assumptions before coding (what format? what path? all users or filtered?), flag the mutable default argument bug in get_user, propose a simple fix without over-engineering (e.g. no class hierarchy needed), and ask clarifying questions rather than silently assuming file path/format for export_users.",
+      "files": [],
+      "expectations": [
+        "The agent flags the mutable default argument anti-pattern in get_user (shared state across calls)",
+        "The agent asks at least one clarifying question before writing export_users (file path, format, scope, or similar)",
+        "The proposed fix for get_user uses None as default and initializes inside the function body, not a mutable default",
+        "The agent does not add unrequested features like validation, retry logic, or configuration systems to either function",
+        "The proposed code includes type annotations on function parameters and return types"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "The search endpoint is returning results in random order sometimes. Here's the current code:\n\ndef search_products(query, filters=None):\n    results = db.search(query)\n    if filters:\n        results = [r for r in results if apply_filters(r, filters)]\n    return results\n\nFix it so results are always sorted by relevance score, and while you're at it improve the function.",
+      "expected_output": "The agent should treat 'fix it' (sorting) and 'improve' (vague) separately. It should apply a surgical fix for the sorting issue only, and ask what 'improve' means before expanding scope. It should not reformat quotes, add docstrings, add caching, or change the filtering logic unless asked.",
+      "files": [],
+      "expectations": [
+        "The agent separates the concrete fix (sorting) from the vague request ('improve') and addresses them differently",
+        "The sorting fix is minimal — only the lines needed to add deterministic ordering are changed",
+        "The agent does not rewrite or reformat unrelated parts of the function (no quote style changes, no docstring added, no variable renames beyond what's needed)",
+        "The agent asks what 'improve' means or lists interpretations before acting on it, rather than silently adding features",
+        "The proposed sort uses a key that makes the ordering deterministic and reproducible"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "I want to add a report generation feature. It should support PDF, Excel, and CSV formats. Here's a skeleton:\n\ndef generate_report(data, format):\n    pass\n\nPlease implement this fully.",
+      "expected_output": "The agent should surface assumptions (which library for PDF/Excel? file path? streaming or return bytes? what data structure?), propose a simple implementation starting with one format if the full scope is unclear, and avoid building a class hierarchy or plugin system unless the complexity is warranted. The agent should define success criteria before coding.",
+      "files": [],
+      "expectations": [
+        "The agent asks at least two clarifying questions before writing a full implementation (e.g. library choice, output path, data schema, delivery mechanism)",
+        "The agent does not silently build a class hierarchy, strategy pattern, or plugin registry for format handling",
+        "The agent proposes a simple incremental approach (e.g. start with one format, add others) rather than implementing all three at once without discussion",
+        "If the agent does write code, function parameters and return type are annotated",
+        "The agent uses Literal or Enum for the format parameter rather than a raw str"
+      ]
+    }
+  ]
+}

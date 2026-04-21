@@ -43,18 +43,33 @@ cd backend  && uv run dev         # FastAPI on :8000
 cd frontend && bun run dev        # Vite on :5173
 ```
 
-## Step 2: Install companion skills
+## Step 2: Enable companion skills via marketplace
 
-Run this once after scaffolding to give the agent deep knowledge of the stack:
+Add this to your project's `.claude/settings.json` to give the agent deep knowledge of the stack:
 
-```bash
-uv run python scripts/install-skills.py
+```json
+{
+  "extraKnownMarketplaces": {
+    "bmsuisse-skills": {
+      "source": {
+        "source": "github",
+        "repo": "bmsuisse/skills"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "coding@bmsuisse-skills": true
+  }
+}
 ```
 
-Installs into `.agents/skills/`, `.agent/skills/`, and `.claude/skills/`:
+This installs the `coding` plugin which includes:
 
-- `frontend-design` — Anthropic's design aesthetics guide
-- `fastapi-templates` — Production FastAPI patterns (CRUD, DI, auth, async)
+- `tanstack-best-practices` — TanStack Router + Query patterns, SSR integration, query key factories
+- `coding-guidelines-typescript` — TypeScript strictness, discriminated unions, async typing
+- `coding-guidelines-python` — FastAPI/backend Python standards, ty type checking
+- `fastapi-guideline` — Production FastAPI patterns (CRUD, DI, auth, async)
+- `autoresearch` — Autonomous experiment loop for iterative improvements
 
 ---
 
@@ -93,4 +108,4 @@ Installs into `.agents/skills/`, `.agent/skills/`, and `.claude/skills/`:
 - Use the `cn()` helper from `@/lib/utils` to conditionally merge Tailwind classes. Imports use the `@/*` alias (configured in `vite.config.ts` + both tsconfigs).
 - Regenerate API types after backend changes: `bun run generate-api` (requires backend running on `localhost:8000`).
 - CORS is pre-configured for `http://localhost:5173` (Vite default). Update for production.
-- Typing on backend: `uv add --dev pyright` and run `uv run pyright`.
+- Typing on backend: `uv add --dev ty` and run `uv run ty check`.

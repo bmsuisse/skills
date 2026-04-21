@@ -65,18 +65,28 @@ Add to `~/.claude/settings.json` to install all plugins:
   "enabledPlugins": {
     "coding@bmsuisse-skills": true,
     "onetrade@bmsuisse-skills": true,
+    "databricks@bmsuisse-skills": true,
     "fabricks-data@bmsuisse-skills": true,
-    "writing@bmsuisse-skills": true
+    "writing@bmsuisse-skills": true,
+    "ui@bmsuisse-skills": true,
+    "caveman@bmsuisse-skills": true,
+    "azure-deploy@bmsuisse-skills": true,
+    "azure-diagnostics@bmsuisse-skills": true
   }
 }
 ```
 
-| Plugin                          | Contents                                                         |
-| ------------------------------- | ---------------------------------------------------------------- |
-| `coding@bmsuisse-skills`        | Python, TypeScript, FastAPI, Postgres, and general coding skills |
-| `onetrade@bmsuisse-skills`      | C-AL / Classic NAV codeunit analysis                             |
-| `fabricks-data@bmsuisse-skills` | Fabricks / Databricks data skills                                |
-| `writing@bmsuisse-skills`       | Scientific and academic writing revision                         |
+| Plugin                             | Contents                                                                  |
+| ---------------------------------- | ------------------------------------------------------------------------- |
+| `coding@bmsuisse-skills`           | Python, TypeScript, FastAPI, Postgres, TanStack, and general coding skills |
+| `ui@bmsuisse-skills`               | KendoReact component patterns and best practices                          |
+| `onetrade@bmsuisse-skills`         | C-AL / Classic NAV codeunit analysis                                      |
+| `databricks@bmsuisse-skills`       | Databricks CLI + Spark Connect local execution                            |
+| `fabricks-data@bmsuisse-skills`    | Fabricks / Databricks data skills                                         |
+| `writing@bmsuisse-skills`          | Scientific and academic writing revision                                  |
+| `caveman@bmsuisse-skills`          | Ultra-compressed caveman communication mode (~75% token reduction)        |
+| `azure-deploy@bmsuisse-skills`     | Azure deployments via azd/terraform/az with validation and RBAC checks    |
+| `azure-diagnostics@bmsuisse-skills`| Azure production diagnostics via AppLens, Monitor, and resource health    |
 
 Then run these commands in Claude Code to apply the configuration:
 
@@ -127,7 +137,7 @@ The plugin ships with **PreToolUse hooks** that automatically rewrite shell comm
 | `python script.py`          | `uv run python script.py`           |
 | `python -m pytest`          | `uv run -m pytest`                  |
 | `pip install foo`           | `uv add foo`                        |
-| `pytest`, `ruff`, `pyright` | `uv run pytest`, `uv run ruff`, ... |
+| `pytest`, `ruff`, `ty` | `uv run pytest`, `uv run ruff`, ... |
 | `npm install`               | `bun install`                       |
 | `npm install foo`           | `bun add foo`                       |
 | `npx foo`                   | `bunx foo`                          |
@@ -140,14 +150,18 @@ This happens transparently — no config needed. The hooks activate for any plug
 
 Each plugin bundles a curated set of skills:
 
-| Plugin          | Skills included                                                                                                                                                                 | Use case                          |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
-| `coding`        | autoresearch, coding-guidelines-python, coding-guidelines-typescript, deslop, fastapi-guideline, init-app-stack, postgres-best-practices, postgres-test-setup, sql-optimization | General dev work                  |
-| `onetrade`      | codeunit-analyzer                                                                                                                                                               | Classic NAV / C-AL analysis       |
-| `databricks`    | databricks-cli, spark-connect                                                                                                                                                   | Databricks & Spark                |
-| `fabricks-data` | fabricks-glossary, fabricks-sql-analyzer                                                                                                                                        | Fabricks data platform            |
-| `writing`       | remove-ai-writing, scientific-revision                                                                                                                                          | Writing & docs                    |
-| `bms`           | bms (master), coding-guidelines-sql, coding-guidelines-python, coding-guidelines-typescript, sql-optimization, data-modeling-dimensional, fabricks-glossary                     | All BMSuisse standards via `/bms` |
+| Plugin             | Skills included                                                                                                                                                                              | Use case                          |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
+| `coding`           | autoresearch, coding-guidelines-python, coding-guidelines-typescript, deslop, fastapi-guideline, init-app-stack, postgres-best-practices, postgres-test-setup, sql-optimization, tanstack-best-practices | General dev work         |
+| `ui`               | kendo-ui-react                                                                                                                                                                               | KendoReact components             |
+| `onetrade`         | codeunit-analyzer                                                                                                                                                                            | Classic NAV / C-AL analysis       |
+| `databricks`       | databricks-cli, spark-connect                                                                                                                                                                | Databricks & Spark                |
+| `fabricks-data`    | fabricks-glossary, fabricks-sql-analyzer                                                                                                                                                     | Fabricks data platform            |
+| `writing`          | remove-ai-writing, scientific-revision                                                                                                                                                       | Writing & docs                    |
+| `bms`              | bms (master), coding-guidelines-sql, coding-guidelines-python, coding-guidelines-typescript, sql-optimization, data-modeling-dimensional, fabricks-glossary                                  | All BMSuisse standards via `/bms` |
+| `caveman`          | caveman, caveman-review, caveman-commit, caveman-help *(from JuliusBrussee/caveman)*                                                                                                         | Token-efficient communication     |
+| `azure-deploy`     | azure-deploy *(from microsoft/azure-skills)*                                                                                                                                                 | Azure deployments                 |
+| `azure-diagnostics`| azure-diagnostics *(from microsoft/azure-skills)*                                                                                                                                           | Azure production diagnostics      |
 
 ---
 

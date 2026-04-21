@@ -42,7 +42,16 @@
         "./init-app-stack",
         "./postgres-best-practices",
         "./postgres-test-setup",
-        "./sql-optimization"
+        "./sql-optimization",
+        "./tanstack-best-practices"
+      ]
+    },
+    {
+      "name": "ui",
+      "description": "UI framework skills: KendoReact component patterns, theming, and best practices",
+      "source": "./",
+      "skills": [
+        "./kendo-ui-react"
       ]
     },
     
@@ -71,6 +80,32 @@
         "./fabricks-glossary",
         "./fabricks-sql-analyzer"
       ]
+    },
+    {
+      "name": "azure-diagnostics",
+      "description": "Systematic diagnosis and remediation for Azure production issues using AppLens, Monitor, and resource health. Covers Container Apps, Function Apps, and AKS clusters.",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/microsoft/azure-skills",
+        "path": "azure-diagnostics"
+      }
+    },
+    {
+      "name": "azure-deploy",
+      "description": "Execute Azure deployments (azd up, azd deploy, terraform apply, az deployment) with pre-deploy validation, RBAC health checks, EF migrations, and post-deployment verification.",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/microsoft/azure-skills",
+        "path": "azure-deploy"
+      }
+    },
+    {
+      "name": "caveman",
+      "description": "Ultra-compressed caveman communication mode — cuts token usage ~75% while keeping full technical accuracy. Supports intensity levels: lite, full, ultra.",
+      "source": {
+        "source": "github",
+        "repo": "JuliusBrussee/caveman"
+      }
     },
     {
       "name": "writing",

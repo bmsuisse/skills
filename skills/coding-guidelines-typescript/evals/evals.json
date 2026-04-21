@@ -1,0 +1,46 @@
+{
+  "skill_name": "coding-guidelines-typescript",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Write a TypeScript function that fetches a user from a REST API by ID and returns their profile. The API endpoint is /api/users/:id and returns JSON with fields id, name, email, and role (either 'admin' or 'user'). Handle the case where the user doesn't exist.",
+      "expected_output": "A well-typed async function with explicit Promise<User | null> return type, a typed User interface with a 'role' union literal, no 'any', a null return for 404, and inline documentation of any type assertions used.",
+      "files": [],
+      "expectations": [
+        "Defines a typed User interface or type with id, name, email, and role fields",
+        "role is typed as a union literal 'admin' | 'user', not a raw string",
+        "The function has an explicit Promise<User | null> return type annotation",
+        "No use of 'any' in the function signature or body",
+        "The 404 / not-found case returns null rather than throwing",
+        "Any 'as' type assertion is accompanied by a justifying comment"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I have this TypeScript code, please review it and fix any type safety issues:\n\n```typescript\nexport function processItems(items: any[], callback: any) {\n  const results = [];\n  for (const item of items) {\n    const result = callback(item);\n    results.push(result);\n  }\n  return results;\n}\n\nexport function findById(collection: any[], id: string) {\n  return collection.find(x => x.id === id);\n}\n\nconst config = JSON.parse(localStorage.getItem('config')!) as { theme: string; lang: string };\n```",
+      "expected_output": "Refactored code replacing 'any' with generics, removing unexplained non-null assertion, adding explicit return types on exported functions, and adding a runtime type guard for the JSON.parse result.",
+      "files": [],
+      "expectations": [
+        "processItems is rewritten with generic type parameters instead of 'any[]' and 'any' callback",
+        "processItems has an explicit return type annotation",
+        "findById is rewritten with a generic or typed parameter instead of 'any[]'",
+        "findById has an explicit return type annotation",
+        "The non-null assertion '!' on localStorage.getItem is removed or documented",
+        "The 'as' cast on JSON.parse is replaced with or supplemented by a runtime type guard"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Design TypeScript types for a form that can be in one of three states: loading (spinner shown), success (form data displayed), or error (error message shown). Then write a render function that takes this state and returns a string description of what to display. Make it impossible to represent states like 'loading AND error' simultaneously.",
+      "expected_output": "A discriminated union type with a literal 'status' or 'kind' field, a render function with exhaustive switch/case, and explicit typed return values — no optional fields on a flat object.",
+      "files": [],
+      "expectations": [
+        "Uses a discriminated union type (not a flat object with optional fields)",
+        "Each variant has a literal discriminant field (e.g. status: 'loading')",
+        "The render function has an explicit return type annotation",
+        "The switch/case covers all union members exhaustively",
+        "No use of 'any' in types or the render function"
+      ]
+    }
+  ]
+}

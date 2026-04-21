@@ -1,0 +1,49 @@
+{
+  "skill_name": "kendo-ui-react",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I have a React app using TypeScript. I need to set up a KendoReact data grid that shows a list of orders (id, customer, amount, status). The grid should support sorting by any column and paging (10 rows per page). The data is a local array for now. Show me the complete component including the necessary imports and theme setup.",
+      "expected_output": "A complete React TypeScript component that imports Grid and GridColumn from @progress/kendo-react-grid, imports process and State from @progress/kendo-data-query, manages dataState with useState (take: 10, skip: 0, sort), spreads dataState onto Grid, uses process(data, dataState) for the data prop, sets sortable and pageable on Grid, wires onDataStateChange, and sets an explicit height style. Should also include or mention the theme CSS import.",
+      "files": [],
+      "assertions": [
+        "The response imports Grid and GridColumn from @progress/kendo-react-grid",
+        "The response imports process and State from @progress/kendo-data-query",
+        "The response uses useState to manage dataState with take, skip, and sort fields",
+        "The response applies process(data, dataState) to the Grid data prop",
+        "The Grid has sortable and pageable props",
+        "The Grid has an onDataStateChange handler that updates dataState",
+        "The Grid has an explicit height style set",
+        "The response mentions or imports a kendo theme CSS"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I want to add a KendoReact form to my React app that collects a user's name and email address. The email field should be validated — it must be a valid email format. The submit button should be disabled until the form is valid. Show me a complete working example using @progress/kendo-react-form and @progress/kendo-react-inputs.",
+      "expected_output": "A complete React component using Form, Field, and FormElement from @progress/kendo-react-form, Input from @progress/kendo-react-inputs, an emailValidator function that returns an empty string for valid input and an error message for invalid input, and a submit button gated by allowSubmit from formRenderProps.",
+      "files": [],
+      "assertions": [
+        "The response imports Form, Field, and FormElement from @progress/kendo-react-form",
+        "The response imports Input from @progress/kendo-react-inputs",
+        "A validator function for email is defined that uses a regex or similar check",
+        "The validator returns an empty string ('') for valid input and an error string for invalid input",
+        "The Field for email uses the validator via the validator prop",
+        "The submit button is disabled when allowSubmit is false",
+        "The Form has an onSubmit handler"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "I want to theme my KendoReact app with the Material theme instead of the default theme. I'm using Vite. Walk me through what to install and how to switch the theme. Also show me how to customize the primary color to match our brand color #6200ea using CSS variables.",
+      "expected_output": "Instructions to install @progress/kendo-theme-material, update the global CSS import from kendo-theme-default to kendo-theme-material, and set the --kendo-color-primary CSS variable to #6200ea in a global CSS file or :root block. Should mention removing the old theme import.",
+      "files": [],
+      "assertions": [
+        "The response instructs installing @progress/kendo-theme-material",
+        "The response shows updating the theme CSS import to use kendo-theme-material/dist/all.css",
+        "The response mentions removing or replacing the old default theme import",
+        "The response shows setting --kendo-color-primary to #6200ea in CSS",
+        "The CSS variable is applied in :root or a global scope"
+      ]
+    }
+  ]
+}

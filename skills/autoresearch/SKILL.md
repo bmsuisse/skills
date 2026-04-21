@@ -7,7 +7,7 @@ description: >
   loop of code changes, measurements, and keep/revert decisions until you stop it.
   Use this skill whenever you want to: optimize Python runtime (cProfile, scalene,
   hyperfine), reduce SQL query time (EXPLAIN ANALYZE, pg_stat_statements), improve
-  pytest pass rate or coverage, fix pyright errors systematically, tune ML training
+  pytest pass rate or coverage, fix ty errors systematically, tune ML training
   metrics (loss, accuracy, F1), reduce memory usage (tracemalloc, memory_profiler),
   iterate on PySpark transformations or Spark SQL queries via Spark Connect (local
   execution against a remote Databricks cluster), or run any iterative hill-climbing
@@ -15,7 +15,7 @@ description: >
   Trigger on: "optimize this", "autoopt", "autoresearch", "keep trying until it's
   faster", "improve test coverage automatically", "hill-climb this", "run experiments",
   "iterate autonomously", "keep going until it passes", "optimize SQL performance",
-  "tune this model", "reduce pyright errors automatically", "optimize this Spark job",
+  "tune this model", "reduce ty errors automatically", "optimize this Spark job",
   "tune my PySpark pipeline", "iterate on Databricks notebook", "hill-climb Spark query".
   DO NOT USE FOR: one-shot fixes, code review without a metric, tasks with no
   measurable outcome, or when you just want a single suggestion.
@@ -28,7 +28,7 @@ You define the goal and how to measure it. The agent does the rest: hypothesize,
 measure, keep or revert — running autonomously until you stop it or the budget runs out.
 
 Inspired by [Karpathy's autoresearch](https://github.com/karpathy/autoresearch),
-adapted for Python, SQL, pytest, pyright, and ML workflows.
+adapted for Python, SQL, pytest, ty, and ML workflows.
 
 > [!IMPORTANT]
 > Every experiment is committed before running, and reverted on failure.
@@ -47,7 +47,7 @@ Ask:
 
 > **What are you trying to improve?**
 >
-> Examples: execution time, memory usage, pytest pass rate, pyright error count,
+> Examples: execution time, memory usage, pytest pass rate, ty error count,
 > SQL query latency, model accuracy, training throughput, bundle size.
 
 ### 1.2 Metric command
@@ -86,7 +86,7 @@ Ask:
 > **Any constraints I should respect?**
 >
 > Examples: no new dependencies, must keep existing tests green, public API must
-> stay stable, max 2 min per run, must stay type-clean (pyright 0 errors), VRAM
+> stay stable, max 2 min per run, must stay type-clean (ty 0 errors), VRAM
 > budget, complexity budget.
 
 Record as `CONSTRAINTS`.
@@ -162,7 +162,7 @@ For each parallel run, create a dedicated worktree **before** starting its loop:
 ```bash
 # In the repo root — repeat for each parallel run
 RUN_ID_A="<goal-a>"   # e.g. etl-runtime
-RUN_ID_B="<goal-b>"   # e.g. pyright-errors
+RUN_ID_B="<goal-b>"   # e.g. ty-errors
 
 git worktree add ../<repo>-${RUN_ID_A} -b autoresearch/${RUN_ID_A}
 git worktree add ../<repo>-${RUN_ID_B} -b autoresearch/${RUN_ID_B}
@@ -359,7 +359,7 @@ Follow this priority order:
 - **Time budget**: if a run exceeds 2× baseline duration, kill and treat as crash
 - **Test integrity**: if constraints require green tests, run them after each experiment;
   revert if they break, even if the primary metric improved
-- **Pyright/type safety**: if type-cleanliness is a constraint, run `pyright` after each
+- **ty/type safety**: if type-cleanliness is a constraint, run `uv run ty check` after each
   change and revert if new errors appear
 
 ---
@@ -429,7 +429,7 @@ Present these as a checklist. Mark which apply based on what the run actually ch
 **Code quality**
 - [ ] Run `/deslop` on changed files — automated optimization often leaves mechanical
       patterns, naming inconsistencies, or removed comments that need a pass
-- [ ] Run `pyright` across the full project to confirm no new type errors leaked in
+- [ ] Run `ty` across the full project to confirm no new type errors leaked in
 - [ ] Run the full test suite one final time on the current branch tip
 
 **Commit hygiene**
@@ -518,17 +518,14 @@ pytest --tb=no -q 2>&1 | grep "passed"
 # → parse duration from summary line (lower is better)
 ```
 
-### pyright
+### ty
 
 ```bash
-pyright --outputjson 2>/dev/null | python -c "
-import json,sys; d=json.load(sys.stdin)
-print('errors=' + str(d['summary']['errorCount']))
-"
-# → parse: errors= (lower is better)
+# count type errors (lower is better)
+uv run ty check 2>/dev/null | grep -c "^error\["
 
-# simpler: just count error lines
-pyright 2>&1 | grep -c "error:"
+# exit code only: 0 = clean, 1 = errors
+uv run ty check 2>/dev/null; echo "exit=$?"
 ```
 
 ### SQL (PostgreSQL)
