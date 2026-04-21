@@ -7,30 +7,7 @@ nav = [
   { "Getting Started" = [
     { "Introduction" = "index.md" },
     { "Installation" = "installation.md" },
-  ]},
-  { "Coding" = [
-    { "Python Guidelines" = "coding/python.md" },
-    { "TypeScript Guidelines" = "coding/typescript.md" },
-    { "TanStack Best Practices" = "coding/tanstack.md" },
-    { "FastAPI" = "coding/fastapi.md" },
-    { "Init App Stack" = "coding/init-app-stack.md" },
-    { "Postgres" = "coding/postgres.md" },
-    { "Autoresearch Loop" = "coding/autoresearch.md" },
-  ]},
-  { "Databricks" = [
-    { "Databricks CLI" = "databricks/cli.md" },
-    { "Spark Connect" = "databricks/spark-connect.md" },
-  ]},
-  { "UI" = [
-    { "KendoReact" = "ui/kendo-react.md" },
-  ]},
-  { "Writing" = [
-    { "Remove AI Slop" = "writing/deslop.md" },
-    { "Scientific Revision" = "writing/scientific.md" },
-  ]},
-  { "Reference" = [
-    { "Marketplace & Plugins" = "reference/marketplace.md" },
-    { "PreToolUse Hooks" = "reference/hooks.md" },
+    { "How It Works" = "how-it-works.md" },
   ]},
 ]
 
