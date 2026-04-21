@@ -17,7 +17,8 @@
 \__ \| ' <  | | |__| |__\__ \
 |___/|_|\_\ |_||____|____|___/
 ```
-## 📦 Available Skills
+
+## Available Skills
 
 <!-- SKILLS_TABLE_START -->
 | Skill | Description |
@@ -59,7 +60,8 @@
 | || || .` |\__ \  | |  | |__| |__| |
 |_||_||_|\_||___/  |_|  |____|____|__|
 ```
-## 🚀 Installation
+
+## Installation
 
 ### Claude Code Plugin
 
@@ -205,7 +207,7 @@ The CLI auto-detects your agent platform and installs into the right directory:
 | Antigravity | `.agents/skills/` or `.agent/skills/` |
 | Gemini CLI  | auto-detected                         |
 
-### 🔍 Browse on skills.sh
+### Browse on skills.sh
 
 ```
 https://skills.sh/bmsuisse/skills/<skill-name>
@@ -213,7 +215,7 @@ https://skills.sh/bmsuisse/skills/<skill-name>
 
 > Skills appear on the [skills.sh leaderboard](https://skills.sh) automatically based on install telemetry — no manual registration required.
 
-### ✅ Verify installation
+### Verify installation
 
 Start a new session and ask your agent something that should trigger the skill.
 
@@ -225,7 +227,8 @@ Start a new session and ask your agent something that should trigger the skill.
 | _ \| |\/| \__ \
 |___/|_|  |_|___/
 ```
-## 🧭 BMS Master Skill
+
+## BMS Master Skill
 
 `/bms` is a master skill that activates the full bmsuisse coding context in one command. It routes to the relevant sub-skills based on a sub-command and always enables caveman communication style.
 
@@ -288,7 +291,8 @@ When installed as a plugin, `load_skills.py` resolves sub-skill paths via the `C
 | (__|   / _| / _ \| | | _|
  \___|_|_\___/_/ \_\_| |___|
 ```
-## 🛠️ Adding a Skill
+
+## Adding a Skill
 
 Use **skill-creator** to guide you through the full lifecycle — drafting, test cases, evaluation, and iteration:
 
@@ -347,7 +351,8 @@ Instructions for the agent to follow...
 \__ \ | |  |   /| |_| | (__  | | | |_| |   / _|
 |___/ |_|  |_|_\ \___/ \___| |_|  \___/|_|_\___|
 ```
-## 🗂️ Repo Structure
+
+## Repo Structure
 
 ```
 .
@@ -372,7 +377,8 @@ Instructions for the agent to follow...
 | |_| |  _/| |) / _ \| | | _|
  \___/|_|  |___/_/ \_\_| |___|
 ```
-## 🔄 Updating Third-Party Skills
+
+## Updating Third-Party Skills
 
 ```bash
 npx skills update
