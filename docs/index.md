@@ -61,7 +61,7 @@ No config needed — hooks activate automatically when a plugin is installed.
 
 ## Highly recommended: Caveman mode
 
-We strongly recommend installing **[Caveman](https://github.com/JuliusBrussee/caveman)** — a skill that cuts token usage by ~75% by having the agent communicate in ultra-compressed style while keeping full technical accuracy. Less noise, faster responses, lower cost.
+**The most used skill in this repo.** We strongly recommend installing **[Caveman](https://github.com/JuliusBrussee/caveman)** — a skill that cuts token usage by ~75% by having the agent communicate in ultra-compressed style while keeping full technical accuracy. Less noise, faster responses, lower cost.
 
 ```json
 "caveman@bmsuisse-skills": true
