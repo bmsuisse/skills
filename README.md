@@ -32,6 +32,7 @@
 | [fastapi-guideline](./skills/fastapi-guideline/) | Use this skill whenever working with FastAPI — building APIs, adding routes, structuring projects, streaming response… |
 | [init-app-stack](./skills/init-app-stack/) | Use this skill whenever the user wants to bootstrap, scaffold, or initialize a new full-stack app with a Vite + React… |
 | [kendo-ui-angular](./skills/kendo-ui-angular/) | Use this skill whenever the user is working with Kendo UI for Angular — including the Data Grid, TreeList, TreeView,… |
+| [kendo-ui-react](./skills/kendo-ui-react/) | KendoReact component library patterns and best practices for React developers. Trigger whenever the user works with K… |
 | [kendo-ui-vue](./skills/kendo-ui-vue/) | Use this skill whenever the user is working with Kendo UI for Vue — including the Data Grid, DropDownList, ComboBox,… |
 | [nicegui](./skills/nicegui/) | Build Python web UIs with NiceGUI — covering layout, widgets, data binding, routing, and the AgGrid data grid. Use th… |
 | [postgres-best-practices](./skills/postgres-best-practices/) | PostgreSQL coding standards for Python projects using psycopg (no ORM). Use this skill whenever the user is writing o… |
@@ -41,6 +42,7 @@
 | [scientific-revision](./skills/scientific-revision/) | Use this skill whenever the user wants to verify, revise, or improve a scientific essay, academic paper, or any writt… |
 | [spark-connect](./skills/spark-connect/) | Guide for running PySpark code locally against a remote Databricks cluster via Spark Connect (databricks-connect). Us… |
 | [sql-optimization](./skills/sql-optimization/) | "Universal SQL performance optimization assistant for comprehensive query tuning, indexing strategies, and database p… |
+| [tanstack-best-practices](./skills/tanstack-best-practices/) | Comprehensive best practices for TanStack libraries in React applications — covering TanStack Query (React Query) dat… |
 <!-- SKILLS_TABLE_END -->
 
 ---
