@@ -2,19 +2,25 @@
 name: fastapi-azure-auth
 plugin: coding
 description: >
-  Add Azure Entra ID (Azure AD) SSO authentication to a FastAPI application.
-  Use this skill whenever the user asks how to add login, authentication, SSO,
-  Azure AD, Entra ID, MSAL, OAuth2, or session-based auth to a FastAPI app.
-  Also trigger when the user asks about protecting routes, role-based access
-  control (RBAC), DEV_MODE bypass for local development, or wiring auth into
-  the init-app-stack architecture. Covers the full flow: Azure App Registration
-  → MSAL → /login → /callback → session → RBAC via Postgres.
+  Azure Entra ID SSO for FastAPI using cookie-based sessions (MSAL, /login →
+  /callback → session). Trigger on: Azure AD login, Entra SSO, protect routes,
+  RBAC, DEV_MODE bypass, download links with auth. Covers App Registration,
+  AuthMiddleware, role checks via Postgres, and cookie auth enabling native
+  <a download> links.
 ---
 
 # FastAPI Azure Entra ID Auth
 
 OAuth2 authorization code flow using MSAL, Starlette sessions, and raw asyncpg RBAC.
 Designed for the init-app-stack: FastAPI + Granian + asyncpg + uv + Python 3.14.
+
+## Why cookie-based auth
+
+This approach stores the session in an encrypted cookie rather than a Bearer token.
+The key advantage: **`<a href="/api/files/report.pdf" download>` links work out of the box.**
+Browsers automatically send cookies on direct navigation — they cannot inject an
+`Authorization` header for `<a>` tag clicks. If you used token-based auth, file
+download links would require a JavaScript fetch + blob URL workaround instead.
 
 ## Packages
 
