@@ -168,6 +168,24 @@ Each plugin bundles a curated set of skills:
 
 ---
 
+### Highly recommended: Caveman mode
+
+We strongly recommend **[Caveman](https://github.com/JuliusBrussee/caveman)** — a skill by **[Julius Brussee](https://github.com/JuliusBrussee)** that cuts token usage ~75% by having the agent respond in ultra-compressed style while keeping full technical accuracy. Less noise, faster, cheaper.
+
+```bash
+bun x skills add https://github.com/JuliusBrussee/caveman
+```
+
+Or via the marketplace:
+
+```json
+"caveman@bmsuisse-skills": true
+```
+
+Full credit to Julius for creating and maintaining this — outstanding contribution to the community.
+
+---
+
 ### skills CLI
 
 The `skills` CLI reads directly from GitHub — no registration needed.

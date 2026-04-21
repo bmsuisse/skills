@@ -58,3 +58,19 @@ The `coding` and `bms` plugins ship with **PreToolUse hooks** that silently rewr
 | `npx foo` | `bun x foo` |
 
 No config needed — hooks activate automatically when a plugin is installed.
+
+## Highly recommended: Caveman mode
+
+We strongly recommend installing **[Caveman](https://github.com/JuliusBrussee/caveman)** — a skill that cuts token usage by ~75% by having the agent communicate in ultra-compressed style while keeping full technical accuracy. Less noise, faster responses, lower cost.
+
+```json
+"caveman@bmsuisse-skills": true
+```
+
+Or install directly:
+
+```bash
+bun x skills add https://github.com/JuliusBrussee/caveman
+```
+
+> Full credit to **[Julius Brussee](https://github.com/JuliusBrussee)** for creating and maintaining Caveman. Outstanding work.
