@@ -1,0 +1,66 @@
+[project]
+site_name = "BMS Skills"
+site_description = "Reusable AI agent skills for the BMSuisse engineering team — composable instructions that extend coding agents with company-specific workflows and best practices."
+site_url = "https://bmsuisse.github.io/skills/"
+
+nav = [
+  { "Getting Started" = [
+    { "Introduction" = "index.md" },
+    { "Installation" = "installation.md" },
+  ]},
+  { "Coding" = [
+    { "Python Guidelines" = "coding/python.md" },
+    { "TypeScript Guidelines" = "coding/typescript.md" },
+    { "TanStack Best Practices" = "coding/tanstack.md" },
+    { "FastAPI" = "coding/fastapi.md" },
+    { "Init App Stack" = "coding/init-app-stack.md" },
+    { "Postgres" = "coding/postgres.md" },
+    { "Autoresearch Loop" = "coding/autoresearch.md" },
+  ]},
+  { "Databricks" = [
+    { "Databricks CLI" = "databricks/cli.md" },
+    { "Spark Connect" = "databricks/spark-connect.md" },
+  ]},
+  { "UI" = [
+    { "KendoReact" = "ui/kendo-react.md" },
+  ]},
+  { "Writing" = [
+    { "Remove AI Slop" = "writing/deslop.md" },
+    { "Scientific Revision" = "writing/scientific.md" },
+  ]},
+  { "Reference" = [
+    { "Marketplace & Plugins" = "reference/marketplace.md" },
+    { "PreToolUse Hooks" = "reference/hooks.md" },
+  ]},
+]
+
+[project.repo]
+url = "https://github.com/bmsuisse/skills"
+
+[project.theme]
+favicon = "assets/favicon.svg"
+
+[project.theme.font]
+text = "Inter"
+code = "JetBrains Mono"
+
+[project.theme.icon]
+logo = "lucide/brain-circuit"
+
+[[project.theme.palette]]
+scheme = "default"
+primary = "indigo"
+accent = "deep-purple"
+toggle.icon = "lucide/sun"
+toggle.name = "Switch to dark mode"
+
+[[project.theme.palette]]
+scheme = "slate"
+primary = "indigo"
+accent = "deep-purple"
+toggle.icon = "lucide/moon"
+toggle.name = "Switch to light mode"
+
+[[project.extra.social]]
+icon = "fontawesome/brands/github"
+link = "https://github.com/bmsuisse/skills"
