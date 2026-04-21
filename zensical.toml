@@ -38,14 +38,12 @@ nav = [
 url = "https://github.com/bmsuisse/skills"
 
 [project.theme]
-favicon = "assets/favicon.svg"
+favicon = "assets/logo.svg"
+logo = "assets/logo.svg"
 
 [project.theme.font]
 text = "Inter"
 code = "JetBrains Mono"
-
-[project.theme.icon]
-logo = "lucide/brain-circuit"
 
 [[project.theme.palette]]
 scheme = "default"
