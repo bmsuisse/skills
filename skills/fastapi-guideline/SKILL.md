@@ -14,7 +14,7 @@ description: >
 Production-ready FastAPI with async-first patterns, Granian as the server, and native SSE streaming.
 
 > Base patterns sourced from:
-> `bunx skills add https://github.com/wshobson/agents --skill fastapi-templates` (recommended) / `npx skills add ...`
+> `bun x skills add https://github.com/wshobson/agents --skill fastapi-templates` (recommended) / `npx skills add ...`
 > Extended with Granian server, native SSE (FastAPI 0.135.0+), and additional async conventions.
 
 ## Core rules — apply always

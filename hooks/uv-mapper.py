@@ -56,9 +56,9 @@ def remap(cmd: str) -> str:
     if m := re.match(rf"^({tools_pattern})(\s.*)?$", cmd):
         return f"uv run {m.group(1)}{m.group(2) or ''}"
 
-    # npx / pnpx <cmd> → bunx <cmd>
+    # npx / pnpx <cmd> → bun x <cmd>
     if m := re.match(r"^(?:npx|pnpx)(\s.*)?$", cmd):
-        return f"bunx{m.group(1) or ''}"
+        return f"bun x{m.group(1) or ''}"
 
     return cmd
 

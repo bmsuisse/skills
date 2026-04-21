@@ -55,6 +55,6 @@ The `coding` and `bms` plugins ship with **PreToolUse hooks** that silently rewr
 | `pip install foo` | `uv add foo` |
 | `pytest` | `uv run pytest` |
 | `npm install foo` | `bun add foo` |
-| `npx foo` | `bunx foo` |
+| `npx foo` | `bun x foo` |
 
 No config needed — hooks activate automatically when a plugin is installed.

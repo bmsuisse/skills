@@ -1,7 +1,7 @@
 # FastAPI Project Templates
 
 > Source: https://skills.sh/wshobson/agents/fastapi-templates
-> Install: `bunx skills add https://github.com/wshobson/agents --skill fastapi-templates` (recommended) / `npx skills add ...`
+> Install: `bun x skills add https://github.com/wshobson/agents --skill fastapi-templates` (recommended) / `npx skills add ...`
 
 Production-ready FastAPI structures with async patterns, dependency injection, middleware.
 

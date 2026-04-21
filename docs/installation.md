@@ -98,13 +98,13 @@ No global install required — `bunx` (recommended) or `npx` fetches the CLI on 
 
 ```bash
 # All skills (recommended)
-bunx skills add bmsuisse/skills
+bun x skills add bmsuisse/skills
 
 # One specific skill
-bunx skills add bmsuisse/skills --skill coding-guidelines-python
+bun x skills add bmsuisse/skills --skill coding-guidelines-python
 
 # Update previously installed skills
-bunx skills update
+bun x skills update
 ```
 
 ```bash
@@ -127,7 +127,7 @@ The CLI detects your agent from config files in the current directory:
 ### Telemetry opt-out
 
 ```bash
-DISABLE_TELEMETRY=1 bunx skills add bmsuisse/skills
+DISABLE_TELEMETRY=1 bun x skills add bmsuisse/skills
 ```
 
 ## Verify

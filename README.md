@@ -190,7 +190,7 @@ The `skills` CLI reads directly from GitHub — no registration needed.
 
 ```bash
 # recommended
-bunx skills add https://github.com/bmsuisse/skills --skill <skill-name>
+bun x skills add https://github.com/bmsuisse/skills --skill <skill-name>
 # alternative
 npx skills add https://github.com/bmsuisse/skills --skill <skill-name>
 ```
@@ -199,7 +199,7 @@ npx skills add https://github.com/bmsuisse/skills --skill <skill-name>
 
 ```bash
 # recommended
-bunx skills add https://github.com/bmsuisse/skills
+bun x skills add https://github.com/bmsuisse/skills
 # alternative
 npx skills add https://github.com/bmsuisse/skills
 ```
@@ -283,7 +283,7 @@ claude plugin install bms@bmsuisse-skills
 **skills CLI** — installs the bms skill only (sub-skills must already be installed):
 
 ```bash
-bunx skills add https://github.com/bmsuisse/skills --skill bms  # recommended
+bun x skills add https://github.com/bmsuisse/skills --skill bms  # recommended
 npx  skills add https://github.com/bmsuisse/skills --skill bms  # alternative
 ```
 
@@ -305,7 +305,7 @@ When installed as a plugin, `load_skills.py` resolves sub-skill paths via the `C
 Use **skill-creator** to guide you through the full lifecycle — drafting, test cases, evaluation, and iteration:
 
 ```bash
-bunx skills add https://github.com/anthropics/skills --skill skill-creator  # recommended
+bun x skills add https://github.com/anthropics/skills --skill skill-creator  # recommended
 # npx skills add https://github.com/anthropics/skills --skill skill-creator
 ```
 
@@ -390,5 +390,5 @@ Instructions for the agent to follow...
 ## Updating Third-Party Skills
 
 ```bash
-bunx skills update  # recommended / npx skills update
+bun x skills update  # recommended / npx skills update
 ```
