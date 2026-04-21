@@ -11,6 +11,12 @@
 
 ---
 
+```ansi
+ ___  _  _  _  _    _    ___
+/ __|| |/ /|_|| |  | |  / __|
+\__ \| ' <  | | |__| |__\__ \
+|___/|_|\_\ |_||____|____|___/
+```
 ## 📦 Available Skills
 
 <!-- SKILLS_TABLE_START -->
@@ -47,6 +53,12 @@
 
 ---
 
+```ansi
+ _  _  _  _  ___  _____  _    _    _
+| || || \| |/ __||_   _|| |  | |  | |
+| || || .` |\__ \  | |  | |__| |__| |
+|_||_||_|\_||___/  |_|  |____|____|__|
+```
 ## 🚀 Installation
 
 ### Claude Code Plugin
@@ -207,6 +219,12 @@ Start a new session and ask your agent something that should trigger the skill.
 
 ---
 
+```ansi
+ ___  __  __ ___
+| _ )|  \/  / __|
+| _ \| |\/| \__ \
+|___/|_|  |_|___/
+```
 ## 🧭 BMS Master Skill
 
 `/bms` is a master skill that activates the full bmsuisse coding context in one command. It routes to the relevant sub-skills based on a sub-command and always enables caveman communication style.
@@ -264,6 +282,12 @@ When installed as a plugin, `load_skills.py` resolves sub-skill paths via the `C
 
 ---
 
+```ansi
+  ___ ___ ___   _ _____ ___
+ / __| _ \ __| /_\_   _| __|
+| (__|   / _| / _ \| | | _|
+ \___|_|_\___/_/ \_\_| |___|
+```
 ## 🛠️ Adding a Skill
 
 Use **skill-creator** to guide you through the full lifecycle — drafting, test cases, evaluation, and iteration:
@@ -317,6 +341,12 @@ Instructions for the agent to follow...
 
 ---
 
+```ansi
+ ___  _____  ___  _   _  ___ _____ _   _ ___ ___
+/ __|_   _|| _ \| | | |/ __|_   _| | | | _ \ __|
+\__ \ | |  |   /| |_| | (__  | | | |_| |   / _|
+|___/ |_|  |_|_\ \___/ \___| |_|  \___/|_|_\___|
+```
 ## 🗂️ Repo Structure
 
 ```
@@ -336,6 +366,12 @@ Instructions for the agent to follow...
 
 ---
 
+```ansi
+ _   _ ___  ___   _ _____ ___
+| | | | _ \|   \ /_\_   _| __|
+| |_| |  _/| |) / _ \| | | _|
+ \___/|_|  |___/_/ \_\_| |___|
+```
 ## 🔄 Updating Third-Party Skills
 
 ```bash
