@@ -1,0 +1,48 @@
+{
+  "skill_name": "fastapi-azure-auth",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Add Azure Entra ID SSO to my FastAPI app — I have a client ID and secret, need /login /callback /logout and to protect /api/* routes",
+      "expected_output": "Working FastAPI auth setup with MSAL, session middleware, /login /callback /logout endpoints, and /api/* route protection returning 401 for unauthenticated requests",
+      "files": [],
+      "expectations": [
+        "The response includes app/auth/setup.py with /login, /callback, and /logout endpoints",
+        "The /api/* protection returns HTTP 401 for unauthenticated requests (not a redirect)",
+        "SessionMiddleware is configured with a secret key env var",
+        "MSAL ConfidentialClientApplication is initialised with client_id and authority",
+        "The /login endpoint initiates an MSAL auth code flow and redirects to Microsoft",
+        "The /callback endpoint exchanges the auth code and stores id_token_claims in the session",
+        "Environment variables APP_REG_CLIENT_ID, APP_REG_CLIENT_SECRET (or cert), and AZURE_TENANT_ID are referenced",
+        "app/auth/credentials.py (or equivalent) handles secret vs certificate credential selection"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "How do I add role-based access control to my FastAPI app that uses Azure AD auth? I have a dim.user_roles table in Postgres",
+      "expected_output": "RBAC helpers that read roles from dim.user_roles, cache them, and expose require_role / require_write FastAPI dependencies usable as Depends()",
+      "files": [],
+      "expectations": [
+        "A get_user_role or equivalent function queries dim.user_roles by email",
+        "Role results are cached to avoid per-request DB hits (TTL or similar mechanism)",
+        "A require_role dependency raises HTTP 403 when the user has no role",
+        "A require_write or similar dependency blocks read-only roles",
+        "The role lookup uses the email from the session (or DEV_MODE fallback)",
+        "Example usage with Depends() is shown for a FastAPI endpoint"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Set up DEV_MODE bypass for Azure auth in FastAPI so I can develop locally without logging in to Microsoft",
+      "expected_output": "DEV_MODE env var that skips MSAL init in main.py and returns a fake user email from get_user_email(), with instructions for local .env setup",
+      "files": [],
+      "expectations": [
+        "DEV_MODE env var (true/1/t) skips auth setup in main.py so no MSAL is initialised",
+        "get_user_email() returns a hardcoded or configurable dev email when DEV_MODE is set",
+        "No redirect to Microsoft login happens in DEV_MODE",
+        "Instructions or example showing how to set DEV_MODE=true in a .env file are included",
+        "The response explains how to insert a test user into dim.user_roles to test RBAC locally"
+      ]
+    }
+  ]
+}
