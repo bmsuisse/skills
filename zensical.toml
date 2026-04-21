@@ -17,10 +17,14 @@ url = "https://github.com/bmsuisse/skills"
 [project.theme]
 favicon = "assets/logo.svg"
 logo = "assets/logo.svg"
+name = ""
 
 [project.theme.font]
 text = "Inter"
 code = "JetBrains Mono"
+
+[project.theme.features]
+extra_css = ["assets/extra.css"]
 
 [[project.theme.palette]]
 scheme = "default"
