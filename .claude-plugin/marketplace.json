@@ -43,7 +43,8 @@
         "./postgres-best-practices",
         "./postgres-test-setup",
         "./sql-optimization",
-        "./tanstack-best-practices"
+        "./tanstack-best-practices",
+        "./fastapi-azure-auth"
       ]
     },
     {
