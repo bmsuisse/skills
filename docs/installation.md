@@ -94,17 +94,22 @@ Download Node.js (LTS) from [nodejs.org](https://nodejs.org) if needed — npm i
 
 ### Install
 
-No global install required — `npx` fetches the CLI on demand:
+No global install required — `bunx` (recommended) or `npx` fetches the CLI on demand:
 
 ```bash
-# All skills
-npx skills add bmsuisse/skills
+# All skills (recommended)
+bunx skills add bmsuisse/skills
 
 # One specific skill
-npx skills add bmsuisse/skills --skill coding-guidelines-python
+bunx skills add bmsuisse/skills --skill coding-guidelines-python
 
 # Update previously installed skills
-npx skills update
+bunx skills update
+```
+
+```bash
+# Alternative with npx
+npx skills add bmsuisse/skills
 ```
 
 ### Platform detection
@@ -122,7 +127,7 @@ The CLI detects your agent from config files in the current directory:
 ### Telemetry opt-out
 
 ```bash
-DISABLE_TELEMETRY=1 npx skills add bmsuisse/skills
+DISABLE_TELEMETRY=1 bunx skills add bmsuisse/skills
 ```
 
 ## Verify

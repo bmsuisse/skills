@@ -3,7 +3,7 @@
 # requires-python = ">=3.11"
 # ///
 """
-PreToolUse hook: remaps common Python commands to uv equivalents.
+PreToolUse hook: remaps common commands to preferred tooling.
 
   python -m <mod>       → uv run -m <mod>
   python / python3      → uv run python
@@ -15,6 +15,8 @@ PreToolUse hook: remaps common Python commands to uv equivalents.
   pyright               → uv run pyright
   basedpyright          → uv run basedpyright
   ty                    → uv run ty
+  npx <cmd>             → bunx <cmd>
+  npx skills <args>     → bunx skills <args>
 """
 
 import json
@@ -53,6 +55,10 @@ def remap(cmd: str) -> str:
     tools_pattern = "|".join(re.escape(t) for t in _UV_RUN_TOOLS)
     if m := re.match(rf"^({tools_pattern})(\s.*)?$", cmd):
         return f"uv run {m.group(1)}{m.group(2) or ''}"
+
+    # npx / pnpx <cmd> → bunx <cmd>
+    if m := re.match(r"^(?:npx|pnpx)(\s.*)?$", cmd):
+        return f"bunx{m.group(1) or ''}"
 
     return cmd
 

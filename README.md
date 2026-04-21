@@ -189,12 +189,18 @@ The `skills` CLI reads directly from GitHub — no registration needed.
 ### Install a specific skill
 
 ```bash
+# recommended
+bunx skills add https://github.com/bmsuisse/skills --skill <skill-name>
+# alternative
 npx skills add https://github.com/bmsuisse/skills --skill <skill-name>
 ```
 
 ### Install all skills
 
 ```bash
+# recommended
+bunx skills add https://github.com/bmsuisse/skills
+# alternative
 npx skills add https://github.com/bmsuisse/skills
 ```
 
@@ -277,7 +283,8 @@ claude plugin install bms@bmsuisse-skills
 **skills CLI** — installs the bms skill only (sub-skills must already be installed):
 
 ```bash
-npx skills add https://github.com/bmsuisse/skills --skill bms
+bunx skills add https://github.com/bmsuisse/skills --skill bms  # recommended
+npx  skills add https://github.com/bmsuisse/skills --skill bms  # alternative
 ```
 
 ### Plugin path resolution
@@ -298,7 +305,8 @@ When installed as a plugin, `load_skills.py` resolves sub-skill paths via the `C
 Use **skill-creator** to guide you through the full lifecycle — drafting, test cases, evaluation, and iteration:
 
 ```bash
-npx skills add https://github.com/anthropics/skills --skill skill-creator
+bunx skills add https://github.com/anthropics/skills --skill skill-creator  # recommended
+# npx skills add https://github.com/anthropics/skills --skill skill-creator
 ```
 
 Then ask your agent: _"Help me create a skill for X"_ and it will walk you through intent capture, writing the `SKILL.md`, running test cases, reviewing results, and iterating until the skill is ready.
@@ -382,5 +390,5 @@ Instructions for the agent to follow...
 ## Updating Third-Party Skills
 
 ```bash
-npx skills update
+bunx skills update  # recommended / npx skills update
 ```

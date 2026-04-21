@@ -1,6 +1,6 @@
 # FastAPI Project Templates
 
-> Source: `npx skills add https://github.com/wshobson/agents --skill fastapi-templates`
+> Source: `bunx skills add https://github.com/wshobson/agents --skill fastapi-templates` (recommended) / `npx skills add ...`
 
 Production-ready FastAPI structures with async patterns, dependency injection, middleware.
 

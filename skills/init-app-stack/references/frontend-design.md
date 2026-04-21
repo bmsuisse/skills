@@ -1,7 +1,7 @@
 # Frontend Design Aesthetics
 
 > Source: https://skills.sh/anthropics/skills/frontend-design
-> Install: `npx skills add https://github.com/anthropics/skills --skill frontend-design`
+> Install: `bunx skills add https://github.com/anthropics/skills --skill frontend-design` (recommended) / `npx skills add ...`
 
 Guide for creating distinctive, production-grade frontend interfaces that avoid generic "AI slop" aesthetics.
 
