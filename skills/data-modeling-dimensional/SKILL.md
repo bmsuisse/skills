@@ -4,17 +4,15 @@ description: >
   Dimensional data modeling guide for the Fabricks platform — covers the full
   pipeline from staging through raw, transf, core, and semantic layers; fact and
   dimension table design; key strategy; SCD types; bridge tables; degenerate
-  dimensions; and config. Use this skill whenever designing or reviewing a new
-  fact or dimension table, deciding where logic belongs in the pipeline, choosing
-  between SCD1 and SCD2, constructing business keys or surrogate keys, modeling
-  many-to-many relationships, or understanding how the staging → bronze → silver →
-  gold → semantic layers relate to each other. Trigger on: "design fact table",
-  "design dimension", "where does this logic go", "SCD type", "slowly changing
-  dimension", "surrogate key", "business key", "grain", "bridge table", "degenerate
-  dimension", "layer architecture", "transf vs core", "udf_identity", "udf_key",
-  "sentinel", "historized", "__valid_from", "__is_current", "new dim table", "new
-  fact table", "data model", "pipeline layer", "bronze", "silver", "gold",
-  "semantic layer", "merger", "raw layer", "staging".
+  dimensions; and config. Use whenever designing or reviewing fact/dimension
+  tables, deciding where logic belongs in the pipeline, choosing SCD1/SCD2,
+  constructing business/surrogate keys, modeling many-to-many relationships, or
+  understanding layer architecture.
+  Trigger on: "design fact table", "design dimension", "SCD type", "slowly
+  changing dimension", "surrogate key", "business key", "bridge table",
+  "layer architecture", "transf vs core", "udf_identity", "udf_key",
+  "__valid_from", "__is_current", "new dim table", "new fact table",
+  "data model", "bronze", "silver", "gold", "semantic layer", "staging".
 ---
 
 # Dimensional Data Modeling — Fabricks Platform

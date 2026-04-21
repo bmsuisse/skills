@@ -2,21 +2,16 @@
 name: python-autotuner
 description: >
   Python code optimizer and error fixer: analyzes a Python file or function,
-  rewrites it for speed and quality using one focused change at a time,
-  validates correctness with pytest, benchmarks with timeit, checks style with
-  ruff, checks types with ty, and measures complexity reduction. Also diagnoses
-  and fixes broken Python code (SyntaxError, ImportError, TypeError,
-  AttributeError, runtime crashes) using --goals fix. Use this skill whenever
-  the user wants to optimize, speed up, simplify, clean up, benchmark, or fix
-  Python code. Trigger on: "/python-autotuner", "optimize this Python", "make
-  this function faster", "improve Python code quality", "benchmark my Python
-  function", "reduce complexity in this Python file", "ruff keeps failing",
-  "my Python function is too slow", "simplify this Python code", "type errors
-  in my Python", "clean up this Python", "Python performance", "profile this
-  Python function", "fix this Python error", "SyntaxError in Python",
-  "my Python code is crashing", "TypeError in Python", "ImportError Python",
-  or whenever a user shares a Python file and mentions errors, crashes,
-  failures, performance, quality, slowness, or complexity.
+  rewrites it for speed and quality one change at a time, validates with pytest,
+  benchmarks with timeit, checks with ruff/ty, and measures complexity reduction.
+  Also diagnoses broken Python code (SyntaxError, ImportError, TypeError,
+  AttributeError, runtime crashes) using --goals fix.
+  Trigger on: "/python-autotuner", "optimize this Python", "make this function
+  faster", "benchmark my Python function", "reduce complexity", "ruff keeps
+  failing", "my Python function is too slow", "simplify this Python code",
+  "fix this Python error", "SyntaxError in Python", "my Python code is crashing",
+  "TypeError in Python", or whenever a user shares Python code and mentions
+  errors, crashes, performance, quality, slowness, or complexity.
 compatibility: Requires Python 3.10+, uv. ruff/ty/pytest/pytest-benchmark installed via uv if missing.
 ---
 

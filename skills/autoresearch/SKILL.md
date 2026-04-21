@@ -2,23 +2,17 @@
 name: autoresearch
 plugin: coding
 description: >
-  Autonomous iterative experimentation loop for Python, SQL, ML, and Spark/Databricks
-  projects. Guides you through defining a measurable goal, then runs an autonomous
-  loop of code changes, measurements, and keep/revert decisions until you stop it.
-  Use this skill whenever you want to: optimize Python runtime (cProfile, scalene,
-  hyperfine), reduce SQL query time (EXPLAIN ANALYZE, pg_stat_statements), improve
-  pytest pass rate or coverage, fix ty errors systematically, tune ML training
-  metrics (loss, accuracy, F1), reduce memory usage (tracemalloc, memory_profiler),
-  iterate on PySpark transformations or Spark SQL queries via Spark Connect (local
-  execution against a remote Databricks cluster), or run any iterative hill-climbing
-  experiment where each attempt is measurable.
+  Autonomous iterative optimization loop for Python, SQL, ML, and Spark/Databricks.
+  Define a measurable goal; the skill runs code changes, measures, and keeps/reverts
+  until you stop it or the budget runs out. Use for: Python runtime (cProfile,
+  hyperfine), SQL latency, pytest pass rate/coverage, ty/pyright errors, ML metrics
+  (loss/accuracy/F1), memory, PySpark/Spark Connect.
   Trigger on: "optimize this", "autoopt", "autoresearch", "keep trying until it's
-  faster", "improve test coverage automatically", "hill-climb this", "run experiments",
-  "iterate autonomously", "keep going until it passes", "optimize SQL performance",
-  "tune this model", "reduce ty errors automatically", "optimize this Spark job",
-  "tune my PySpark pipeline", "iterate on Databricks notebook", "hill-climb Spark query".
+  faster", "hill-climb this", "run experiments", "iterate autonomously",
+  "optimize SQL performance", "tune this model", "optimize this Spark job",
+  "tune my PySpark pipeline", "improve test coverage automatically".
   DO NOT USE FOR: one-shot fixes, code review without a metric, tasks with no
-  measurable outcome, or when you just want a single suggestion.
+  measurable outcome.
 compatibility: Requires git (project must be a git repository) and terminal access.
 ---
 

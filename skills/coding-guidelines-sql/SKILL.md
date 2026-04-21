@@ -1,20 +1,17 @@
 ---
 name: coding-guidelines-sql
 description: >
-  SQL and data warehouse coding guidelines for the BME data platform. Use this
-  skill whenever the user is writing, reviewing, or refactoring SQL — including
-  SparkSQL, T-SQL, and Databricks SQL. Apply it when naming tables, columns,
-  CTEs, views, functions, or stored procedures; when building fact or dimension
-  tables; when working with business keys, surrogate keys, or metadata columns;
-  when writing joins, unions, or CTEs; or when setting up the semantic layer.
-  Also apply it for Spark SQL best practices: QUALIFY, GROUP BY ALL, collations,
-  boolean expressions, NULL-safe patterns, conditional aggregation, and timestamp
-  intervals. Trigger on: "write sql", "review sql", "name this column", "fact
-  table", "dimension table", "surrogate key", "business key", "gold layer",
-  "transform layer", "cte", "spark sql", "databricks sql", "t-sql", "naming
-  convention", "sql style", "semantic layer", "combi field", "create view",
-  "create function", "qualify", "group by all", "collation", "deduplication",
-  "top-n per group", "conditional aggregation".
+  SQL and data warehouse coding guidelines for the BME data platform. Use
+  whenever writing, reviewing, or refactoring SQL — including SparkSQL, T-SQL,
+  and Databricks SQL. Apply when naming tables, columns, CTEs, views, functions,
+  or procedures; building fact or dimension tables; working with business keys,
+  surrogate keys, or metadata columns; or setting up the semantic layer. Also
+  apply for Spark SQL: QUALIFY, GROUP BY ALL, collations, NULL-safe patterns,
+  conditional aggregation, timestamp intervals.
+  Trigger on: "write sql", "review sql", "fact table", "dimension table",
+  "surrogate key", "business key", "gold layer", "spark sql", "databricks sql",
+  "t-sql", "naming convention", "sql style", "semantic layer", "combi field",
+  "qualify", "group by all", "deduplication", "conditional aggregation".
 ---
 
 # SQL Coding Guidelines

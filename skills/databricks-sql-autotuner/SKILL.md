@@ -5,16 +5,13 @@ description: >
   query, rewrites it for speed using SQL-level optimizations only, validates
   byte-for-byte result equivalence, and benchmarks both versions with statistical
   significance testing. Also diagnoses and fixes SQL errors (syntax errors, cast
-  failures, column resolution errors, type mismatches) using --goals fix.
-  Use this skill whenever the user wants to optimize, speed up, tune, benchmark,
-  or fix a SQL query on Databricks. Trigger on: "/databricks-sql-autotuner",
-  "optimize this SQL", "make this query faster", "tune my Databricks query",
-  "benchmark SQL on Databricks", "speed up this spark SQL", "SQL performance on
-  Databricks", "EXPLAIN this query", "why is my query slow on Databricks",
-  "SQL query optimization Databricks", "fix my SQL query", "SQL syntax error",
-  "casting error in SQL", "column not found in SQL", "AnalysisException",
-  "ParseException", "my Databricks query is failing", or whenever a user pastes
-  a SQL query and mentions errors, failures, or exceptions.
+  failures, column resolution, type mismatches) using --goals fix.
+  Trigger on: "/databricks-sql-autotuner", "optimize this SQL", "make this query
+  faster", "tune my Databricks query", "benchmark SQL on Databricks", "speed up
+  this spark SQL", "why is my query slow on Databricks", "fix my SQL query",
+  "SQL syntax error", "casting error in SQL", "AnalysisException",
+  "ParseException", or whenever a user pastes a SQL query and mentions errors,
+  slowness, or failures.
 compatibility: Requires databricks CLI (authenticated) and Python 3.9+.
 ---
 
