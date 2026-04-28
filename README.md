@@ -38,6 +38,7 @@
 | [nicegui](./skills/nicegui/) | Build Python web UIs with NiceGUI — covering layout, widgets, data binding, routing, and the AgGrid data grid. Use th… |
 | [postgres-best-practices](./skills/postgres-best-practices/) | PostgreSQL coding standards for Python projects using psycopg (no ORM). Use this skill whenever the user is writing o… |
 | [postgres-test-setup](./skills/postgres-test-setup/) | Set up and work with a local PostgreSQL test database in Docker for integration/e2e tests. Use this skill whenever th… |
+| [prek](./skills/prek/) | Set up code formatting and pre-commit hooks using prek (fast Rust-based alternative to pre-commit) with prek.toml con… |
 | [python-autotuner](./skills/python-autotuner/) | Python code optimizer and error fixer: analyzes a Python file or function, rewrites it for speed and quality one chan… |
 | [remove-ai-writing](./skills/remove-ai-writing/) | "Detect and surgically fix AI writing patterns in English, German, French, or Italian text. Use this skill whenever t… |
 | [scientific-revision](./skills/scientific-revision/) | Use this skill whenever the user wants to verify, revise, or improve a scientific essay, academic paper, or any writt… |
