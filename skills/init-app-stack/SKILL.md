@@ -43,7 +43,15 @@ cd backend  && uv run dev         # FastAPI on :8000
 cd frontend && bun run dev        # Vite on :5173
 ```
 
-## Step 2: Enable companion skills via marketplace
+## Step 2: Set up code formatting with prek
+
+After scaffolding, run `/prek` to configure formatters for the whole project.
+This writes `prek.toml`, updates `pyproject.toml`, adds `.prettierrc`, installs
+the git pre-commit hook, and formats all existing files. The project has both
+Python (`backend/`) and TypeScript (`frontend/`) so prek will configure both
+ruff and prettier automatically.
+
+## Step 3: Enable companion skills via marketplace
 
 Add this to your project's `.claude/settings.json` to give the agent deep knowledge of the stack:
 

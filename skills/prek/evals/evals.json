@@ -1,0 +1,47 @@
+{
+  "skill_name": "prek",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I have a Databricks SQL + Python data project. There are .sql files in transforms/ and Python files in src/. I already have a pyproject.toml with some ruff settings. Set up prek for me.",
+      "expected_output": "prek.toml with [[repos]] for ruff-pre-commit and a local sqlfmt hook (no prettier), pyproject.toml updated with ruff+sqlfmt settings, prek install run",
+      "files": [],
+      "expectations": [
+        "prek.toml uses [[repos]] array-of-tables structure",
+        "prek.toml has a repo = \"https://github.com/astral-sh/ruff-pre-commit\" entry with ruff-check and ruff-format hooks",
+        "prek.toml has a repo = \"local\" entry with a sqlfmt hook",
+        "prek.toml does NOT contain a prettier hook (no TS files)",
+        "pyproject.toml contains [tool.ruff] with indent-width = 4 and line-length = 120",
+        "pyproject.toml contains [tool.sqlfmt] with line_length = 120",
+        "prek install is run to wire up the git hook"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I just ran init-app-stack and have a full-stack project with a Python FastAPI backend (backend/) and a TypeScript Vite frontend (frontend/). Set up prek for the whole monorepo.",
+      "expected_output": "prek.toml with ruff-pre-commit and local prettier hook, .prettierrc written, pyproject.toml updated, prek install run",
+      "files": [],
+      "expectations": [
+        "prek.toml uses [[repos]] array-of-tables structure",
+        "prek.toml has ruff-pre-commit repo with ruff-check and ruff-format hooks",
+        "prek.toml has a local prettier hook for .ts/.tsx/.js/.jsx files",
+        ".prettierrc is written with tabWidth: 4 and useTabs: false and printWidth: 120",
+        "pyproject.toml contains [tool.ruff.format] with indent-style = \"space\"",
+        "prek install is run"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "I have a TypeScript/React project (no Python, no SQL). Add prek with prettier for pre-commit formatting.",
+      "expected_output": "prek.toml with only a local prettier hook, .prettierrc written, prek install run",
+      "files": [],
+      "expectations": [
+        "prek.toml uses [[repos]] array-of-tables structure",
+        "prek.toml has ONLY a local prettier hook (no ruff-pre-commit, no sqlfmt repos)",
+        ".prettierrc is written with tabWidth: 4 and useTabs: false and printWidth: 120",
+        "prek install is run to wire up the git hook",
+        "User is told which formatters were installed and how to run manually"
+      ]
+    }
+  ]
+}
