@@ -36,6 +36,7 @@
 | [kendo-ui-react](./skills/kendo-ui-react/) | KendoReact component library patterns and best practices for React developers. Trigger whenever the user works with K… |
 | [kendo-ui-vue](./skills/kendo-ui-vue/) | Use this skill whenever the user is working with Kendo UI for Vue — including the Data Grid, DropDownList, ComboBox,… |
 | [nicegui](./skills/nicegui/) | Build Python web UIs with NiceGUI — covering layout, widgets, data binding, routing, and the AgGrid data grid. Use th… |
+| [playwright-python](./skills/playwright-python/) | Browser automation and visual verification with Playwright in Python. Use this whenever the user wants to drive a bro… |
 | [postgres-best-practices](./skills/postgres-best-practices/) | PostgreSQL coding standards for Python projects using psycopg (no ORM). Use this skill whenever the user is writing o… |
 | [postgres-test-setup](./skills/postgres-test-setup/) | Set up and work with a local PostgreSQL test database in Docker for integration/e2e tests. Use this skill whenever th… |
 | [prek](./skills/prek/) | Set up code formatting and pre-commit hooks using prek (fast Rust-based alternative to pre-commit) with prek.toml con… |
