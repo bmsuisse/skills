@@ -1,0 +1,72 @@
+{
+  "skill_name": "playwright-python",
+  "evals": [
+    {
+      "id": 1,
+      "name": "screenshot-running-dev-server",
+      "prompt": "I just started my Vite dev server at http://localhost:5173 and I'm working on the signup page. Take a screenshot so we can see if the form layout is right — there should be email, password, and confirm-password fields stacked, with a 'Create account' button below.",
+      "assertions": [
+        "Recommends scripts/screenshot.py (the bundled helper) instead of writing inline Playwright code from scratch",
+        "Targets the correct URL http://localhost:5173 (or /signup) — does not invent a different host or port",
+        "Mentions Read'ing the resulting PNG so Claude can actually see it (the visual feedback loop)",
+        "Recommends a wait strategy beyond default `load` for the SPA case (e.g. --wait-for on form/heading element)",
+        "Does NOT use --full-page by default (the user asked about above-the-fold layout, not whole-page)",
+        "Does NOT add Playwright install/setup boilerplate when the user clearly already has a working dev environment"
+      ],
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "pytest-signup-test",
+      "prompt": "Write a pytest-playwright test that goes to http://localhost:3000/signup, fills email + password, clicks submit, and asserts we land on /welcome with a greeting visible.",
+      "assertions": [
+        "Test uses pytest-playwright's `page` fixture (sync API) — does not invent its own browser-launch boilerplate",
+        "Imports `expect` from `playwright.sync_api` and uses it for assertions — not raw `assert page.is_visible()` (which is flaky)",
+        "Locators use `get_by_label` / `get_by_role` / `get_by_text` — not raw CSS selectors like `#email-input`",
+        "Asserts URL with `expect(page).to_have_url(...)` (auto-waits for navigation) — not a manual sleep / poll",
+        "Test function is sync (def, not async def) — pytest-playwright's `page` fixture is sync",
+        "Does NOT use `wait_until=\"networkidle\"` (the skill specifically warns against it for polling apps)"
+      ],
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "missing-browsers-install",
+      "prompt": "I tried running my Playwright script and got `Executable doesn't exist at /Users/me/Library/Caches/ms-playwright/chromium-1234/chrome-mac/Chromium.app/Contents/MacOS/Chromium`. What's wrong?",
+      "assertions": [
+        "Identifies the cause as missing browser binaries (the second install step) — not as a missing Python package or a corrupt installation",
+        "Recommends `playwright install chromium` (or `python -m playwright install chromium`) as the fix",
+        "Does NOT recommend reinstalling the `playwright` Python package",
+        "Mentions a verification step (a quick smoke launch, or check for the chromium-* dir) so the user knows the fix worked",
+        "Stays concise — this is a diagnostic Q&A, not a tutorial; no multi-page intro to Playwright"
+      ],
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "scrape-spa-content",
+      "prompt": "I need to grab the list of project names from https://example-dashboard.local/projects — it's a React SPA so the HTML is empty until JS runs. Just give me the titles.",
+      "assertions": [
+        "Recognises the page is a SPA — explicitly says requests/httpx would return empty HTML, or skips it entirely in favor of a real browser",
+        "Uses Playwright (the bundled snapshot.py helper, dom.py helper, OR a custom async_playwright script) — not Selenium / requests-html / Beautiful Soup alone",
+        "Includes a wait strategy targeted at the project list rendering (wait_for_selector or --wait-for) — does NOT only rely on `networkidle` (which can hang on polling apps)",
+        "If writing custom code: uses async_playwright (the skill's default), not sync_playwright",
+        "Output is just the project titles (or a clear path to them) — does not over-deliver with a full scraping framework"
+      ],
+      "files": []
+    },
+    {
+      "id": 5,
+      "name": "find-stable-selector",
+      "prompt": "I'm writing a pytest test that needs to click the 'Continue' button on http://localhost:5173/checkout. The button is rendered by a third-party widget so I don't control the markup. Can you figure out what stable selector I should use? Don't write the full test, just find me the right locator.",
+      "assertions": [
+        "Recommends actually inspecting the rendered page (via scripts/dom.py, scripts/snapshot.py, or DevTools / `playwright codegen`) — not guessing from imagined markup",
+        "Recommends locators in priority order: data-testid → role+name → text/label → CSS-class as last resort",
+        "Mentions iframes as a real possibility for third-party widgets and how to handle them (frame_locator)",
+        "Calls out anti-patterns: hashed/minified CSS classes, auto-generated ids (e.g. `:r17:`, `mui-*`), positional/XPath nth selectors",
+        "Respects the user's explicit constraint: does NOT write the full pytest test — locator only"
+      ],
+      "files": []
+    }
+  ]
+}
