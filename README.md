@@ -16,6 +16,7 @@
 <!-- SKILLS_TABLE_START -->
 | Skill | Description |
 |---|---|
+| [aiochannel-python](./skills/aiochannel-python/) | Correct patterns for channel-based asyncio concurrency in Python using the aiochannel library. Use this skill wheneve… |
 | [autoresearch](./skills/autoresearch/) | Autonomous iterative optimization loop for Python, SQL, ML, and Spark/Databricks. Define a measurable goal; the skill… |
 | [bms](./skills/bms/) | Master skill for the bmsuisse platform — routes to the relevant skills based on sub-command. Always enables caveman c… |
 | [codeunit-analyzer](./skills/codeunit-analyzer/) | Comprehensive C-AL performance analyzer for Classic Microsoft Dynamics NAV (Navision). Targets Classic NAV anti-patte… |
