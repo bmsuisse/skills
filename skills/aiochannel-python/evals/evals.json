@@ -1,0 +1,93 @@
+{
+  "skill_name": "aiochannel-python",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I'm using aiochannel and I want to read a list of URLs from a database, download each one with aiohttp, and insert the results into another table. How do I wire this up as a producer/consumer with Channel?",
+      "expected_output": "Shows a producer that fetches URLs and puts them into a Channel, closes the channel in finally, a consumer that iterates with async for, and an orchestrator that creates tasks and awaits them. Producer closes the channel.",
+      "files": [],
+      "assertions": [
+        {
+          "text": "Producer closes the channel in a finally block (not just at end of normal execution)",
+          "type": "qualitative"
+        },
+        {
+          "text": "Consumer uses 'async for item in ch:' to iterate (not a manual while loop with get())",
+          "type": "qualitative"
+        },
+        {
+          "text": "Tasks are created with asyncio.create_task and awaited after the pipeline is set up",
+          "type": "qualitative"
+        },
+        {
+          "text": "Channel is typed (e.g. Channel[str] or Channel[Row]) not just Channel()",
+          "type": "qualitative"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I have two async functions that both produce items into the same aiochannel — one reads from an API, one reads from a local file. How do I make sure the channel gets closed correctly when both are done?",
+      "expected_output": "Uses a wrapper coroutine that calls asyncio.gather on both producers and closes the channel in finally. Individual producers do NOT close the channel.",
+      "files": [],
+      "assertions": [
+        {
+          "text": "A wrapper/coordinator coroutine calls asyncio.gather on both producers and closes the channel in its finally block",
+          "type": "qualitative"
+        },
+        {
+          "text": "Individual producer functions do NOT call ch.close() themselves",
+          "type": "qualitative"
+        },
+        {
+          "text": "Explains why each producer closing independently would be wrong (first to finish closes it while the other is still running)",
+          "type": "qualitative"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "I'm building an aiochannel pipeline: stage 1 fetches raw JSON from an API, stage 2 parses and validates it, stage 3 bulk-inserts into postgres in batches of 50. How should I structure the batch insert stage so it doesn't miss items if the producer is slow?",
+      "expected_output": "Shows the batch consumer using the get_nowait drain loop pattern with while not ch.closed() or not ch.empty(), inner loop collecting up to 50 items, sleeping when empty. Also shows the pipeline wired with intermediate channels and each stage closing its output in finally.",
+      "files": [],
+      "assertions": [
+        {
+          "text": "Batch consumer uses 'while not ch.closed() or not ch.empty()' as the outer loop condition (both clauses present)",
+          "type": "qualitative"
+        },
+        {
+          "text": "Inner loop uses get_nowait() and catches ChannelEmpty and/or ChannelClosed to break",
+          "type": "qualitative"
+        },
+        {
+          "text": "Sleeps (asyncio.sleep) when no items are available but channel isn't closed yet",
+          "type": "qualitative"
+        },
+        {
+          "text": "Each pipeline stage closes its output channel in a finally block",
+          "type": "qualitative"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "My aiochannel producer sometimes hits a network error halfway through. If that happens, will my consumer hang forever? How do I make sure the consumer exits cleanly even when the producer crashes?",
+      "expected_output": "Explains that the producer must close the channel in a finally block — then the consumer's async for will exit cleanly even if the producer raised. Explains that the exception surfaces when you await the producer task, not via the channel.",
+      "files": [],
+      "assertions": [
+        {
+          "text": "Correctly identifies that without finally/close, the consumer would hang forever waiting for more items",
+          "type": "qualitative"
+        },
+        {
+          "text": "Solution is to close the channel in a finally block in the producer",
+          "type": "qualitative"
+        },
+        {
+          "text": "Explains that the exception propagates when you await the producer task (not via the channel)",
+          "type": "qualitative"
+        }
+      ]
+    }
+  ]
+}
