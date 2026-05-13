@@ -115,20 +115,21 @@ Use these for simple CRUD. For custom `WHERE` clauses, joins, aggregations, or o
 
 ## Loading SQL files
 
+Use this helper:
+
 ```python
 # db/loader.py
 from functools import lru_cache
 from pathlib import Path
+from typing import LiteralString, cast
 
-_QUERIES_ROOT = Path(__file__).parent / "queries"
+_SQL_ROOT = Path(__file__).parent / "sql"
 
 @lru_cache(maxsize=None)
-def load_sql(topic: str, name: str) -> str:
-    """Return the SQL text for queries/<topic>/<name>.sql."""
-    return (_QUERIES_ROOT / topic / f"{name}.sql").read_text()
+def load_sql(topic: str, name: str) -> LiteralString:
+    """Return the SQL text for sql/<topic>/<name>.sql."""
+    return cast(LiteralString, (_SQL_ROOT / topic / f"{name}.sql").read_text())
 ```
-
-Each file is read from disk once per process lifetime. Never embed SQL strings in Python.
 
 ---
 
