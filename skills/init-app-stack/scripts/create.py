@@ -430,12 +430,15 @@ def main() -> None:
     print("\n🐍 Backend: FastAPI + asyncpg (Python 3.14)")
 
     be.mkdir(exist_ok=True)
-    run(["uv", "init", "--python", "3.14", "."], be, "uv init (python 3.14)")
+    run(["uv", "init", "--python", "3.14", "."], root, "uv init (python 3.14)")
     run(
         ["uv", "add", "fastapi", "granian[reload]", "asyncpg", "pydantic-settings"],
-        be,
+        root,
         "uv add fastapi granian[reload] asyncpg pydantic-settings",
     )
+
+    # backend/__init__.py — makes `backend` a proper package
+    write(be / "__init__.py", "")
 
     # config.py
     write(
@@ -463,7 +466,7 @@ def main() -> None:
         import asyncpg
         from string.templatelib import Template
 
-        from config import settings
+        from backend.config import settings
 
         pool: asyncpg.Pool | None = None
 
@@ -511,8 +514,8 @@ def main() -> None:
         from fastapi import FastAPI
         from fastapi.middleware.cors import CORSMiddleware
 
-        from config import settings
-        from db import connect, disconnect, pool, sql
+        from backend.config import settings
+        from backend.db import connect, disconnect, pool, sql
 
 
         @asynccontextmanager
@@ -553,52 +556,52 @@ def main() -> None:
 
 
         def dev() -> None:
-            sys.exit(subprocess.call(["granian", "--interface", "asgi", "main:app", "--reload"]))
+            sys.exit(subprocess.call(["granian", "--interface", "asgi", "backend.main:app", "--reload"]))
 
 
         def start() -> None:
-            sys.exit(subprocess.call(["granian", "--interface", "asgi", "main:app", "--workers", "4"]))
+            sys.exit(subprocess.call(["granian", "--interface", "asgi", "backend.main:app", "--workers", "4"]))
         """,
     )
 
     # Append build-system + [project.scripts] so `uv run dev` / `uv run start` work.
     # Needs: a build backend (setuptools), explicit py-modules (flat layout),
     # and tool.uv.package = true so uv installs the project's entry points.
-    pyproject = be / "pyproject.toml"
+    pyproject = root / "pyproject.toml"
     if pyproject.exists():
         content = pyproject.read_text(encoding="utf-8")
         if "[project.scripts]" not in content:
             content += textwrap.dedent(
                 """
                 [project.scripts]
-                dev = "scripts:dev"
-                start = "scripts:start"
+                dev = "backend.scripts:dev"
+                start = "backend.scripts:start"
 
                 [build-system]
                 requires = ["setuptools>=61"]
                 build-backend = "setuptools.build_meta"
 
                 [tool.setuptools]
-                py-modules = ["main", "db", "config", "scripts"]
+                packages = ["backend"]
 
                 [tool.uv]
                 package = true
                 """
             )
             pyproject.write_text(content, encoding="utf-8")
-        run(["uv", "sync"], be, "uv sync (install entry points)")
+        run(["uv", "sync"], root, "uv sync (install entry points)")
 
-    # Backend .env.example
+    # Root .env.example (backend vars; uv runs from root so .env is at root)
     write(
-        be / ".env.example",
+        root / ".env.example",
         """\
         DATABASE_URL=postgresql://postgres:postgres@localhost:5432/app
         CORS_ORIGINS=["http://localhost:5173"]
         """,
     )
 
-    # Drop default hello.py if uv init created it
-    hello = be / "hello.py"
+    # Drop default hello.py if uv init created it at root
+    hello = root / "hello.py"
     if hello.exists():
         hello.unlink()
 
@@ -669,10 +672,10 @@ def main() -> None:
 
         ```bash
         cp frontend/.env.example frontend/.env
-        cp backend/.env.example  backend/.env
+        cp .env.example .env
 
         docker compose up -d db                 # Postgres on :5432
-        (cd backend  && uv run dev)             # FastAPI on :8000
+        uv run dev                              # FastAPI on :8000
         (cd frontend && bun run dev)            # Vite on :5173
         ```
 
@@ -698,9 +701,10 @@ def main() -> None:
     print(f"""
 🎉 Project '{project}' is ready!
 
+  cd {project}
   docker compose up -d db
-  cd {project}/backend  && uv run dev
-  cd {project}/frontend && bun run dev
+  uv run dev                        # FastAPI on :8000
+  cd frontend && bun run dev        # Vite on :5173
 """)
 
 
