@@ -28,9 +28,9 @@ The script (works on Mac, Linux, Windows):
 3. Writes `src/lib/queryClient.ts`, `src/lib/api.ts` (fetch wrapper with `VITE_API_URL`), `src/lib/utils.ts` (shadcn `cn` helper), `src/stores/` placeholder for Zustand
 4. Writes shadcn config: `components.json`, shadcn-compatible `src/index.css` (OKLCH theme vars, `@theme inline`, `tw-animate-css`, `.dark` class variant), patches `tsconfig.json` + `tsconfig.app.json` with `@/*` path alias
 5. Adds `bun run generate-api` script → fetches `/openapi.json` and runs `openapi-typescript` into `src/lib/api-types.ts`
-6. **Backend**: `uv init --python 3.14`, adds `fastapi`, `granian`, `asyncpg`, `pydantic-settings`
-7. Writes `main.py` (lifespan-managed asyncpg pool, CORS for `localhost:5173`), `db.py` (pool + t-string `sql()` helper), `config.py` (pydantic-settings)
-8. Adds `dev = "granian --interface asgi main:app --reload"` and `start = "granian --interface asgi main:app --workers 4"` to `pyproject.toml`
+6. **Backend**: `uv init --python 3.14` at **project root**, adds `fastapi`, `granian`, `asyncpg`, `pydantic-settings`
+7. Writes `backend/main.py` (lifespan-managed asyncpg pool, CORS for `localhost:5173`), `backend/db.py` (pool + t-string `sql()` helper), `backend/config.py` (pydantic-settings) — all imports use `from backend.xxx import ...`
+8. Adds `dev = "backend.scripts:dev"` and `start = "backend.scripts:start"` to root `pyproject.toml`; granian target is `backend.main:app`
 9. Writes `docker-compose.yml` with a single `db` service (Postgres 17) + named volume
 10. Writes `.env.example` (frontend + backend), root `.gitignore`, `README.md` with startup steps
 
@@ -39,14 +39,14 @@ After running:
 ```bash
 cd <project-name>
 docker compose up -d db           # start Postgres
-cd backend  && uv run dev         # FastAPI on :8000
+uv run dev                        # FastAPI on :8000 (run from project root)
 cd frontend && bun run dev        # Vite on :5173
 ```
 
 ## Step 2: Set up code formatting with prek
 
 After scaffolding, run `/prek` to configure formatters for the whole project.
-This writes `prek.toml`, updates `pyproject.toml`, adds `.prettierrc`, installs
+This writes `prek.toml`, updates root `pyproject.toml`, adds `.prettierrc`, installs
 the git pre-commit hook, and formats all existing files. The project has both
 Python (`backend/`) and TypeScript (`frontend/`) so prek will configure both
 ruff and prettier automatically.
@@ -101,9 +101,9 @@ This installs the `coding` plugin which includes:
 - Always use **uv** (not pip/poetry/pipenv) for the backend. Pin Python **3.14**.
 - Backend uses `fastapi` + `granian` — do **not** use `fastapi[standard]` (bundles uvicorn, conflicts with Granian).
 - Run backend dev with `uv run dev` (`granian --interface asgi main:app --reload`).
-- **Do not use SQLAlchemy or any ORM.** Use raw asyncpg with the `sql()` t-string helper in `db.py`:
+- **Do not use SQLAlchemy or any ORM.** Use raw asyncpg with the `sql()` t-string helper in `backend/db.py`:
   ```python
-  from db import sql, pool
+  from backend.db import sql, pool
   async with pool.acquire() as conn:
       rows = await conn.fetch(*sql(t"SELECT * FROM users WHERE id = {user_id}"))
   ```
