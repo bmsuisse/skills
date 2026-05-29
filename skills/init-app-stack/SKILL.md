@@ -12,6 +12,7 @@ Bootstrap a full-stack project with:
 - **Backend**: FastAPI + Granian + raw **asyncpg** (Postgres), managed with **uv**, targeting **Python 3.14** (PEP 750 t-strings for SQL)
 - **DB**: Postgres 17 via `docker-compose.yml`
 - **Types**: `openapi-typescript` generates a typed client from FastAPI's OpenAPI schema
+- **Ports**: randomly assigned high ports (seeded by project name, so deterministic per project — printed on scaffold completion)
 
 ## Step 1: Run the scaffold script
 
@@ -115,5 +116,5 @@ This installs the `coding` plugin which includes:
 - UI components: **shadcn/ui** — generated into `src/components/ui/` via `bunx --bun shadcn@latest add <component>`. Do not install a MUI/Chakra/Mantine. Style with Tailwind v4 tokens (`bg-background`, `text-foreground`, `text-muted-foreground`, `border-border`) — not raw palette colors like `bg-neutral-800`.
 - Use the `cn()` helper from `@/lib/utils` to conditionally merge Tailwind classes. Imports use the `@/*` alias (configured in `vite.config.ts` + both tsconfigs).
 - Regenerate API types after backend changes: `bun run generate-api` (requires backend running on `localhost:8000`).
-- CORS is pre-configured for `http://localhost:5173` (Vite default). Update for production.
+- CORS is pre-configured for the project's assigned frontend port (seeded from project name). Update for production.
 - Typing on backend: `uv add --dev ty` and run `uv run ty check`.
