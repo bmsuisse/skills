@@ -41,6 +41,13 @@ def main() -> None:
     fe = root / "frontend"
     be = root / "backend"
 
+    import random
+    rng = random.Random(project)  # deterministic per project name
+    fe_port = rng.randint(10000, 59999)
+    be_port = rng.randint(10000, 59999)
+    while be_port == fe_port:
+        be_port = rng.randint(10000, 59999)
+
     root.mkdir(exist_ok=True)
 
     # ── Frontend ──────────────────────────────────────────────────────────────
@@ -104,9 +111,9 @@ def main() -> None:
               '@': path.resolve(__dirname, './src'),
             },
           },
-          server: { port: 5173 },
+          server: { port: __FE_PORT__ },
         })
-        """,
+        """.replace("__FE_PORT__", str(fe_port)),
     )
 
     # src/index.css — Tailwind v4 + shadcn theme (neutral base, OKLCH vars)
@@ -253,7 +260,7 @@ def main() -> None:
     write(
         fe / "src" / "lib" / "api.ts",
         """\
-        const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
+        const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:__BE_PORT__'
 
         export async function api<T>(path: string, init?: RequestInit): Promise<T> {
           const res = await fetch(`${BASE}${path}`, {
@@ -264,7 +271,7 @@ def main() -> None:
           if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
           return res.json() as Promise<T>
         }
-        """,
+        """.replace("__BE_PORT__", str(be_port)),
     )
 
     # src/lib/utils.ts — shadcn `cn` helper
@@ -412,7 +419,7 @@ def main() -> None:
         scripts = data.setdefault("scripts", {})
         scripts["build"] = "vite build && tsc --noEmit"
         scripts["generate-api"] = (
-            "openapi-typescript http://localhost:8000/openapi.json -o src/lib/api-types.ts"
+            f"openapi-typescript http://localhost:{be_port}/openapi.json -o src/lib/api-types.ts"
         )
         pkg.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
 
@@ -420,8 +427,8 @@ def main() -> None:
     write(
         fe / ".env.example",
         """\
-        VITE_API_URL=http://localhost:8000
-        """,
+        VITE_API_URL=http://localhost:__BE_PORT__
+        """.replace("__BE_PORT__", str(be_port)),
     )
 
     print("✅ Frontend ready")
@@ -450,10 +457,10 @@ def main() -> None:
             model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
             database_url: str = "postgresql://postgres:postgres@localhost:5432/app"
-            cors_origins: list[str] = ["http://localhost:5173"]
+            cors_origins: list[str] = ["http://localhost:__FE_PORT__"]
 
         settings = Settings()
-        """,
+        """.replace("__FE_PORT__", str(fe_port)),
     )
 
     # db.py — asyncpg pool + t-string sql() helper (PEP 750)
@@ -556,12 +563,12 @@ def main() -> None:
 
 
         def dev() -> None:
-            sys.exit(subprocess.call(["granian", "--interface", "asgi", "backend.main:app", "--reload"]))
+            sys.exit(subprocess.call(["granian", "--interface", "asgi", "backend.main:app", "--port", "__BE_PORT__", "--reload"]))
 
 
         def start() -> None:
-            sys.exit(subprocess.call(["granian", "--interface", "asgi", "backend.main:app", "--workers", "4"]))
-        """,
+            sys.exit(subprocess.call(["granian", "--interface", "asgi", "backend.main:app", "--port", "__BE_PORT__", "--workers", "4"]))
+        """.replace("__BE_PORT__", str(be_port)),
     )
 
     # Append build-system + [project.scripts] so `uv run dev` / `uv run start` work.
@@ -596,8 +603,8 @@ def main() -> None:
         root / ".env.example",
         """\
         DATABASE_URL=postgresql://postgres:postgres@localhost:5432/app
-        CORS_ORIGINS=["http://localhost:5173"]
-        """,
+        CORS_ORIGINS=["http://localhost:__FE_PORT__"]
+        """.replace("__FE_PORT__", str(fe_port)),
     )
 
     # Drop default hello.py if uv init created it at root
@@ -675,8 +682,8 @@ def main() -> None:
         cp .env.example .env
 
         docker compose up -d db                 # Postgres on :5432
-        uv run dev                              # FastAPI on :8000
-        (cd frontend && bun run dev)            # Vite on :5173
+        uv run dev                              # FastAPI on :{be_port}
+        (cd frontend && bun run dev)            # Vite on :{fe_port}
         ```
 
         ## Regenerate typed API client
@@ -703,8 +710,8 @@ def main() -> None:
 
   cd {project}
   docker compose up -d db
-  uv run dev                        # FastAPI on :8000
-  cd frontend && bun run dev        # Vite on :5173
+  uv run dev                        # FastAPI on :{be_port}
+  cd frontend && bun run dev        # Vite on :{fe_port}
 """)
 
 
