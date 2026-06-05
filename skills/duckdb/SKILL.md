@@ -2,10 +2,10 @@
 name: duckdb
 description: >
   Guide for working with DuckDB — CLI usage, SQL execution, reading files (CSV, Parquet, JSON, Excel),
-  extensions (httpfs, spatial, json, excel, etc.), and the Python duckdb package.
+  extensions (httpfs, spatial, json, excel, postgres, etc.), and the Python duckdb package.
   Use this skill whenever the user is working with DuckDB, whether via CLI, SQL scripts, or Python.
   Trigger on: duckdb queries, reading local/remote files with duckdb, installing duckdb extensions,
-  duckdb in Python/pandas, exporting data, or any question about DuckDB behavior or syntax.
+  duckdb in Python/pandas, exporting data, attaching or querying PostgreSQL from DuckDB, or any question about DuckDB behavior or syntax.
 ---
 
 # DuckDB
@@ -103,6 +103,123 @@ SELECT * FROM pg.public.orders LIMIT 10;
 ```
 
 [Extensions list](https://duckdb.org/docs/extensions/overview)
+
+---
+
+## PostgreSQL Extension
+
+[Docs](https://duckdb.org/docs/current/core_extensions/postgres/overview)
+
+Lets DuckDB read and write directly from/to a live PostgreSQL instance. Auto-loaded on first use; to install manually:
+
+```sql
+INSTALL postgres;
+LOAD postgres;
+```
+
+### Connecting
+
+```sql
+-- Read-write (localhost, default user/db)
+ATTACH '' AS pg (TYPE postgres);
+
+-- Explicit connection string, read-only
+ATTACH 'dbname=mydb user=postgres host=127.0.0.1' AS pg (TYPE postgres, READ_ONLY);
+
+-- Attach only one schema
+ATTACH 'dbname=mydb user=postgres host=127.0.0.1' AS pg (TYPE postgres, SCHEMA 'public');
+
+-- Disconnect
+DETACH pg;
+```
+
+Connection string parameters: `host`, `port` (5432), `dbname`, `user`, `password`, `passfile`, `hostaddr`, `connect_timeout`.
+URI form also works: `postgresql://username@hostname/dbname`.
+
+You can also configure the connection via **secrets** (see [Secrets page](https://duckdb.org/docs/current/core_extensions/postgres/secrets)) or **environment variables** (`PGHOST`, `PGUSER`, `PGPASSWORD`, `PGDATABASE`).
+
+### Reading
+
+Once attached, tables are queried as if they were local DuckDB tables — data is read from Postgres at query time:
+
+```sql
+SHOW ALL TABLES;
+SELECT * FROM pg.public.orders LIMIT 10;
+
+-- Copy into DuckDB to avoid repeated round-trips
+CREATE TABLE local_orders AS FROM pg.public.orders;
+```
+
+### Writing
+
+```sql
+ATTACH 'dbname=mydb' AS pg (TYPE postgres);
+
+CREATE TABLE pg.tbl (id INTEGER, name VARCHAR);
+INSERT INTO pg.tbl VALUES (42, 'DuckDB');
+UPDATE pg.tbl SET name = 'Updated' WHERE id = 42;
+DELETE FROM pg.tbl WHERE id = 42;
+ALTER TABLE pg.tbl ADD COLUMN k INTEGER;
+DROP TABLE pg.tbl;
+
+CREATE VIEW pg.v1 AS SELECT 42;
+CREATE SCHEMA pg.s1;
+DROP SCHEMA pg.s1;
+```
+
+### COPY / export
+
+```sql
+-- Postgres table -> Parquet
+COPY pg.tbl TO 'data.parquet';
+
+-- Parquet -> Postgres table
+COPY pg.tbl FROM 'data.parquet';
+
+-- Full database copy into DuckDB
+COPY FROM DATABASE pg TO my_duckdb_db;
+```
+
+### Transactions
+
+```sql
+BEGIN;
+INSERT INTO pg.tmp VALUES (42);
+ROLLBACK;   -- or COMMIT
+```
+
+### Running arbitrary SQL in Postgres
+
+```sql
+-- Read query
+SELECT * FROM postgres_query('pg', 'SELECT * FROM cars LIMIT 3');
+
+-- DDL / DML (write)
+CALL postgres_execute('pg', 'CREATE TABLE my_table (i INTEGER)');
+```
+
+### Schema cache
+
+DuckDB caches Postgres schema info. If another connection changes the schema externally, clear the cache:
+
+```sql
+CALL pg_clear_cache();
+```
+
+### Useful settings
+
+| Setting | Description | Default |
+| --- | --- | --- |
+| `pg_connection_limit` | Max concurrent PG connections | 64 |
+| `pg_use_binary_copy` | Use BINARY protocol for COPY | true |
+| `pg_experimental_filter_pushdown` | Push WHERE filters to PG | true |
+| `pg_array_as_varchar` | Read PG arrays as VARCHAR | false |
+| `pg_use_ctid_scan` | Parallel scan via ctids | true |
+
+```sql
+SET pg_connection_limit = 10;
+```
+
 
 ---
 
