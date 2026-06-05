@@ -206,6 +206,8 @@ DuckDB caches Postgres schema info. If another connection changes the schema ext
 CALL pg_clear_cache();
 ```
 
+For full details on secrets, connection pool tuning, and all functions, see [`references/postgres.md`](references/postgres.md).
+
 ### Useful settings
 
 | Setting | Description | Default |
