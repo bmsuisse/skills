@@ -2,10 +2,10 @@
 name: duckdb
 description: >
   Guide for working with DuckDB — CLI usage, SQL execution, reading files (CSV, Parquet, JSON, Excel),
-  extensions (httpfs, spatial, json, excel, etc.), and the Python duckdb package.
+  extensions (httpfs, spatial, json, excel, postgres, etc.), and the Python duckdb package.
   Use this skill whenever the user is working with DuckDB, whether via CLI, SQL scripts, or Python.
   Trigger on: duckdb queries, reading local/remote files with duckdb, installing duckdb extensions,
-  duckdb in Python/pandas, exporting data, or any question about DuckDB behavior or syntax.
+  duckdb in Python/pandas, exporting data, attaching or querying PostgreSQL from DuckDB, or any question about DuckDB behavior or syntax.
 ---
 
 # DuckDB
@@ -103,6 +103,21 @@ SELECT * FROM pg.public.orders LIMIT 10;
 ```
 
 [Extensions list](https://duckdb.org/docs/extensions/overview)
+
+---
+
+## PostgreSQL Extension
+
+Lets DuckDB read and write directly from/to a live PostgreSQL instance. Auto-loaded on first use.
+
+```sql
+ATTACH 'dbname=mydb user=postgres host=127.0.0.1' AS pg (TYPE postgres);
+SELECT * FROM pg.public.orders LIMIT 10;
+DETACH pg;
+```
+
+See [`references/postgres.md`](references/postgres.md) for full details: connecting, reading/writing, COPY, transactions, secrets, connection pool, and all functions.
+
 
 ---
 
