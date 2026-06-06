@@ -1,6 +1,6 @@
 # React + TanStack Reference
 
-Frontend stack: **Vite + React + TanStack Router + TanStack Query + Zustand**.
+Frontend stack: **Vite + React + TanStack Router + TanStack Query + TanStack Form + TanStack Table + TanStack Virtual + Zustand**.
 
 Load this when working on routing, data fetching, forms, mutations, URL state, or client state.
 
@@ -199,9 +199,142 @@ const toggleSidebar = useUiStore((s) => s.toggleSidebar)
 
 ---
 
-## Forms
+## TanStack Form
 
-Build form UIs with shadcn primitives (`bunx --bun shadcn@latest add form input label button`). shadcn's `form` component wraps **react-hook-form + Zod** — add those (`bun add react-hook-form @hookform/resolvers`) when building non-trivial forms. Submit handlers call TanStack Query mutations. See `references/shadcn-ui.md` for components.
+```tsx
+import { useForm } from '@tanstack/react-form'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+
+function CreateUserForm() {
+  const qc = useQueryClient()
+  const mutation = useMutation({
+    mutationFn: (body: { name: string }) => api<User>('/users', { method: 'POST', body: JSON.stringify(body) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['users'] }),
+  })
+
+  const form = useForm({
+    defaultValues: { name: '' },
+    onSubmit: ({ value }) => mutation.mutate(value),
+  })
+
+  return (
+    <form onSubmit={(e) => { e.preventDefault(); form.handleSubmit() }}>
+      <form.Field
+        name="name"
+        validators={{ onChange: ({ value }) => !value ? 'Required' : undefined }}
+        children={(field) => (
+          <>
+            <input
+              value={field.state.value}
+              onChange={(e) => field.handleChange(e.target.value)}
+              onBlur={field.handleBlur}
+            />
+            {field.state.meta.errors[0] && (
+              <span className="text-destructive text-sm">{field.state.meta.errors[0]}</span>
+            )}
+          </>
+        )}
+      />
+      <button type="submit" disabled={mutation.isPending}>Submit</button>
+    </form>
+  )
+}
+```
+
+Use shadcn `input`, `label`, `button` primitives for UI — do **not** install react-hook-form.
+
+---
+
+## TanStack Table
+
+```tsx
+import {
+  useReactTable,
+  getCoreRowModel,
+  getSortedRowModel,
+  flexRender,
+  type ColumnDef,
+} from '@tanstack/react-table'
+
+const columns: ColumnDef<User>[] = [
+  { accessorKey: 'name', header: 'Name' },
+  { accessorKey: 'email', header: 'Email' },
+]
+
+function UsersTable({ data }: { data: User[] }) {
+  const table = useReactTable({
+    data,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+  })
+
+  return (
+    <table>
+      <thead>
+        {table.getHeaderGroups().map(hg => (
+          <tr key={hg.id}>
+            {hg.headers.map(h => (
+              <th key={h.id} onClick={h.column.getToggleSortingHandler()} className="cursor-pointer">
+                {flexRender(h.column.columnDef.header, h.getContext())}
+              </th>
+            ))}
+          </tr>
+        ))}
+      </thead>
+      <tbody>
+        {table.getRowModel().rows.map(row => (
+          <tr key={row.id}>
+            {row.getVisibleCells().map(cell => (
+              <td key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )
+}
+```
+
+Table is headless — you own all markup. Style with Tailwind and shadcn tokens.
+
+---
+
+## TanStack Virtual
+
+Use when rendering 100+ rows to avoid DOM bloat:
+
+```tsx
+import { useVirtualizer } from '@tanstack/react-virtual'
+import { useRef } from 'react'
+
+function VirtualList({ items }: { items: string[] }) {
+  const parentRef = useRef<HTMLDivElement>(null)
+
+  const virtualizer = useVirtualizer({
+    count: items.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 40,
+  })
+
+  return (
+    <div ref={parentRef} className="h-96 overflow-auto">
+      <div style={{ height: `${virtualizer.getTotalSize()}px`, position: 'relative' }}>
+        {virtualizer.getVirtualItems().map(vItem => (
+          <div
+            key={vItem.key}
+            style={{ position: 'absolute', top: 0, transform: `translateY(${vItem.start}px)`, width: '100%' }}
+          >
+            {items[vItem.index]}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+```
+
+Combine with TanStack Table by passing `table.getRowModel().rows` as items.
 
 ---
 
@@ -221,3 +354,6 @@ Cookie-based flow: FastAPI sets `Set-Cookie` with `httpOnly + SameSite=Lax`, fro
 | `credentials: 'include'` via `lib/api.ts`         | Re-creating fetch wrappers in components      |
 | Invalidate queries after mutations                | Manually `setQueryData` without invalidation  |
 | `useSuspenseQuery` inside route loaders          | `useQuery` with `enabled` gating              |
+| TanStack Form (`useForm` + `form.Field`)         | react-hook-form or uncontrolled forms         |
+| TanStack Table (`useReactTable`)                 | Hand-rolled sort/filter/pagination state      |
+| TanStack Virtual for 100+ row lists              | Rendering all rows into the DOM               |

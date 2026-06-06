@@ -64,6 +64,9 @@ def main() -> None:
             "bun", "add",
             "@tanstack/react-router",
             "@tanstack/react-query",
+            "@tanstack/react-form",
+            "@tanstack/react-table",
+            "@tanstack/react-virtual",
             "zustand",
             "zod",
             "class-variance-authority",
@@ -79,6 +82,7 @@ def main() -> None:
         [
             "bun", "add", "-d",
             "@tanstack/router-plugin",
+            "@tanstack/react-devtools",
             "@tanstack/react-router-devtools",
             "@tanstack/react-query-devtools",
             "openapi-typescript",
@@ -320,8 +324,9 @@ def main() -> None:
         fe / "src" / "routes" / "__root.tsx",
         """\
         import { createRootRouteWithContext, Outlet } from '@tanstack/react-router'
-        import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
-        import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
+        import { TanStackDevtools } from '@tanstack/react-devtools'
+        import { ReactQueryDevtoolsPanel } from '@tanstack/react-query-devtools'
+        import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
         import type { QueryClient } from '@tanstack/react-query'
 
         export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
@@ -332,8 +337,14 @@ def main() -> None:
           return (
             <>
               <Outlet />
-              <TanStackRouterDevtools />
-              <ReactQueryDevtools buttonPosition="bottom-left" />
+              {import.meta.env.DEV && (
+                <TanStackDevtools
+                  plugins={[
+                    { name: 'TanStack Query', render: <ReactQueryDevtoolsPanel /> },
+                    { name: 'TanStack Router', render: <TanStackRouterDevtoolsPanel /> },
+                  ]}
+                />
+              )}
             </>
           )
         }
@@ -672,7 +683,7 @@ def main() -> None:
         f"""\
         # {project}
 
-        Full-stack app: Vite + React + TanStack (Router/Query) + Zustand on the frontend,
+        Full-stack app: Vite + React + TanStack (Router/Query/Form/Table/Virtual) + Zustand on the frontend,
         FastAPI + asyncpg on the backend, Postgres 17 in Docker.
 
         ## Dev

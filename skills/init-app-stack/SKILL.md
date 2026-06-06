@@ -8,7 +8,7 @@ description: Use this skill whenever the user wants to bootstrap, scaffold, or i
 
 Bootstrap a full-stack project with:
 
-- **Frontend**: Vite **8+** + React + TanStack Router + TanStack Query + Zustand + **shadcn/ui** + TailwindCSS v4, managed with **bun**
+- **Frontend**: Vite **8+** + React + TanStack Router + TanStack Query + TanStack Form + TanStack Table + TanStack Virtual + Zustand + **shadcn/ui** + TailwindCSS v4, managed with **bun**
 - **Backend**: FastAPI + Granian + raw **asyncpg** (Postgres), managed with **uv**, targeting **Python 3.14** (PEP 750 t-strings for SQL)
 - **DB**: Postgres 17 via `docker-compose.yml`
 - **Types**: `openapi-typescript` generates a typed client from FastAPI's OpenAPI schema
@@ -24,7 +24,7 @@ uv run python scripts/create.py <project-name>
 
 The script (works on Mac, Linux, Windows):
 
-1. **Frontend**: `bun create vite@latest frontend --template react-ts`, installs TanStack Router + Query + Devtools, Zustand, Zod, TailwindCSS v4, shadcn deps (`class-variance-authority`, `clsx`, `tailwind-merge`, `lucide-react`, `tw-animate-css`), `openapi-typescript`
+1. **Frontend**: `bun create vite@latest frontend --template react-ts`, installs TanStack Router + Query + Form + Table + Virtual + unified Devtools, Zustand, Zod, TailwindCSS v4, shadcn deps (`class-variance-authority`, `clsx`, `tailwind-merge`, `lucide-react`, `tw-animate-css`), `openapi-typescript`
 2. Wires `vite.config.ts` with `@tanstack/router-plugin` + `@/` path alias, sets up `src/main.tsx` with `QueryClientProvider` + `RouterProvider`, writes `src/routes/__root.tsx` and `src/routes/index.tsx`
 3. Writes `src/lib/queryClient.ts`, `src/lib/api.ts` (fetch wrapper with `VITE_API_URL`), `src/lib/utils.ts` (shadcn `cn` helper), `src/stores/` placeholder for Zustand
 4. Writes shadcn config: `components.json`, shadcn-compatible `src/index.css` (OKLCH theme vars, `@theme inline`, `tw-animate-css`, `.dark` class variant), patches `tsconfig.json` + `tsconfig.app.json` with `@/*` path alias
@@ -111,6 +111,9 @@ This installs the `coding` plugin which includes:
   The helper converts `t"..."` interpolations to asyncpg's native `$1, $2` positional params — safe from injection, no string formatting.
 - Frontend routing: **file-based** via `@tanstack/router-plugin` — add files under `src/routes/`, route tree is auto-generated.
 - Data fetching: **TanStack Query** only — do not roll `useEffect + fetch`. Use `queryOptions` for reusable query definitions.
+- Forms: **TanStack Form** (`@tanstack/react-form`) — use `useForm` + `form.Field` with shadcn input/label primitives. Do not add react-hook-form.
+- Tables: **TanStack Table** (`@tanstack/react-table`) — headless; you own the markup. Use `useReactTable` + `getCoreRowModel()`.
+- Long lists: **TanStack Virtual** (`@tanstack/react-virtual`) — use `useVirtualizer` when rendering 100+ rows.
 - Client state: start with `useState` + Context. Reach for **Zustand** only when syncing across distant components. Never Redux.
 - URL state (filters, pagination, sort): put in TanStack Router search params with Zod validation, not in Zustand.
 - UI components: **shadcn/ui** — generated into `src/components/ui/` via `bunx --bun shadcn@latest add <component>`. Do not install a MUI/Chakra/Mantine. Style with Tailwind v4 tokens (`bg-background`, `text-foreground`, `text-muted-foreground`, `border-border`) — not raw palette colors like `bg-neutral-800`.
