@@ -82,8 +82,8 @@ Set `JOB_RUNNER_MODE=subprocess` locally to skip the DB/worker entirely — jobs
 
 `dispatch_job` returns a `JobHandle(mode, id)` — job_id in procrastinate mode, PID in subprocess mode.
 
-- **subprocess:** `get_job_status(handle)` → `"started"` / `"succeeded"` / `"failed"` from process exit code; `get_job_history(handle)` → captured stdout/stderr as a string
-- **procrastinate:** `get_job_status_db(conn, handle)` → `JobInfo` from `procrastinate_jobs`; `get_job_history_db(conn, handle)` → `list[JobEvent]` from `procrastinate_events`
+- `get_job_status(handle, conn)` — subprocess: `"started"` / `"succeeded"` / `"failed"` from exit code; procrastinate: `JobInfo` from `procrastinate_jobs`
+- `get_job_history(handle, conn)` — subprocess: stdout/stderr as `str`; procrastinate: `list[JobEvent]` from `procrastinate_events`
 
 See [`references/job-dispatch.md`](references/job-dispatch.md) for full implementation of `job_dispatch.py`, `job_runner.py`, and the DB query helpers.
 

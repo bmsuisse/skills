@@ -19,6 +19,11 @@ import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
+import psycopg
+import psycopg.rows
+from datetime import datetime
+from typing import Literal
+
 _MODE = os.getenv("JOB_RUNNER_MODE", "procrastinate")  # "procrastinate" | "subprocess"
 
 # pid -> (process, log_path); only populated in subprocess mode
@@ -27,8 +32,25 @@ _subprocess_jobs: dict[int, tuple[asyncio.subprocess.Process, Path]] = {}
 
 @dataclass
 class JobHandle:
-    mode: str  # "procrastinate" | "subprocess"
-    id: int    # procrastinate job_id  OR  subprocess PID
+    mode: Literal["procrastinate", "subprocess"]
+    id: int  # procrastinate job_id  OR  subprocess PID
+
+
+@dataclass
+class JobInfo:
+    id: int
+    task_name: str
+    queue_name: str
+    status: str       # procrastinate_job_status or "started"/"succeeded"/"failed" for subprocess
+    attempts: int
+    args: dict
+    scheduled_at: datetime | None
+
+
+@dataclass
+class JobEvent:
+    type: str
+    at: datetime | None
 
 
 async def dispatch_job(job_name: str, module: str, **kwargs) -> JobHandle:
@@ -53,36 +75,61 @@ async def dispatch_job(job_name: str, module: str, **kwargs) -> JobHandle:
         return JobHandle(mode="procrastinate", id=job_id)
 
 
-def get_job_status(handle: JobHandle) -> str:
+async def get_job_status(handle: JobHandle, conn: psycopg.AsyncConnection | None = None) -> JobInfo | None:
     """
-    subprocess mode: "started" if still running, "succeeded" / "failed" by exit code.
-    procrastinate mode: use get_job_status_db() instead.
+    subprocess: derives status from process exit code; conn is unused.
+    procrastinate: queries procrastinate_jobs; conn is required.
     """
-    if handle.mode != "subprocess":
-        raise ValueError("get_job_status only applies to subprocess mode; use get_job_status_db for procrastinate")
-    entry = _subprocess_jobs.get(handle.id)
-    if entry is None:
-        return "unknown"
-    proc, _ = entry
-    if proc.returncode is None:
-        return "started"
-    return "succeeded" if proc.returncode == 0 else "failed"
+    if handle.mode == "subprocess":
+        entry = _subprocess_jobs.get(handle.id)
+        if entry is None:
+            return None
+        proc, _ = entry
+        if proc.returncode is None:
+            status = "started"
+        elif proc.returncode == 0:
+            status = "succeeded"
+        else:
+            status = "failed"
+        return JobInfo(id=handle.id, task_name="", queue_name="", status=status, attempts=0, args={}, scheduled_at=None)
+    else:
+        assert conn is not None, "conn required for procrastinate mode"
+        async with conn.cursor(row_factory=psycopg.rows.class_row(JobInfo)) as cur:
+            await cur.execute(
+                """
+                SELECT id, task_name, queue_name, status, attempts, args, scheduled_at
+                FROM procrastinate_jobs
+                WHERE id = %s
+                """,
+                (handle.id,),
+            )
+            return await cur.fetchone()
 
 
-def get_job_history(handle: JobHandle) -> str:
+async def get_job_history(handle: JobHandle, conn: psycopg.AsyncConnection | None = None) -> list[JobEvent] | str:
     """
-    subprocess mode: returns captured stdout/stderr as a string.
-    procrastinate mode: use get_job_history_db() instead.
+    subprocess: returns captured stdout/stderr as a string; conn is unused.
+    procrastinate: returns list[JobEvent] from procrastinate_events; conn is required.
     """
-    if handle.mode != "subprocess":
-        raise ValueError("get_job_history only applies to subprocess mode; use get_job_history_db for procrastinate")
-    entry = _subprocess_jobs.get(handle.id)
-    if entry is None:
-        return ""
-    _, log_path = entry
-    if not log_path.exists():
-        return ""
-    return log_path.read_text()
+    if handle.mode == "subprocess":
+        entry = _subprocess_jobs.get(handle.id)
+        if entry is None:
+            return ""
+        _, log_path = entry
+        return log_path.read_text() if log_path.exists() else ""
+    else:
+        assert conn is not None, "conn required for procrastinate mode"
+        async with conn.cursor(row_factory=psycopg.rows.class_row(JobEvent)) as cur:
+            await cur.execute(
+                """
+                SELECT type, at
+                FROM procrastinate_events
+                WHERE job_id = %s
+                ORDER BY at
+                """,
+                (handle.id,),
+            )
+            return await cur.fetchall()
 ```
 
 > `_subprocess_jobs` is in-memory — only available within the same process lifetime. Log files in the system temp dir accumulate; clean them up as needed.
@@ -107,68 +154,7 @@ if __name__ == "__main__":
     asyncio.run(_run(module, job_name, json.loads(kwargs_json)))
 ```
 
-## DB queries (procrastinate mode)
-
-Pass a psycopg `AsyncConnection`.
-
-```python
-from dataclasses import dataclass
-from datetime import datetime
-
-import psycopg
-import psycopg.rows
-
-
-@dataclass
-class JobInfo:
-    id: int
-    task_name: str
-    queue_name: str
-    status: str
-    attempts: int
-    args: dict
-    scheduled_at: datetime | None
-
-
-@dataclass
-class JobEvent:
-    type: str
-    at: datetime | None
-
-
-async def get_job_status_db(conn: psycopg.AsyncConnection, handle: JobHandle) -> JobInfo | None:
-    if handle.mode != "procrastinate":
-        raise ValueError("use get_job_status() for subprocess mode")
-    async with conn.cursor(row_factory=psycopg.rows.class_row(JobInfo)) as cur:
-        await cur.execute(
-            """
-            SELECT id, task_name, queue_name, status, attempts, args, scheduled_at
-            FROM procrastinate_jobs
-            WHERE id = %s
-            """,
-            (handle.id,),
-        )
-        return await cur.fetchone()
-
-
-async def get_job_history_db(conn: psycopg.AsyncConnection, handle: JobHandle) -> list[JobEvent]:
-    """Returns lifecycle events ordered by time: deferred → started → succeeded/failed/..."""
-    if handle.mode != "procrastinate":
-        raise ValueError("use get_job_history() for subprocess mode")
-    async with conn.cursor(row_factory=psycopg.rows.class_row(JobEvent)) as cur:
-        await cur.execute(
-            """
-            SELECT type, at
-            FROM procrastinate_events
-            WHERE job_id = %s
-            ORDER BY at
-            """,
-            (handle.id,),
-        )
-        return await cur.fetchall()
-```
-
-### `procrastinate_events.type` values
+## `procrastinate_events.type` values
 
 | Event | Meaning |
 |---|---|
@@ -186,11 +172,9 @@ async def get_job_history_db(conn: psycopg.AsyncConnection, handle: JobHandle) -
 ```python
 handle = await dispatch_job("send_email", "myapp.tasks.email", to="user@example.com", subject="Hi")
 
-if handle.mode == "subprocess":
-    print(get_job_status(handle))   # "started" | "succeeded" | "failed"
-    print(get_job_history(handle))  # stdout/stderr as string
-
-if handle.mode == "procrastinate":
-    info = await get_job_status_db(conn, handle)
-    events = await get_job_history_db(conn, handle)
+# works in both modes — pass conn=None for subprocess, conn=<psycopg conn> for procrastinate
+info = await get_job_status(handle, conn)
+history = await get_job_history(handle, conn)
+# subprocess: history is a str (stdout/stderr)
+# procrastinate: history is list[JobEvent]
 ```
