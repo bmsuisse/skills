@@ -641,6 +641,49 @@ def main() -> None:
         """,
     )
 
+    # ── justfile (task runner) ────────────────────────────────────────────────
+    write(
+        root / "justfile",
+        """\
+        set dotenv-load := true
+        set shell := ["bash", "-uc"]
+
+        default:
+            @just --list
+
+        # Install all deps (backend + frontend)
+        install:
+            uv sync
+            cd frontend && bun install
+
+        # Start Postgres in the background
+        db-up:
+            docker compose up -d db
+
+        # Stop Postgres
+        db-down:
+            docker compose down
+
+        # Run the FastAPI backend (:__BE_PORT__)
+        backend:
+            uv run dev
+
+        # Run the Vite frontend (:__FE_PORT__)
+        frontend:
+            cd frontend && bun run dev
+
+        # Run backend + frontend together (Ctrl+C stops both)
+        dev:
+            trap 'kill 0' EXIT
+            just backend & just frontend &
+            wait
+
+        # Regenerate the typed API client from the running backend
+        generate-api:
+            cd frontend && bun run generate-api
+        """.replace("__BE_PORT__", str(be_port)).replace("__FE_PORT__", str(fe_port)),
+    )
+
     # ── Root .gitignore ───────────────────────────────────────────────────────
     write(
         root / ".gitignore",
@@ -677,13 +720,19 @@ def main() -> None:
 
         ## Dev
 
+        Task running is via [`just`](https://github.com/casey/just) — run `just` to list all recipes.
+
         ```bash
         cp frontend/.env.example frontend/.env
         cp .env.example .env
 
-        docker compose up -d db                 # Postgres on :5432
-        uv run dev                              # FastAPI on :{be_port}
-        (cd frontend && bun run dev)            # Vite on :{fe_port}
+        just install     # uv sync + bun install
+        just db-up       # Postgres on :5432
+        just dev         # FastAPI (:{be_port}) + Vite (:{fe_port}) together
+
+        # or run them separately:
+        just backend     # FastAPI on :{be_port}
+        just frontend    # Vite on :{fe_port} (run in a second terminal)
         ```
 
         ## Regenerate typed API client
@@ -691,7 +740,7 @@ def main() -> None:
         With the backend running:
 
         ```bash
-        cd frontend && bun run generate-api
+        just generate-api
         ```
 
         Writes `frontend/src/lib/api-types.ts` from `/openapi.json`.
@@ -709,9 +758,9 @@ def main() -> None:
 🎉 Project '{project}' is ready!
 
   cd {project}
-  docker compose up -d db
-  uv run dev                        # FastAPI on :{be_port}
-  cd frontend && bun run dev        # Vite on :{fe_port}
+  just install
+  just db-up                        # start Postgres
+  just dev                          # FastAPI (:{be_port}) + Vite (:{fe_port}) together
 """)
 
 
