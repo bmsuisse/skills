@@ -12,9 +12,10 @@
 """
 Fetches CREATE TABLE DDL from PostgreSQL for tables that exist in the
 database but aren't yet tracked as .sql files under database/, then
-writes them to the right schema folder.
+writes them to the matching layer folder's tables/ subfolder (matched
+by schema name, ignoring each layer folder's leading sort number).
 
-Adjust _PREFIX and SCHEMA_FOLDER below to match the project.
+Adjust _PREFIX below to match the project's env-var naming.
 
 Usage:
     uv run scripts/fetch_missing_tables.py
@@ -37,22 +38,32 @@ _PREFIX = os.getenv("PG_ENV_PREFIX", "POSTGRES_")
 
 DB_ROOT = Path(__file__).parent.parent / "database"
 
-# Maps a Postgres schema name to the folder it's tracked under.
-# The layer-number prefix on folders (0_, 1_, 2_...) is purely for human
-# sorting/grouping in file listings — it plays no role here or in apply
-# order, so map to whatever folder the layer actually lives in.
-SCHEMA_FOLDER: dict[str, Path] = {
-    "public": DB_ROOT / "public",
-    "dim": DB_ROOT / "dim" / "tables",
-    "fact": DB_ROOT / "fact" / "tables",
-    "app": DB_ROOT / "app" / "tables",
-}
+_LAYER_PREFIX_RE = re.compile(r"^\d+_?")
+
+
+def layer_folders() -> dict[str, Path]:
+    """Map a schema name to its existing layer directory under database/.
+
+    Discovered from the top-level folders in database/ (skipping migration
+    dirs), stripping the leading display-order number (e.g. "1_reference_data"
+    -> "reference_data") — that number is a sort aid, not part of the name.
+    """
+    folders: dict[str, Path] = {}
+    if not DB_ROOT.is_dir():
+        return folders
+    for entry in DB_ROOT.iterdir():
+        if not entry.is_dir() or entry.name in ("migrations", "_migration_scripts"):
+            continue
+        name = _LAYER_PREFIX_RE.sub("", entry.name).lower()
+        folders[name] = entry
+    return folders
 
 
 def folder_for(schema: str) -> Path:
-    if schema in SCHEMA_FOLDER:
-        return SCHEMA_FOLDER[schema]
-    # Unknown schema: create a sensible default
+    existing = layer_folders().get(schema.lower())
+    if existing is not None:
+        return existing / "tables"
+    # Unknown schema: create a new layer folder named after it
     return DB_ROOT / schema / "tables"
 
 
