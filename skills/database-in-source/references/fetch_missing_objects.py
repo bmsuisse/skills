@@ -10,15 +10,17 @@
 # ]
 # ///
 """
-Fetches CREATE TABLE DDL from PostgreSQL for tables that exist in the
-database but aren't yet tracked as .sql files under database/, then
-writes them to the matching layer folder's tables/ subfolder (matched
-by schema name, ignoring each layer folder's leading sort number).
+Fetches DDL from PostgreSQL for tables, scalar functions, and table
+functions that exist in the database but aren't yet tracked as .sql
+files under database/, then writes them to the matching layer folder's
+tables/, scalar_functions/, or table_functions/ subfolder (matched by
+schema name, ignoring each layer folder's leading sort number).
 
-Adjust _PREFIX below to match the project's env-var naming.
+Adjust _PREFIX below to match the project's env-var naming. Add more
+entries to OBJECT_KINDS to cover other object types (views, procedures, ...).
 
 Usage:
-    uv run scripts/fetch_missing_tables.py
+    uv run scripts/fetch_missing_objects.py
 """
 
 from __future__ import annotations
@@ -59,12 +61,10 @@ def layer_folders() -> dict[str, Path]:
     return folders
 
 
-def folder_for(schema: str) -> Path:
+def folder_for(schema: str, subfolder: str) -> Path:
     existing = layer_folders().get(schema.lower())
-    if existing is not None:
-        return existing / "tables"
-    # Unknown schema: create a new layer folder named after it
-    return DB_ROOT / schema / "tables"
+    base = existing if existing is not None else DB_ROOT / schema
+    return base / subfolder
 
 
 # ── Extract tables already tracked in database/ ───────────────────────────────
@@ -114,6 +114,25 @@ def tracked_tables() -> set[tuple[str, str]]:
             continue
         tables |= extract_tables(sql)
     return tables
+
+
+def tracked_names(keyword: str) -> set[tuple[str, str]]:
+    """(schema, name) pairs already tracked for a `CREATE [OR REPLACE] <keyword> ...` object."""
+    pattern = re.compile(
+        rf"CREATE\s+(?:OR\s+REPLACE\s+)?{keyword}\s+(?:IF\s+NOT\s+EXISTS\s+)?"
+        r"(?:([a-zA-Z_]\w*)\.)?([a-zA-Z_]\w*)",
+        re.IGNORECASE,
+    )
+    names: set[tuple[str, str]] = set()
+    for sql_file in DB_ROOT.rglob("*.sql"):
+        if "migrations" in sql_file.parts or "_migration_scripts" in sql_file.parts:
+            continue
+        try:
+            sql = sql_file.read_text(encoding="utf-8", errors="ignore")
+        except OSError:
+            continue
+        names |= {(m.group(1).lower() if m.group(1) else "public", m.group(2).lower()) for m in pattern.finditer(sql)}
+    return names
 
 
 # ── PostgreSQL helpers ─────────────────────────────────────────────────────────
@@ -244,6 +263,81 @@ def get_create_table_ddl(conn, schema: str, table: str) -> str:
     return ddl
 
 
+def all_pg_functions(conn, table_returning: bool) -> list[tuple[str, str]]:
+    """Return (schema, name) for scalar functions (table_returning=False) or
+    table functions — those returning SETOF/TABLE (table_returning=True)."""
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT DISTINCT n.nspname, p.proname
+            FROM pg_catalog.pg_proc p
+            JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+            WHERE p.prokind = 'f'
+              AND p.proretset = %s
+              AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+            ORDER BY n.nspname, p.proname
+        """,
+            (table_returning,),
+        )
+        return [(row[0], row[1]) for row in cur.fetchall()]
+
+
+def get_function_ddl(conn, schema: str, name: str) -> str:
+    """Fetch a function's DDL via pg_get_functiondef.
+
+    If the function is overloaded, this uses the lowest-oid (oldest) match —
+    good enough to seed a file; resolve manually if there's more than one.
+    """
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT p.oid
+            FROM pg_catalog.pg_proc p
+            JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+            WHERE n.nspname = %s AND p.proname = %s AND p.prokind = 'f'
+            ORDER BY p.oid
+            LIMIT 1
+        """,
+            (schema, name),
+        )
+        row = cur.fetchone()
+        if not row:
+            raise ValueError(f"Function {schema}.{name} not found in pg_catalog")
+
+        cur.execute("SELECT pg_catalog.pg_get_functiondef(%s)", (row[0],))
+        ddl_row = cur.fetchone()
+        if not ddl_row or ddl_row[0] is None:
+            raise ValueError(f"Could not reconstruct DDL for function {schema}.{name}")
+        return ddl_row[0].rstrip() + ";\n"
+
+
+# ── Object kinds — add more entries here for other object types ───────────────
+
+OBJECT_KINDS = [
+    {
+        "label": "table",
+        "subfolder": "tables",
+        "tracked": tracked_tables,
+        "pg_list": lambda conn: all_pg_tables(conn),
+        "ddl": get_create_table_ddl,
+    },
+    {
+        "label": "scalar function",
+        "subfolder": "scalar_functions",
+        "tracked": lambda: tracked_names("FUNCTION"),
+        "pg_list": lambda conn: all_pg_functions(conn, table_returning=False),
+        "ddl": get_function_ddl,
+    },
+    {
+        "label": "table function",
+        "subfolder": "table_functions",
+        "tracked": lambda: tracked_names("FUNCTION"),
+        "pg_list": lambda conn: all_pg_functions(conn, table_returning=True),
+        "ddl": get_function_ddl,
+    },
+]
+
+
 # ── sqlfmt formatting ─────────────────────────────────────────────────────────
 
 
@@ -256,16 +350,16 @@ def sqlfmt_file(path: Path) -> None:
 # ── Interactive selection ──────────────────────────────────────────────────────
 
 
-def pick_tables(missing: list[tuple[str, str]]) -> list[tuple[str, str]]:
-    """Let the user choose which tables to fetch via questionary checkboxes."""
+def pick_objects(missing: list[dict]) -> list[dict]:
+    """Let the user choose which objects to fetch via questionary checkboxes."""
     import questionary
 
-    choices = [f"{schema}.{table}" for schema, table in missing]
+    choices = [f"[{m['label']}] {m['schema']}.{m['name']}" for m in missing]
     if not choices:
         return []
 
     selected = questionary.checkbox(
-        "Select tables to fetch (space to toggle, enter to confirm):",
+        "Select objects to fetch (space to toggle, enter to confirm):",
         choices=choices,
     ).ask()
 
@@ -273,17 +367,13 @@ def pick_tables(missing: list[tuple[str, str]]) -> list[tuple[str, str]]:
         return []
 
     selected_set = set(selected)
-    return [(s, t) for s, t in missing if f"{s}.{t}" in selected_set]
+    return [m for m, c in zip(missing, choices) if c in selected_set]
 
 
 # ── Main ───────────────────────────────────────────────────────────────────────
 
 
 def main() -> None:
-    print("Scanning database/ for tracked tables…")
-    tracked = tracked_tables()
-    print(f"  Found {len(tracked)} tables already tracked.\n")
-
     print("Connecting to PostgreSQL…")
     try:
         conn = pg_connection()
@@ -292,22 +382,31 @@ def main() -> None:
         sys.exit(1)
 
     with conn:
-        pg_tables = all_pg_tables(conn)
-        print(f"  Found {len(pg_tables)} tables in the database.\n")
+        missing: list[dict] = []
 
-        missing = sorted((s, t) for s, t in pg_tables if (s.lower(), t.lower()) not in tracked)
+        for kind in OBJECT_KINDS:
+            print(f"Scanning database/ for tracked {kind['label']}s…")
+            tracked = kind["tracked"]()
+            pg_objects = kind["pg_list"](conn)
+            print(f"  {len(tracked)} tracked, {len(pg_objects)} in the database.")
+
+            for schema, name in pg_objects:
+                if (schema.lower(), name.lower()) not in tracked:
+                    missing.append({"kind": kind, "label": kind["label"], "schema": schema, "name": name})
 
         if not missing:
-            print("No missing tables — everything is already tracked.")
+            print("\nNo missing objects — everything is already tracked.")
             return
 
-        print(f"{len(missing)} untracked tables:\n")
-        for schema, table in missing:
-            dest = folder_for(schema) / f"{table}.sql"
-            print(f"  {schema}.{table:40s}  →  {dest.relative_to(DB_ROOT.parent)}")
+        missing.sort(key=lambda m: (m["label"], m["schema"], m["name"]))
+
+        print(f"\n{len(missing)} untracked objects:\n")
+        for m in missing:
+            dest = folder_for(m["schema"], m["kind"]["subfolder"]) / f"{m['name']}.sql"
+            print(f"  [{m['label']}] {m['schema']}.{m['name']:40s}  →  {dest.relative_to(DB_ROOT.parent)}")
 
         print()
-        selected = pick_tables(missing)
+        selected = pick_objects(missing)
 
         if not selected:
             print("Nothing selected, exiting.")
@@ -317,16 +416,17 @@ def main() -> None:
         written: list[Path] = []
         errors: list[str] = []
 
-        for schema, table in selected:
+        for m in selected:
+            schema, name, kind = m["schema"], m["name"], m["kind"]
             try:
-                ddl = get_create_table_ddl(conn, schema, table)
+                ddl = kind["ddl"](conn, schema, name)
             except Exception as e:
-                errors.append(f"{schema}.{table}: {e}")
+                errors.append(f"[{m['label']}] {schema}.{name}: {e}")
                 continue
 
-            dest_dir = folder_for(schema)
+            dest_dir = folder_for(schema, kind["subfolder"])
             dest_dir.mkdir(parents=True, exist_ok=True)
-            dest = dest_dir / f"{table}.sql"
+            dest = dest_dir / f"{name}.sql"
 
             if dest.exists():
                 print(f"  SKIP  {dest.relative_to(DB_ROOT.parent)} (already exists)")

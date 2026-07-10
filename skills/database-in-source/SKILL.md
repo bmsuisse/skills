@@ -104,12 +104,12 @@ comment on column dim.user.is_active is 'False once a user is soft-deleted; keep
 
 ---
 
-## Backfilling untracked tables
+## Backfilling untracked objects
 
-If a table was created directly on the database and never got a `.sql` file, use [`references/fetch_missing_tables.py`](references/fetch_missing_tables.py) to find it and generate one: it connects to Postgres, diffs `pg_catalog` against what's already tracked under `database/`, and for each table you pick, reverse-engineers a `CREATE TABLE IF NOT EXISTS` (plus indexes) into `<matching layer folder>/tables/`. The layer folder is matched by schema name against the existing top-level directories under `database/`, ignoring their leading sort number — no hardcoded schema→folder mapping to maintain. Adjust `_PREFIX` at the top for the project's env-var naming.
+If a table, scalar function, or table function was created directly on the database and never got a `.sql` file, use [`references/fetch_missing_objects.py`](references/fetch_missing_objects.py) to find it and generate one: it connects to Postgres, diffs `pg_catalog` against what's already tracked under `database/`, and for each object you pick, reverse-engineers its DDL (`CREATE TABLE IF NOT EXISTS` with indexes, or `pg_get_functiondef` for functions) into `<matching layer folder>/tables|scalar_functions|table_functions/`. The layer folder is matched by schema name against the existing top-level directories under `database/`, ignoring their leading sort number — no hardcoded schema→folder mapping to maintain. Adjust `_PREFIX` at the top for the project's env-var naming; add entries to `OBJECT_KINDS` to cover other object types (views, procedures, ...).
 
 ```bash
-uv run scripts/fetch_missing_tables.py
+uv run scripts/fetch_missing_objects.py
 ```
 
 ---
