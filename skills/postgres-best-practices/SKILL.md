@@ -8,7 +8,7 @@ description: >
   objects, or asks how to structure database access code. Triggers on things
   like "add a database query", "write a SQL query", "create a repository",
   "fetch from postgres", "insert into the database", "update the DB",
-  "parameterised query", "pydantic model from DB row", "sql file", "dynamic
+  "parameterized query", "pydantic model from DB row", "sql file", "dynamic
   SQL", or any mention of psycopg, psycopg2, asyncpg, or SQLAlchemy where the
   user seems open to a different approach. Also use when the user asks about
   connection pooling, transactions, cursor factories, or how to organise
@@ -237,6 +237,12 @@ line_length = 119
 
 ---
 
+## Schema files & documentation
+
+Table/view/function definitions themselves (the `CREATE TABLE` statements, `COMMENT ON` documentation, migrations) live in a `database/` folder in source — see [database-in-source](../database-in-source/SKILL.md) for that layout. This skill covers the *application* side: querying, mapping, and organising `db/` code that talks to those tables.
+
+---
+
 ## Avoid LATERAL JOIN — use CTEs instead
 
 `LATERAL JOIN` is hard to read and often poorly optimised. Prefer a CTE that pre-aggregates, then join it:
@@ -275,3 +281,4 @@ See [`references/temporal-tables.md`](references/temporal-tables.md) for the ful
 - [ ] Dynamic SQL uses t-strings (3.14+) or `psycopg.sql` — chosen at authoring time based on pyproject.toml
 - [ ] No `LATERAL JOIN` — use a CTE that groups/aggregates first, then join it
 - [ ] Temporal tables use nearform/temporal_tables trigger; `sys_period tstzrange` on live table, mirror `_history` table with GiST index
+- [ ] Schema files (tables, `COMMENT ON`, migrations) follow [database-in-source](../database-in-source/SKILL.md)
