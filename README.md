@@ -46,6 +46,7 @@
 | [procrastinate](./skills/procrastinate/) | PostgreSQL-based async task queue for Python using Procrastinate. Use this skill whenever the user is working with Pr… |
 | [python-autotuner](./skills/python-autotuner/) | Python code optimizer and error fixer: analyzes a Python file or function, rewrites it for speed and quality one chan… |
 | [remove-ai-writing](./skills/remove-ai-writing/) | "Detect and surgically fix AI writing patterns in English, German, French, or Italian text. Use this skill whenever t… |
+| [rich-data-tables](./skills/rich-data-tables/) | Use whenever building a UI table, list view, or dashboard panel showing records with amounts, dates, or statuses (inv… |
 | [scientific-revision](./skills/scientific-revision/) | Use this skill whenever the user wants to verify, revise, or improve a scientific essay, academic paper, or any writt… |
 | [spark-connect](./skills/spark-connect/) | Guide for running PySpark code locally against a remote Databricks cluster via Spark Connect (databricks-connect). Us… |
 | [sql-optimization](./skills/sql-optimization/) | "Universal SQL performance optimization assistant for comprehensive query tuning, indexing strategies, and database p… |
