@@ -1,0 +1,124 @@
+---
+name: database-in-source
+plugin: coding
+description: >
+  Conventions for versioning a PostgreSQL schema as plain `.sql` files inside
+  a `database/` folder in the repo, instead of an ORM migration framework.
+  Use when creating/organising a `database/` folder, adding a new
+  table/view/function/type, or deciding where a migration script goes.
+  Triggers on things like "add a new table to database/", "where do table
+  definitions live", "database folder structure", "schema layer", "migration
+  script", ".prod file", ".init.sql".
+---
+
+# Database-in-source layout
+
+The Postgres schema is versioned as plain `.sql` files under a `database/` folder in the repo — this folder *is* the source of truth for the schema. [postgres-test-setup](../postgres-test-setup/SKILL.md) applies it to a local Docker DB for tests; a human applies the same files to production.
+
+---
+
+## Layer directories
+
+Top-level directories group tables/objects by conceptual layer — one directory per Postgres schema, or per logical grouping within one schema. Names and count are entirely per-project; a generic example:
+
+```
+database/
+├── schema.sql            # CREATE SCHEMA statements
+├── 0_public/              # shared types/functions usable from anywhere
+├── 1_reference_data/      # dimension / reference tables
+├── 2_transactional/       # fact / transactional tables
+├── 3_app/                 # user-editable, app-owned tables
+├── 4_reporting/           # aggregated / statistics tables
+├── permissions.sql        # grants
+```
+
+The leading number is a **display/sort aid only** — it groups related folders together in a file listing so a human can scan them top-to-bottom in a sensible order. It does not control apply order: the tool that walks `database/` applies files by object-type priority (below) and resolves cross-file FK dependencies itself, regardless of which numbered folder a file sits in. Feel free to renumber layers for readability without worrying about breaking anything.
+
+---
+
+## Object-type subfolders, in apply order
+
+Within a layer directory, group files by object type. This is what actually controls apply order, across all layer directories (cross-file FK dependencies are resolved automatically by the tool that walks the tree):
+
+| Priority | Directory | Object type |
+|---|---|---|
+| 1 | `schema` | `CREATE SCHEMA` |
+| 2 | `types` | Custom types / enums |
+| 3 | `tables` | Tables |
+| 4 | `scalar_functions` | Scalar functions |
+| 5 | `functions` | Functions |
+| 6 | `views` | Views |
+| 7 | `table_functions` | Table functions |
+| 8 | `procedures` | Procedures |
+| 100 | `permissions` | Grants |
+| 101 | `indexes` | Indexes |
+
+One object per file: `tables/user.sql`, `views/all_edits.sql`, `types/measurement_unit.sql`.
+
+---
+
+## File-naming conventions
+
+| Suffix | Meaning |
+|---|---|
+| `<name>.sql` | The object's live definition (`CREATE TABLE`, `CREATE OR REPLACE VIEW`, ...) |
+| `<name>.test_data.json` | Seed rows for a table — a JSON array of row objects, loaded after the table is created |
+| `<name>.init.sql` | One-time setup for an object (e.g. a backfill), run once, kept separate from the reusable definition |
+| `<name>.prod.sql` / `.prod` anywhere in the name | Production-only (real permission grants, real user accounts) — skipped by local test/dev tooling |
+| `all.sql` | Generated concatenation of the whole tree — not hand-edited, not committed |
+
+---
+
+## Migrations
+
+One-off, non-idempotent changes (rename/drop column, backfill, data fix) go in a `migrations/` (or `_migration_scripts/`) folder — one file per change, named by date:
+
+```
+database/migrations/2026-07-10_customer_geocode.sql
+```
+
+Rules:
+
+- Skipped by the local test/dev schema runner — it only applies the layer directories above.
+- Update the corresponding table/view `.sql` file in the same change so its definition already reflects the new shape — the migration and the source-of-truth file must never drift apart.
+- Applied to production manually, once, by a human, after being verified locally.
+- Never edited after being applied — a further change gets a new dated file.
+
+---
+
+## `COMMENT ON` — document schema in the object's own file
+
+Add a `COMMENT ON` for every table, and for any column whose purpose isn't obvious from its name and type (flags, status codes, denormalized fields, units). Put it directly in the table's `.sql` file, right after the `CREATE TABLE` — not in a migration, wiki, or README. It lives with the definition it describes and survives `\d+` / `pg_catalog` inspection.
+
+```sql
+-- database/1_reference_data/tables/user.sql
+create table dim.user (
+    id bigint generated always as identity primary key,
+    email text not null,
+    is_active boolean not null default true
+);
+
+comment on table dim.user is 'End-user accounts; one row per registered person.';
+comment on column dim.user.is_active is 'False once a user is soft-deleted; keep for audit trail.';
+```
+
+---
+
+## Backfilling untracked objects
+
+If a table, scalar function, or table function was created directly on the database and never got a `.sql` file, use [`references/fetch_missing_objects.py`](references/fetch_missing_objects.py) to find it and generate one: it connects to Postgres, diffs `pg_catalog` against what's already tracked under `database/`, and for each object you pick, reverse-engineers its DDL (`CREATE TABLE IF NOT EXISTS` with indexes, or `pg_get_functiondef` for functions) into `<matching layer folder>/tables|scalar_functions|table_functions/`. The layer folder is matched by schema name against the existing top-level directories under `database/`, ignoring their leading sort number — no hardcoded schema→folder mapping to maintain. Adjust `_PREFIX` at the top for the project's env-var naming; add entries to `OBJECT_KINDS` to cover other object types (views, procedures, ...).
+
+```bash
+uv run scripts/fetch_missing_objects.py
+```
+
+---
+
+## Quick checklist
+
+- [ ] New table/view/function/type gets its own `.sql` file under the right layer + object-type folder
+- [ ] Object-type folder (`tables`, `views`, ...) matches the apply-order table — that's what governs ordering, not the layer's leading number
+- [ ] One-off changes go in `migrations/`, dated, never edited after applying
+- [ ] The live `.sql` file is updated in the same change as any migration touching that object
+- [ ] `.prod` files are production-only and skipped by local tooling
+- [ ] Every table (and non-obvious column) has a `COMMENT ON`, placed in the object's own `.sql` file

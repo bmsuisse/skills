@@ -42,6 +42,7 @@
         "./init-app-stack",
         "./postgres-best-practices",
         "./postgres-test-setup",
+        "./database-in-source",
         "./sql-optimization",
         "./tanstack-best-practices",
         "./fastapi-azure-auth"
