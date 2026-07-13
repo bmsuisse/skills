@@ -1,5 +1,6 @@
 ---
 name: cross-repo-discovery
+plugin: coding
 description: >
   Discover repos across the whole Azure DevOps org — not just the one you're
   sitting in — and figure out where a piece of functionality actually lives

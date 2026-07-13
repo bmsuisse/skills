@@ -37,6 +37,7 @@
         "./autoresearch",
         "./coding-guidelines-python",
         "./coding-guidelines-typescript",
+        "./cross-repo-discovery",
         "./deslop",
         "./fastapi-guideline",
         "./init-app-stack",
