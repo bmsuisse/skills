@@ -23,7 +23,9 @@
 | [coding-guidelines-python](./skills/coding-guidelines-python/) | Apply and enforce Python-specific coding standards. Use alongside coding-guidelines for any Python file — covers typi… |
 | [coding-guidelines-sql](./skills/coding-guidelines-sql/) | SQL and data warehouse coding guidelines for the BME data platform. Use whenever writing, reviewing, or refactoring S… |
 | [coding-guidelines-typescript](./skills/coding-guidelines-typescript/) | Apply and enforce TypeScript-specific coding standards. Use alongside coding-guidelines for any TypeScript file — cov… |
+| [cross-repo-discovery](./skills/cross-repo-discovery/) | Discover repos across the whole Azure DevOps org — not just the one you're sitting in — and figure out where a piece… |
 | [data-modeling-dimensional](./skills/data-modeling-dimensional/) | Dimensional data modeling guide for the Fabricks platform — covers the full pipeline from staging through raw, transf… |
+| [database-in-source](./skills/database-in-source/) | Conventions for versioning a PostgreSQL schema as plain `.sql` files inside a `database/` folder in the repo, instead… |
 | [databricks-cli](./skills/databricks-cli/) | Databricks CLI operations: auth, profiles, data exploration, bundles, and notebook execution. Use this skill for ANY… |
 | [databricks-sql-autotuner](./skills/databricks-sql-autotuner/) | Databricks SQL query optimizer and error fixer: analyzes a slow or broken SQL query, rewrites it for speed using SQL-… |
 | [deslop](./skills/deslop/) | Remove AI slop from code and pull requests. Use this skill whenever the user wants to clean up AI-generated code, rev… |

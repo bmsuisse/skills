@@ -12,6 +12,7 @@ Bootstrap a full-stack project with:
 - **Backend**: FastAPI + Granian + raw **asyncpg** (Postgres), managed with **uv**, targeting **Python 3.14** (PEP 750 t-strings for SQL)
 - **DB**: Postgres 17 via `docker-compose.yml`
 - **Types**: `openapi-typescript` generates a typed client from FastAPI's OpenAPI schema
+- **Task runner**: [`just`](https://github.com/casey/just) — the scaffold writes a root `justfile` (`install`, `db-up`, `db-down`, `backend`, `frontend`, `dev`, `generate-api`). `just dev` runs backend + frontend together (Ctrl+C stops both); it does not start Postgres — run `just db-up` first. It uses `set shell := ["bash", "-uc"]` for `&`/`wait`, so Git Bash must be on `PATH` on Windows. Run `just` with no args to list recipes; always drive the project through `just <recipe>` instead of raw `uv run` / `bun run` / `docker compose` commands.
 - **Ports**: randomly assigned high ports (seeded by project name, so deterministic per project — printed on scaffold completion)
 
 ## Step 1: Run the scaffold script
@@ -33,15 +34,16 @@ The script (works on Mac, Linux, Windows):
 7. Writes `backend/main.py` (lifespan-managed asyncpg pool, CORS for `localhost:5173`), `backend/db.py` (pool + t-string `sql()` helper), `backend/config.py` (pydantic-settings) — all imports use `from backend.xxx import ...`
 8. Adds `dev = "backend.scripts:dev"` and `start = "backend.scripts:start"` to root `pyproject.toml`; granian target is `backend.main:app`
 9. Writes `docker-compose.yml` with a single `db` service (Postgres 17) + named volume
-10. Writes `.env.example` (frontend + backend), root `.gitignore`, `README.md` with startup steps
+10. Writes a root `justfile` (`install`, `db-up`, `db-down`, `backend`, `frontend`, `dev`, `generate-api`) as the project's task runner
+11. Writes `.env.example` (frontend + backend), root `.gitignore`, `README.md` with startup steps
 
 After running:
 
 ```bash
 cd <project-name>
-docker compose up -d db           # start Postgres
-uv run dev                        # FastAPI on :8000 (run from project root)
-cd frontend && bun run dev        # Vite on :5173
+just install                      # uv sync + bun install
+just db-up                        # start Postgres
+just dev                          # FastAPI (:8000) + Vite (:5173) together
 ```
 
 ## Step 2: Set up code formatting with prek
@@ -98,10 +100,11 @@ This installs the `coding` plugin which includes:
 
 ## Key conventions
 
+- Always use **just** (not npm scripts / Makefiles / raw commands) as the task runner — run `just <recipe>` for anything the `justfile` covers. Add new recipes to the `justfile` instead of documenting one-off shell commands.
 - Always use **bun** (not npm/yarn/pnpm) for the frontend.
 - Always use **uv** (not pip/poetry/pipenv) for the backend. Pin Python **3.14**.
 - Backend uses `fastapi` + `granian` — do **not** use `fastapi[standard]` (bundles uvicorn, conflicts with Granian).
-- Run backend dev with `uv run dev` (`granian --interface asgi main:app --reload`).
+- Run backend dev with `just backend` (wraps `uv run dev` → `granian --interface asgi main:app --reload`).
 - **Do not use SQLAlchemy or any ORM.** Use raw asyncpg with the `sql()` t-string helper in `backend/db.py`:
   ```python
   from backend.db import sql, pool
@@ -118,6 +121,6 @@ This installs the `coding` plugin which includes:
 - URL state (filters, pagination, sort): put in TanStack Router search params with Zod validation, not in Zustand.
 - UI components: **shadcn/ui** — generated into `src/components/ui/` via `bunx --bun shadcn@latest add <component>`. Do not install a MUI/Chakra/Mantine. Style with Tailwind v4 tokens (`bg-background`, `text-foreground`, `text-muted-foreground`, `border-border`) — not raw palette colors like `bg-neutral-800`.
 - Use the `cn()` helper from `@/lib/utils` to conditionally merge Tailwind classes. Imports use the `@/*` alias (configured in `vite.config.ts` + both tsconfigs).
-- Regenerate API types after backend changes: `bun run generate-api` (requires backend running on `localhost:8000`).
+- Regenerate API types after backend changes: `just generate-api` (requires backend running on `localhost:8000`).
 - CORS is pre-configured for the project's assigned frontend port (seeded from project name). Update for production.
 - Typing on backend: `uv add --dev ty` and run `uv run ty check`.

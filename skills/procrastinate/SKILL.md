@@ -76,8 +76,20 @@ procrastinate --app=myapp.procrastinate_app.app worker --concurrency=10
 await app.run_worker_async(concurrency=10, install_signal_handlers=False)
 ```
 
+## Dual-mode dispatch (procrastinate vs subprocess)
+
+Set `JOB_RUNNER_MODE=subprocess` locally to skip the DB/worker entirely — jobs run in a child process, stdout/stderr are captured to a temp file. Leave unset (defaults to `procrastinate`) in production.
+
+`dispatch_job` returns a `JobHandle(mode, id)` — job_id in procrastinate mode, PID in subprocess mode.
+
+- `get_job_status(handle, conn)` — subprocess: `"started"` / `"succeeded"` / `"failed"` from exit code; procrastinate: `JobInfo` from `procrastinate_jobs`
+- `get_job_history(handle, conn)` — subprocess: stdout/stderr as `str`; procrastinate: `list[JobEvent]` from `procrastinate_events`
+
+See [`references/job-dispatch.md`](references/job-dispatch.md) for full implementation of `job_dispatch.py`, `job_runner.py`, and the DB query helpers.
+
 ## Reference files
 
+- [`references/job-dispatch.md`](references/job-dispatch.md) — dual-mode dispatch, `JobHandle`, subprocess log capture, DB query helpers
 - [`references/connectors.md`](references/connectors.md) — DSN, connection pools, PgBouncer, sharing pool with postgres-best-practices
 - [`references/schema.md`](references/schema.md) — applying initial schema and migrations via plain SQL
 - [`references/azure-setup.md`](references/azure-setup.md) — Azure Web App & Container App start scripts

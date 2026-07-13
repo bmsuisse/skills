@@ -122,7 +122,7 @@ uv run -m test_server.start_postgres --force-reset-db
 3. Run the tests to confirm nothing broke.
 ```
 
-After verifying locally, a human applies the same SQL to production as a migration.
+After verifying locally, a human applies the same SQL to production as a migration — see [database-in-source](../database-in-source/SKILL.md) for how migration files are named and organised.
 
 ### Adding a new table
 
@@ -164,39 +164,11 @@ Results look like:
 
 ## Database directory layout
 
-The script walks `database/` and executes `.sql` files in this order:
+See [database-in-source](../database-in-source/SKILL.md) for the full `database/` folder convention — layer directories, object-type subfolders and their apply order, file-naming rules (`.test_data.json`, `.init.sql`, `.prod`), and how migrations are organised.
 
-| Priority | Directory/filename pattern | Object type |
-|---|---|---|
-| 1 | `schema` | `CREATE SCHEMA` |
-| 2 | `types` | Custom types/enums |
-| 3 | `tables` | Tables |
-| 4 | `scalar_functions` | Scalar functions |
-| 5 | `functions` | Functions |
-| 6 | `views` | Views |
-| 7 | `table_functions` | Table functions |
-| 8 | `procedures` | Procedures |
-| 100 | `permissions` | Grants |
-| 101 | `indexes` | Indexes |
-
-Files named `all.sql`, `100_permissions.sql`, or containing `.prod` are skipped. Migration folders are skipped.
+The setup script walks `database/` and applies files in that priority order. Files named `all.sql`, `100_permissions.sql`, or containing `.prod` are skipped. Migration folders are skipped.
 
 Cross-file foreign key dependencies are resolved automatically via `sqlglot`.
-
-**Recommended structure:**
-
-```
-database/
-├── 1_schema.sql
-├── 0_public/
-│   └── types/
-│       └── my_enum.sql
-├── 1_dim/
-│   └── tables/
-│       ├── user.sql
-│       └── user.test_data.json      ← auto-loaded after user.sql
-└── 100_permissions.sql              ← skipped by default
-```
 
 ---
 

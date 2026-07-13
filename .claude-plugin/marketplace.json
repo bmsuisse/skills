@@ -37,11 +37,13 @@
         "./autoresearch",
         "./coding-guidelines-python",
         "./coding-guidelines-typescript",
+        "./cross-repo-discovery",
         "./deslop",
         "./fastapi-guideline",
         "./init-app-stack",
         "./postgres-best-practices",
         "./postgres-test-setup",
+        "./database-in-source",
         "./sql-optimization",
         "./tanstack-best-practices",
         "./fastapi-azure-auth"
