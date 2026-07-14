@@ -26,6 +26,22 @@
         {
           "text": "Numeric columns are right-aligned",
           "type": "output"
+        },
+        {
+          "text": "Row separation relies on whitespace/padding rather than boxing every cell in borders",
+          "type": "output"
+        },
+        {
+          "text": "Two-line cells (e.g. the due-date cell) show clear primary/secondary weight contrast",
+          "type": "output"
+        },
+        {
+          "text": "Rows or interactive elements have a defined hover state",
+          "type": "output"
+        },
+        {
+          "text": "If dark mode is present, status/badge colors are desaturated rather than full-brightness compared to light mode",
+          "type": "output"
         }
       ]
     },
@@ -50,6 +66,14 @@
         {
           "text": "Color coding is consistent (red always means critical/urgent) across badges",
           "type": "output"
+        },
+        {
+          "text": "Row hover state and at least one interactive button (e.g. copy, sort) with hover/active states are defined",
+          "type": "output"
+        },
+        {
+          "text": "A micro-interaction or confirmation feedback exists for at least one action (e.g. a 'Copied' chip)",
+          "type": "output"
         }
       ]
     },
@@ -69,6 +93,10 @@
         },
         {
           "text": "Output is still a clean, readable table",
+          "type": "output"
+        },
+        {
+          "text": "Cheap universal polish (whitespace-based spacing, dark mode, right-aligned numeric column) is still applied despite skipping the five core upgrades",
           "type": "output"
         }
       ]
