@@ -63,6 +63,36 @@ for #2 and #3.
 - Bold only the number itself, keep the currency/unit prefix muted/smaller.
 - Right-align all numeric columns; left-align everything else.
 
+## Beyond columns: spacing, type, icons, states, dark mode
+
+The five upgrades fix *what* the table shows. These fix *how it reads* — skip a spreadsheet look
+even when the data itself is already well-encoded.
+
+- **Spacing**: use whitespace, not grid lines, to separate rows and cells — reserve borders for
+  where they carry meaning (a totals row, a section break). Keep padding/gaps on a 4px scale (4,
+  8, 12, 16, 24px) so row height and cell padding stay visually consistent across the panel; this
+  is also what makes a `grid-template-columns` summary strip line up with the table below it.
+- **Typography**: one sans-serif family for the whole panel; keep the size range narrow (a dense
+  table rarely needs anything above ~20-24px, reserved for the summary strip's numbers). Inside a
+  cell that stacks two pieces of information — a primary value and a secondary detail, like the
+  date pills in upgrade #2 — make the primary line bigger/bolder and the secondary line smaller and
+  muted, the same contrast the summary strip uses between its label and value.
+- **Icons over labels**: where a column is really encoding a small fixed vocabulary (a direction,
+  a channel, a file type), a same-size icon reads faster than a text label and saves column width —
+  but only when the icon is unambiguous without a legend; keep the text label if you're not sure.
+  Size icons to match the surrounding line-height (commonly 16-24px) so rows don't jitter.
+- **Interactive states**: if a row or action button is clickable, show it — a hover background on
+  the row, a pointer cursor, a subtle affordance (chevron, underline on hover) — don't rely on the
+  user guessing. Any button in the table (sort, row action, "copy") needs its default/hover/
+  active/disabled states defined, and a loading state if it triggers an async action. A brief
+  micro-interaction (a small "Copied" chip that fades in/out) is worth it for actions whose result
+  isn't otherwise visible.
+- **Dark mode**: don't just invert — shadows read as murky on dark backgrounds, so give cards depth
+  by making them a step *lighter* than the page background instead of relying on a shadow. Desaturate
+  status colors (badges, magnitude bars) a notch from their light-mode values so they don't glare;
+  keep the same hue mapping (red still means "needs attention") so meaning doesn't shift between
+  themes.
+
 ## Implementation notes (TanStack Table)
 
 TanStack Table is headless — it gives you rows/columns/sorting/pagination state, you own all
@@ -99,3 +129,7 @@ rendering. That maps cleanly onto the five upgrades:
 - [ ] Does every amount column have a visual magnitude cue (bar/color), not just digits?
 - [ ] Are status/enum columns colored badges, not raw codes?
 - [ ] Did I drop columns that are constant across all rows into the header instead?
+- [ ] Does spacing come from whitespace/padding (4px scale) rather than boxing every cell in borders?
+- [ ] Within any two-line cell, is the primary value visually heavier than the secondary detail?
+- [ ] Do clickable rows/buttons show hover/active/disabled states, not just a default look?
+- [ ] If dark mode exists, do cards read as lighter-than-background instead of relying on shadows, and are status colors desaturated rather than full-brightness?
