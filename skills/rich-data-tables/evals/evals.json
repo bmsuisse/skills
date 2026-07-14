@@ -1,0 +1,77 @@
+{
+  "skill_name": "rich-data-tables",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Build a React table (TanStack Table) of overdue invoices: id, due_date, amount, customer, currency=CHF for all rows. Include at least 8 sample rows with a mix of overdue and upcoming due dates.",
+      "expected_output": "Claude applies the five upgrades: a summary strip (total exposure, overdue count/amount, largest invoice), a relative+absolute pill on due dates, an inline magnitude bar on the amount column, and hoists the constant CHF currency into the panel title/subtitle instead of giving it its own column. Amount is right-aligned.",
+      "files": [],
+      "assertions": [
+        {
+          "text": "Has a summary strip with 3-5 aggregates (e.g. total exposure, overdue count, largest invoice) computed above the table",
+          "type": "output"
+        },
+        {
+          "text": "Amount column has a visual magnitude cue (inline bar or color), not just a bare number",
+          "type": "output"
+        },
+        {
+          "text": "Due dates show a relative pill (e.g. 'overdue 3d', 'due in 5 days') alongside the absolute date",
+          "type": "output"
+        },
+        {
+          "text": "Currency column (constant CHF across all rows) is hoisted into the title/subtitle, not repeated as a table column",
+          "type": "output"
+        },
+        {
+          "text": "Numeric columns are right-aligned",
+          "type": "output"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Here's a plain HTML table of support tickets (id, status 0/1/2, priority, created_date, ~10 rows). Make this table nicer.",
+      "expected_output": "Claude decodes numeric status codes into colored dot+label badges, adds a KPI summary strip (open/warning/critical counts), pairs created_date with a relative pill, and keeps the red=urgent color mapping consistent across badges.",
+      "files": [],
+      "assertions": [
+        {
+          "text": "Status codes (0/1/2) are rendered as colored badges with text labels, not raw numeric codes",
+          "type": "output"
+        },
+        {
+          "text": "There is a summary strip or KPI counts above the table (e.g. open/warning/critical counts)",
+          "type": "output"
+        },
+        {
+          "text": "created_date has a relative pill (e.g. '3 days ago') alongside the absolute date",
+          "type": "output"
+        },
+        {
+          "text": "Color coding is consistent (red always means critical/urgent) across badges",
+          "type": "output"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Show this data: a 6-row country code lookup list with code, name, and dial_code.",
+      "expected_output": "Claude recognizes this as small reference data with no magnitude/urgency/status dimension and does NOT force a summary strip, magnitude bars, or badges onto it — it stays a clean, simple table.",
+      "files": [],
+      "assertions": [
+        {
+          "text": "Table remains simple/flat — no summary strip, magnitude bars, or badges forced onto reference data",
+          "type": "output"
+        },
+        {
+          "text": "No unnecessary aggregation or KPI computation is added to a plain lookup table",
+          "type": "behavior"
+        },
+        {
+          "text": "Output is still a clean, readable table",
+          "type": "output"
+        }
+      ]
+    }
+  ]
+}
