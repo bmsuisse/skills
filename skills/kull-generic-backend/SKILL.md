@@ -254,9 +254,5 @@ them before working around the middleware from outside:
 - `AlwaysWrapJson = true` is the recommended default; a bare JSON array at the top level of a
   GET response is a known CORS/JSON-hijacking vector in older browsers.
 - Entity URL keys never start with `/`.
-- `.NET Framework 4.8` is supported (see the
-  [MVC 5 wiki page](https://github.com/Kull-AG/kull-generic-backend/wiki/Usage-with-MVC-5)) but
-  is compiled through `#if NETFX` branches and isn't integration-tested — treat .NET Core/5+ as
-  the primary target and 4.8 as a migration aid only.
 - Direct view/table manipulation without a stored procedure isn't supported yet (tracked as
   future work) — every mutating endpoint needs a real procedure.
