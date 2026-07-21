@@ -38,6 +38,7 @@
 | [kendo-ui-angular](./skills/kendo-ui-angular/) | Use this skill whenever the user is working with Kendo UI for Angular — including the Data Grid, TreeList, TreeView,… |
 | [kendo-ui-react](./skills/kendo-ui-react/) | KendoReact component library patterns and best practices for React developers. Trigger whenever the user works with K… |
 | [kendo-ui-vue](./skills/kendo-ui-vue/) | Use this skill whenever the user is working with Kendo UI for Vue — including the Data Grid, DropDownList, ComboBox,… |
+| [kull-generic-backend](./skills/kull-generic-backend/) | Kull.GenericBackend — an ASP.NET Core middleware (Kull-AG/kull-generic-backend, NuGet package Kull.GenericBackend) th… |
 | [nicegui](./skills/nicegui/) | Build Python web UIs with NiceGUI — covering layout, widgets, data binding, routing, and the AgGrid data grid. Use th… |
 | [playwright-python](./skills/playwright-python/) | Browser automation and visual verification with Playwright in Python. Use this whenever the user wants to drive a bro… |
 | [postgres-best-practices](./skills/postgres-best-practices/) | PostgreSQL coding standards for Python projects using psycopg (no ORM). Use this skill whenever the user is writing o… |
