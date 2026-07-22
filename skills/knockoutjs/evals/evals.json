@@ -1,0 +1,46 @@
+{
+  "skill_name": "knockoutjs",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I need to add a new 'orders-list' component to DistributionPlan.Client — it should load a list of orders from the server for a given customerId (passed in as params), only when it's actually visible, and show an error message if the load fails. Show me the TypeScript view model, the registration, and the template file setup.",
+      "expected_output": "A view model class extending BaseDataViewModel<TParam, TData>, overriding loadDataFromServer/getParameters (and optionally onDataReceived), exposing errorText for the failure message, a createViewModel factory export, a sibling orders-list.html imported as a template string, and registration via PrefetchLoader.registerAsyncComponent (not raw ko.components.register) with a dynamic import().",
+      "files": [],
+      "expectations": [
+        "The view model class extends BaseDataViewModel (or explicitly explains overriding loadDataFromServer/getParameters on it) rather than hand-rolling a visible-gated load",
+        "getParameters() reads customerId from params",
+        "loadDataFromServer is implemented as an async override, not called directly by the component author",
+        "Uses the existing errorText observable (or explains BaseDataViewModel already provides one) instead of introducing a separate ad-hoc error observable",
+        "Exports a createViewModel(params, options) factory rather than exporting a bare constructor for direct `new`",
+        "Registration goes through PrefetchLoader.registerAsyncComponent(...) with a dynamic import(), not a direct ko.components.register call",
+        "The template is a separate orders-list.html file imported as a string and re-exported as `template`, not an inline template string"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I wrote a custom Knockout binding that wraps a jQuery date-range-picker plugin (`jQuery(element).daterangepicker(options)`). It works on first render but after the containing accordion panel gets removed and re-added a few times, the page gets slower and slower. What's wrong and how do I fix it?",
+      "expected_output": "Diagnoses a missing ko.utils.domNodeDisposal.addDisposeCallback tied to the widget's destroy method — each re-render creates a new plugin instance on a fresh element without ever destroying the previous one, since Knockout doesn't know how to tear down third-party jQuery widgets automatically. Fix adds the dispose callback calling the plugin's destroy/dispose method.",
+      "files": [],
+      "expectations": [
+        "Identifies the missing ko.utils.domNodeDisposal.addDisposeCallback registration as the root cause",
+        "Explains that Knockout removing/re-adding the element (e.g. via an if/foreach/component binding) does not automatically clean up a jQuery/Kendo widget attached to it",
+        "Provides a corrected init() that calls jQuery(element).daterangepicker(options) and then registers a dispose callback that calls the plugin's destroy method",
+        "Frames this as the standard pattern used elsewhere in the codebase (koBindings.ts/koKendoBindings.ts), not a one-off workaround",
+        "Does not suggest introducing knockout-validation or an unrelated library as the fix"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Quick TypeScript question: in our DistributionPlan.Client codebase, should I import KnockoutObservable from 'knockout' directly, or is there some other convention I should follow? Also — computed vs pureComputed, when do I use which?",
+      "expected_output": "Explains the local maptypes.ts alias module (App/Kull/Shared/knockout/maptypes.ts) that re-exports KnockoutObservable<T>/KnockoutComputed<T>/etc. from `knockout`'s own types, and that feature code imports from there rather than from raw ko.Observable<T>. Then explains pureComputed is for side-effect-free derivations (sleeps when unobserved) and computed is required when the evaluator has a side effect that must always run.",
+      "files": [],
+      "expectations": [
+        "Points to the project's own maptypes.ts module as the source of KnockoutObservable/KnockoutComputed type aliases rather than telling the user to import ko.Observable<T> directly",
+        "Explains this is an existing codebase convention to follow for consistency, not a strict technical requirement of Knockout itself",
+        "Recommends ko.pureComputed as the default for pure/derived display values",
+        "Explains pureComputed sleeps (stops tracking dependencies) when it has no subscribers",
+        "States that ko.computed (not pureComputed) is required when the evaluator has a side effect that must always execute on dependency change"
+      ]
+    }
+  ]
+}
