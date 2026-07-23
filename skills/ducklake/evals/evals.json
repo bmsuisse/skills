@@ -1,0 +1,45 @@
+{
+  "skill_name": "ducklake",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "We're setting up a shared DuckLake so three separate ETL jobs (running on different machines) can write to the same tables concurrently, with Parquet files landing in an S3 bucket. Give me the full ATTACH setup, including which catalog database we should use and why, and the SQL to point the data files at S3.",
+      "expected_output": "Recommends a PostgreSQL catalog (12+) because it supports multi-user/remote concurrent access, unlike DuckDB (single client) or SQLite (single local writer). Shows INSTALL ducklake; INSTALL postgres; and an ATTACH 'ducklake:postgres:dbname=... host=...' AS name (DATA_PATH 's3://...') style statement, and notes MySQL is not recommended as a catalog.",
+      "files": [],
+      "assertions": [
+        "Recommends a PostgreSQL catalog for multi-user/remote concurrent access (not DuckDB or SQLite)",
+        "Explains DuckDB catalog is limited to a single client",
+        "Explains SQLite is single-writer / meant for local clients, not multiple remote machines",
+        "Notes MySQL is not recommended as a DuckLake catalog",
+        "Shows INSTALL ducklake; and INSTALL postgres;",
+        "Shows an ATTACH 'ducklake:postgres:...' statement with a DATA_PATH pointing at an s3:// path"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Someone on my team ran a bad UPDATE against our DuckLake `orders` table about 2 hours ago and overwrote a bunch of rows. How do I look at the snapshot history to find the change, read the table as it was right before that update, and then afterwards make sure old snapshots get cleaned up automatically so this data doesn't just pile up forever?",
+      "expected_output": "Shows querying my_ducklake.snapshots() to find the relevant snapshot/timestamp, then SELECT ... FROM orders AT (TIMESTAMP => ...) or AT (VERSION => ...) to read the pre-update state. For ongoing cleanup, explains that data is only physically removable after ducklake_expire_snapshots runs, mentions setting a retention window (e.g. CALL my_ducklake.set_option('expire_older_than', ...)) or running CHECKPOINT on a schedule, and that cleanup of files is a separate step after expiry.",
+      "files": [],
+      "assertions": [
+        "Shows querying the snapshots() table function to inspect snapshot/commit history",
+        "Uses AT (VERSION => ...) or AT (TIMESTAMP => ...) syntax to read the table's pre-update state",
+        "Explains data is only physically removable after snapshots are expired (ducklake_expire_snapshots), not immediately on delete/update",
+        "Mentions a mechanism for ongoing/automatic cleanup: an expire_older_than option and/or scheduling CHECKPOINT",
+        "Distinguishes snapshot expiry from the separate file cleanup step"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Our `events` table in DuckLake is getting huge and queries scanning a single day are slow because they scan everything. We want to partition by month going forward. Also, the `event_id` column was created as INTEGER but we're about to blow past 2 billion rows — how do we widen it to BIGINT without a big rewrite, and will old snapshots still be readable after both of these changes?",
+      "expected_output": "Gives ALTER TABLE events SET PARTITIONED BY (year(ts), month(ts)); explains it only affects newly written data (existing files keep their layout). Gives ALTER TABLE events ALTER event_id SET TYPE BIGINT; describing it as a lossless, metadata-only promotion with no data rewrite. Confirms old snapshots remain readable because DuckLake tracks columns by an internal column_id rather than name/position/type.",
+      "files": [],
+      "assertions": [
+        "Gives ALTER TABLE ... SET PARTITIONED BY (...) using year()/month() transforms",
+        "Notes the new partitioning only applies to newly written data, not existing files",
+        "Gives ALTER TABLE ... ALTER event_id SET TYPE BIGINT syntax",
+        "Describes the type widening as a lossless, metadata-only change (no data file rewrite)",
+        "Confirms old snapshots remain readable, referencing DuckLake's per-column column_id tracking (not name/position)"
+      ]
+    }
+  ]
+}
