@@ -3,15 +3,16 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "We're setting up a shared DuckLake so three separate ETL jobs (running on different machines) can write to the same tables concurrently, with Parquet files landing in an S3 bucket. Give me the full ATTACH setup, including which catalog database we should use and why, and the SQL to point the data files at S3.",
-      "expected_output": "Recommends a PostgreSQL catalog (12+) because it supports multi-user/remote concurrent access, unlike DuckDB (single client) or SQLite (single local writer). Shows INSTALL ducklake; INSTALL postgres; and an ATTACH 'ducklake:postgres:dbname=... host=...' AS name (DATA_PATH 's3://...') style statement.",
+      "prompt": "We're setting up a shared DuckLake so three separate ETL jobs (running on different machines) can write to the same tables concurrently, with Parquet files landing in Azure Data Lake Storage. Give me the full ATTACH setup, including which catalog database we should use and why, and the SQL to point the data files at Azure.",
+      "expected_output": "Recommends a PostgreSQL catalog (12+) because it supports multi-user/remote concurrent access, unlike DuckDB (single client) or SQLite (single local writer). Shows INSTALL ducklake; INSTALL postgres; INSTALL azure; a CREATE SECRET (TYPE azure, ...); and an ATTACH 'ducklake:postgres:dbname=... host=...' AS name (DATA_PATH 'abfss://...') style statement.",
       "files": [],
       "assertions": [
         "Recommends a PostgreSQL catalog for multi-user/remote concurrent access (not DuckDB or SQLite)",
         "Explains DuckDB catalog is limited to a single client",
         "Explains SQLite is single-writer / meant for local clients, not multiple remote machines",
         "Shows INSTALL ducklake; and INSTALL postgres;",
-        "Shows an ATTACH 'ducklake:postgres:...' statement with a DATA_PATH pointing at an s3:// path"
+        "Shows INSTALL azure; and a CREATE SECRET (TYPE azure, ...) statement",
+        "Shows an ATTACH 'ducklake:postgres:...' statement with a DATA_PATH pointing at an abfss:// (or az://) path"
       ]
     },
     {
