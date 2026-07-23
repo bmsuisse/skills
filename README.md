@@ -30,6 +30,7 @@
 | [databricks-sql-autotuner](./skills/databricks-sql-autotuner/) | Databricks SQL query optimizer and error fixer: analyzes a slow or broken SQL query, rewrites it for speed using SQL-… |
 | [deslop](./skills/deslop/) | Remove AI slop from code and pull requests. Use this skill whenever the user wants to clean up AI-generated code, rev… |
 | [duckdb](./skills/duckdb/) | Guide for working with DuckDB — CLI usage, SQL execution, reading files (CSV, Parquet, JSON, Excel), extensions (http… |
+| [ducklake](./skills/ducklake/) | Guide for working with DuckLake — the open lakehouse format and DuckDB extension that pairs a SQL catalog (metadata,… |
 | [fabricks-glossary](./skills/fabricks-glossary/) | Use this skill whenever company-specific jargon, acronyms, or domain terminology is needed to answer correctly. |
 | [fabricks-sql-analyzer](./skills/fabricks-sql-analyzer/) | Analyzes all SQL files in the Fabricks.Runtime repository, builds a dependency DAG, runs performance heuristics, and… |
 | [fastapi-azure-auth](./skills/fastapi-azure-auth/) | Azure Entra ID SSO for FastAPI using cookie-based sessions (MSAL, /login → /callback → session). Trigger on: Azure AD… |
