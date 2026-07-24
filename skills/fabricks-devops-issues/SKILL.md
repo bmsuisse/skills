@@ -36,7 +36,12 @@ Dispatch on the first word of the request: `list`, `assign`, `report`, or
 
 1. Run `scripts/list.sh <repo_root> [--state STATE] [--assigned-to PERSON]`
    to get the raw ID/state/assignee/title table, and show it to the user so
-   they can pick which one to dig into with `diagnose <id>`.
+   they can pick which one to dig into with `diagnose <id>`. State names are
+   whatever this Azure DevOps project actually uses (e.g. `To Do`/`Doing`/
+   `Done`), not a fixed set — don't guess a common-sounding one like `Open`
+   or `Active`. If a `--state` filter comes back empty, that's a signal the
+   value is wrong, not that there are no matching issues: rerun with no
+   filter to see the real state names before concluding anything.
 2. If the user instead asks for the easy ones / low-hanging fruit: take a
    reasonable-sized batch of open issues (unassigned or otherwise — cap it,
    maybe 5-10, rather than diagnosing every open issue, since each one costs
