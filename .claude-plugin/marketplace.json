@@ -46,7 +46,15 @@
         "./database-in-source",
         "./sql-optimization",
         "./tanstack-best-practices",
-        "./fastapi-azure-auth"
+        "./tanstack-react-best-practices",
+        "./fastapi-azure-auth",
+        "./duckdb",
+        "./ducklake",
+        "./playwright-python",
+        "./prek",
+        "./procrastinate",
+        "./aiochannel-python",
+        "./python-autotuner"
       ]
     },
     {
@@ -54,16 +62,20 @@
       "description": "UI framework skills: KendoReact component patterns, theming, and best practices",
       "source": "./",
       "skills": [
-        "./kendo-ui-react"
+        "./kendo-ui-react",
+        "./rich-data-tables",
+        "./kendo-ui-angular",
+        "./kendo-ui-vue"
       ]
     },
-    
+
     {
       "name": "onetrade",
       "description": "OneTrade Coding",
       "source": "./",
       "skills": [
-        "./codeunit-analyzer"
+        "./codeunit-analyzer",
+        "./kull-generic-backend"
       ]
     },
     {
@@ -72,16 +84,18 @@
       "source": "./",
       "skills": [
         "./databricks-cli",
-        "./spark-connect"
+        "./spark-connect",
+        "./databricks-sql-autotuner"
       ]
     },
     {
       "name": "fabricks-data",
-      "description": "Fabricks data skills: SQL analysis and domain glossary",
+      "description": "Fabricks data skills: SQL analysis, domain glossary, and DevOps issue triage",
       "source": "./",
       "skills": [
         "./fabricks-glossary",
-        "./fabricks-sql-analyzer"
+        "./fabricks-sql-analyzer",
+        "./fabricks-devops-issues"
       ]
     },
     {

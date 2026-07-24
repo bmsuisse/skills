@@ -1,0 +1,26 @@
+{
+  "skill_name": "fabricks-devops-issues",
+  "evals": [
+    {
+      "id": 1,
+      "name": "report",
+      "prompt": "I'm in the Fabricks.Runtime repo. Can you give me a report on our open devops issues?",
+      "expected_output": "Runs scripts/report.sh against the repo, then summarizes in prose (counts by state/assignee, anything notable like the oldest open issue) rather than pasting the raw report verbatim.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "assign",
+      "prompt": "Can you assign the open devops issues in Fabricks.Runtime?",
+      "expected_output": "Runs scripts/auto_assign.sh --dry-run first and shows the resolved mapping, then asks the user to explicitly confirm before running the real (non-dry-run) assignment. Must NOT run the real write without confirmation.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "diagnose",
+      "prompt": "Diagnose issue #4821 in Fabricks.Runtime for me.",
+      "expected_output": "Runs `uv run issues.py get 4821`, resolves the job title (onprem.core_core) to the matching _config.*.yml via scripts/resolve_job_file.py, which prefers the sibling core.sql over the yml, reads it, applies a fix for the segment_id/segment_key column rename directly to the file, and tells the dev to review with git diff before committing. Does not run git commit/push or open a PR.",
+      "files": []
+    }
+  ]
+}

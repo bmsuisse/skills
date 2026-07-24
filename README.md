@@ -96,6 +96,7 @@ Add to `~/.claude/settings.json` to install all plugins:
 | `databricks@bmsuisse-skills`       | Databricks CLI + Spark Connect local execution                            |
 | `fabricks-data@bmsuisse-skills`    | Fabricks / Databricks data skills                                         |
 | `writing@bmsuisse-skills`          | Scientific and academic writing revision                                  |
+| `bms@bmsuisse-skills`              | BMsuisse master skill (`/bms`, `/bms sql`, `/bms python`, `/bms data`)     |
 | `caveman@bmsuisse-skills`          | Ultra-compressed caveman communication mode (~75% token reduction)        |
 | `azure-deploy@bmsuisse-skills`     | Azure deployments via azd/terraform/az with validation and RBAC checks    |
 | `azure-diagnostics@bmsuisse-skills`| Azure production diagnostics via AppLens, Monitor, and resource health    |
@@ -106,11 +107,17 @@ Then run these commands in Claude Code to apply the configuration:
 # Add the marketplace (one-time setup — alternative to editing settings.json manually)
 /plugin marketplace add bmsuisse/skills
 
-# Install the plugins you want
+# Install the plugins you want (or install all of them, as below)
 /plugin install coding@bmsuisse-skills
+/plugin install ui@bmsuisse-skills
 /plugin install onetrade@bmsuisse-skills
+/plugin install databricks@bmsuisse-skills
 /plugin install fabricks-data@bmsuisse-skills
 /plugin install writing@bmsuisse-skills
+/plugin install bms@bmsuisse-skills
+/plugin install caveman@bmsuisse-skills
+/plugin install azure-deploy@bmsuisse-skills
+/plugin install azure-diagnostics@bmsuisse-skills
 
 # After any config change, reload without restarting
 /reload-plugins
