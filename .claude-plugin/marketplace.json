@@ -90,12 +90,13 @@
     },
     {
       "name": "fabricks-data",
-      "description": "Fabricks data skills: SQL analysis, domain glossary, and DevOps issue triage",
+      "description": "Fabricks data skills: SQL analysis, domain glossary, and DevOps issue triage/resolution",
       "source": "./",
       "skills": [
         "./fabricks-glossary",
         "./fabricks-sql-analyzer",
-        "./fabricks-devops-issues"
+        "./fabricks-devops-issues",
+        "./fabricks-devops-issues-resolver"
       ]
     },
     {
