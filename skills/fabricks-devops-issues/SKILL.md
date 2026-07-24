@@ -2,11 +2,15 @@
 name: fabricks-devops-issues
 description: >
   Orchestrates Azure DevOps "Issue" work-item workflows in the Fabricks.Runtime repo —
-  auto-assigning issues by git blame, reporting on open issues, and diagnosing a job-run
-  error from an issue. Use this skill whenever the user asks to assign, triage, or report
-  on DevOps issues in Fabricks.Runtime, or asks "what's wrong with issue <id>" / "diagnose
-  issue <id>" / "who should this ticket go to". Trigger on /fabricks-devops-issues,
-  "assign the devops issues", "report on open issues", "diagnose issue <id>".
+  listing open issues so the user can pick one, surfacing which ones look like easy/
+  low-hanging-fruit fixes, auto-assigning issues by git blame, reporting on open issues,
+  and diagnosing (and locally fixing) a job-run error from an issue. Use this skill
+  whenever the user asks to list, triage, assign, or report on DevOps issues in
+  Fabricks.Runtime, or asks "what's wrong with issue <id>" / "diagnose issue <id>" /
+  "who should this ticket go to" / "which issues are easy to fix" / "what are the
+  low-hanging fruit". Trigger on /fabricks-devops-issues, "list the devops issues",
+  "assign the devops issues", "report on open issues", "diagnose issue <id>", "which
+  issues can I fix quickly".
 ---
 
 # Fabricks DevOps Issues
@@ -25,8 +29,26 @@ the `AZURE_DEVOPS_PAT` env var) — never ask the user for a token.
 You'll need the path to the Fabricks.Runtime checkout (`<repo_root>` below)
 — ask the user if it's not already clear from context.
 
-Dispatch on the first word of the request: `assign`, `report`, or
+Dispatch on the first word of the request: `list`, `assign`, `report`, or
 `diagnose <id>`.
+
+## list
+
+1. Run `scripts/list.sh <repo_root> [--state STATE] [--assigned-to PERSON]`
+   to get the raw ID/state/assignee/title table, and show it to the user so
+   they can pick which one to dig into with `diagnose <id>`.
+2. If the user instead asks for the easy ones / low-hanging fruit: take a
+   reasonable-sized batch of open issues (unassigned or otherwise — cap it,
+   maybe 5-10, rather than diagnosing every open issue, since each one costs
+   a `get` call plus a file read), run steps 1-3 of `diagnose` on each (get
+   the issue, resolve the job file, read it), and judge from the error and
+   the file how contained the fix looks — a single renamed/missing column,
+   a typo, an off-by-one config value read as easy; anything spanning
+   multiple files, an unclear stack trace, or a schema/architecture change
+   is not. Present a short ranked list (issue, one-line reason it looks
+   easy or not) and let the user pick — don't apply any fix during this
+   pass, that only happens once they choose one and you move into the
+   `diagnose` flow for it.
 
 ## assign
 
@@ -85,7 +107,11 @@ instead of guessing at a patch.
   call it or replicate its read-only resolution logic.
 - `assign` is the only subcommand that writes to Azure DevOps, and only
   after explicit confirmation. `diagnose` may edit a local file (see
-  above) but never touches git state or DevOps. `report` is read-only.
+  above) but never touches git state or DevOps. `list` and `report` are
+  read-only.
+- The easy-fix triage under `list` only reads issues and files to judge and
+  rank them — it never edits anything. It's a batch, so keep it bounded
+  (don't quietly diagnose the entire backlog); say how many you looked at.
 - Don't surface personal details beyond what the workflow needs (an
   assignee name resolved by git blame is expected output; don't dig up or
   repeat anything else about a person from commit history or the ticket).
