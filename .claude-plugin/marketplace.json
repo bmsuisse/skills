@@ -104,7 +104,7 @@
       "source": {
         "source": "git-subdir",
         "url": "https://github.com/microsoft/azure-skills",
-        "path": "azure-diagnostics"
+        "path": "skills/azure-diagnostics"
       }
     },
     {
@@ -113,7 +113,7 @@
       "source": {
         "source": "git-subdir",
         "url": "https://github.com/microsoft/azure-skills",
-        "path": "azure-deploy"
+        "path": "skills/azure-deploy"
       }
     },
     {
