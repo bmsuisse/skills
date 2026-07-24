@@ -63,11 +63,18 @@ uv run drop_create_run --type auto-schemaupdate --table <schema.table> --profile
   "changed type" drift reliably.
 - `<profile>` must match the Databricks host the job actually needs, not
   whatever the default profile happens to be — `~/.databrickscfg` has
-  multiple profiles (`premium`, `standard`, etc.) for different workspace
-  hosts. Get this from the run's own `run_page_url` (step 3) rather than
-  assuming; a mismatched profile produces a "refresh token invalid" error
-  that has nothing to do with the actual job and will send you down the
-  wrong path if you don't recognize it as a profile mismatch.
+  multiple profiles (e.g. `premium`, `standard`) bound to *different*
+  workspaces (different `host` values), and they are not interchangeable.
+  Parse the host out of the run-page URL (step 3) and match it to the
+  profile in `~/.databrickscfg` whose `host` field matches — never guess a
+  default. Two distinct failure modes come from getting this wrong:
+  `databricks jobs get-run` against the wrong profile can either error with
+  "refresh token invalid" (looks like an auth problem) or a misleading
+  "does not exist" (looks like the run was deleted, but it's actually just
+  in the other workspace) — recognize both as "wrong profile", not as a
+  real absence of the run. Auth also expires per-profile independently
+  (`databricks auth login --profile <name>` needed for each one you use,
+  logging into one doesn't cover another).
 - Ignore the trailing `NotImplementedError: No usable implementation
   found!` traceback every invocation prints — it's `plyer`'s desktop-notify
   facade failing on a headless box with no dbus/notify-send, unrelated
@@ -91,6 +98,23 @@ run output for details" — drill into the actual task for the real error:
 databricks jobs get-run <outer_run_id> --profile <profile>        # -> .tasks[0].run_id
 databricks jobs get-run-output <task_run_id> --profile <profile>  # -> .error has the real exception
 ```
+
+This same drill-down is also how to recover a real error for a ticket whose
+*description* looked vague (bare `PostRunInvokeException(Py4JJavaError(...))`
+or `type None message None traceback None`, see the triage section below) —
+`cmd_get`'s description output already embeds the run-page URL(s), e.g.
+`https://adb-<host>.../jobs/<outer_id>/runs/1`. Try this before writing a
+ticket off as undiagnosable; it turns a lot of "vague" tickets into a real
+root cause. If both the outer and nested run IDs come back `Error: Job/Run
+<id> does not exist` on the *correct* profile (not a profile mismatch, see
+above) — the run history has simply been purged, which happens for tickets
+more than a few weeks old. There's nothing left to recover; don't leave
+these open indefinitely. If the underlying job is still actually broken,
+the next scheduled run will fail again and file a fresh ticket with
+readable logs — strictly better than an old ticket with a permanently
+unrecoverable error. Treat "confirmed-correct profile, still 404 on both
+IDs" as its own outcome (stale — close it, don't diagnose further),
+distinct from "vague, need to check the run" above.
 
 If it's a genuine `AnalysisException: UNRESOLVED_COLUMN` (not a
 schema-drift ticket) and the suggested alternatives look like a rename
@@ -143,9 +167,13 @@ Two patterns confirmed across real triage batches:
   rerun, not an edit.
 - A ticket whose description is a bare `PostRunInvokeException(Py4JJavaError
   (...))` or literally `type None message None traceback None` — no real
-  message text — is not diagnosable from the ticket alone. Skip it in the
-  easy-fix batch without spending a file-read on it; pulling the actual
-  Databricks run log first is a bigger step than this triage pass does.
+  message text — isn't diagnosable from the ticket text alone, but usually
+  is diagnosable from the actual run: pull the real error via the run-page
+  URL(s) already embedded in the description (see step 3's drill-down)
+  before giving up on it. Only land on "skip, too vague" if that drill-down
+  itself comes back empty or errors for a reason other than stale/purged
+  history (see step 3) — don't skip solely because the ticket text looked
+  vague at a glance.
 
 ## Boundaries
 
