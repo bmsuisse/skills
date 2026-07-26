@@ -1,0 +1,23 @@
+{
+  "skill_name": "code-comments",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Review the comments in legacy_utils.py and clean up anything that's noise. Give me a short report of what you changed and why.",
+      "expected_output": "A review that identifies and removes redundant/restate-the-code comments, commented-out code, a vague TODO, and a venting comment, while keeping or rewriting the one comment that explains a real non-obvious constraint. Report format lists Delete/Rewrite/Add/Keep.",
+      "files": ["fixtures/legacy_utils.py"]
+    },
+    {
+      "id": 2,
+      "prompt": "Write a TypeScript function `parseRetryAfter(header: string | null): number` that parses an HTTP Retry-After header (either seconds as an int, or an HTTP-date) and returns milliseconds to wait, defaulting to 1000ms if the header is missing or unparseable. Comment it appropriately.",
+      "expected_output": "Implementation with a JSDoc/doc comment on the exported function describing the contract, and at most one or two inline comments explaining genuinely non-obvious parts (e.g. the HTTP-date branch or the default). No comments that just restate each line.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Here's a React component (ProfilePanel.tsx) a contractor wrote. Before we merge it, can you clean up the comments? Point out anything unprofessional too.",
+      "expected_output": "Flags the mean-spirited/venting comment and the redundant JSX comments for removal, keeps or rewrites the comment explaining the non-obvious useEffect dependency, notes the missing doc comment isn't needed here (internal component). Professional tone in the report itself.",
+      "files": ["fixtures/ProfilePanel.tsx"]
+    }
+  ]
+}
