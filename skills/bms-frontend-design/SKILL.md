@@ -4,16 +4,18 @@ plugin: coding
 description: >
   The BMS visual identity for internal web apps — left navigation layout,
   BMS red accent color, background/surface scale, border-radius scale, a
-  minimal zebra-striping pattern for data grids, and the Heroicons
-  `24/outline` icon set with a curated concept-to-icon mapping. Use this
-  whenever scaffolding a new internal BMS app's UI, building or restyling a
-  sidebar/nav, picking
-  colors for a new app, styling a data table or grid, choosing icons, or
-  reviewing frontend code for visual consistency with other BMS apps. Trigger
-  on requests like "make this look like our other internal tools", "add a
+  minimal zebra-striping pattern for data grids, the Heroicons `24/outline`
+  icon set with a curated concept-to-icon mapping, and the responsive/mobile
+  breakpoint where the sidebar becomes a slide-in drawer. Use this whenever
+  scaffolding a new internal BMS app's UI, building or restyling a
+  sidebar/nav, picking colors for a new app, styling a data table or grid,
+  choosing icons, making a layout responsive/mobile-friendly, or reviewing
+  frontend code for visual consistency with other BMS apps. Trigger on
+  requests like "make this look like our other internal tools", "add a
   sidebar nav", "what colors should I use", "style this table", "what icon
-  should I use for X", or "set up the theme" for a BMS app — even if the user
-  doesn't say "design system" explicitly. Supersedes
+  should I use for X", "how do I make this responsive", or "set up the
+  theme" for a BMS app — even if the user doesn't say "design system"
+  explicitly. Supersedes
   generic frontend-aesthetic advice (e.g. "pick a bold, unique look per app")
   for anything under the BMS brand — the point here is consistency across
   apps, not differentiation.
@@ -76,6 +78,36 @@ className="rounded-lg font-semibold text-foreground bg-nav-primary/8"
 className="rounded-lg text-foreground/55 hover:bg-muted/60 hover:text-foreground"
 // icon: className="h-[18px] w-[18px] text-muted-foreground" strokeWidth={1.75}
 ```
+
+## Responsive — mobile nav
+
+Tailwind's responsive system is mobile-first: an unprefixed utility applies
+at every size, and a breakpoint prefix (`sm:`, `md:`, `lg:`, `xl:`, `2xl:`)
+overrides it starting at that min-width. Default to writing the mobile
+layout unprefixed and layering `md:` (768px) on top for desktop, rather than
+the other way round — it's easy to end up with desktop-only CSS by accident
+if you start from a `lg:` design and never account for what happens below it.
+
+The persistent 240px sidebar (above) is a desktop pattern, not a mobile one.
+Below `md`, replace it entirely with a slide-in drawer rather than trying to
+shrink it further:
+
+- Sidebar `<aside>`: `hidden md:relative md:flex` — invisible below `md`,
+  the normal resizable sidebar at `md` and above.
+- Below `md`: a `Sheet`/drawer component sliding in from the left
+  (`side="left"`), width `min(352px, 88vw)` so it caps out on tablets but
+  still fits narrow phones, opened by a menu button that itself is only
+  shown below `md` (`md:hidden` on the trigger).
+- Drag-to-resize and the collapse-to-rail toggle are desktop-only
+  affordances (`md:block` / `md:inline-flex` on those controls) — mobile
+  nav is just open-or-closed, not resizable or collapsible to a rail.
+- Respect safe areas on mobile: pad with `env(safe-area-inset-*)` (commonly
+  aliased to CSS vars like `--sat`/`--sab`/`--sal`/`--sar`) so content
+  doesn't sit under a notch or a home indicator.
+- Use `100dvh` (dynamic viewport height), not `100vh`, for full-height
+  mobile layouts — `100vh` doesn't account for the browser chrome that
+  appears/disappears as the user scrolls on mobile, which leaves a gap or
+  causes scroll-jank.
 
 ## Brand colors
 
@@ -190,6 +222,7 @@ className={cn(
 ## Quick reference
 
 - [ ] Sidebar: 240px default, 180–420px resizable range, 56px collapsed rail
+- [ ] Mobile (`<md`): sidebar replaced by a slide-in drawer, not shrunk in place; safe-area padding and `100dvh` used instead of `100vh`
 - [ ] Nav active state: `bg-nav-primary/8` + full-opacity text, not a filled pill
 - [ ] Brand red `#DC001A` used as accent-only or full-primary — pick one, don't mix
 - [ ] Backgrounds: 3-tier scale (`--background` → `--card` → `--muted`), not more
