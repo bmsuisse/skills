@@ -8,7 +8,9 @@ Usage:
 Creates:
     <project-name>/
         frontend/            Vite + React + TanStack Router/Query + Zustand (bun)
-        backend/             FastAPI + asyncpg, Python 3.14 (uv)
+        backend/             FastAPI + pgdevkit (psycopg), Python 3.14 (uv)
+        database/            Schema-as-code, applied by pgdevkit's `pgdb testdb`
+        tests/               pytest + pgdevkit's ensure_testdb() fixture
         docker-compose.yml   Postgres 17 dev service
 """
 
@@ -445,14 +447,19 @@ def main() -> None:
     print("✅ Frontend ready")
 
     # ── Backend ───────────────────────────────────────────────────────────────
-    print("\n🐍 Backend: FastAPI + asyncpg (Python 3.14)")
+    print("\n🐍 Backend: FastAPI + pgdevkit (psycopg), Python 3.14")
 
     be.mkdir(exist_ok=True)
     run(["uv", "init", "--python", "3.14", "."], root, "uv init (python 3.14)")
     run(
-        ["uv", "add", "fastapi", "granian[reload]", "asyncpg", "pydantic-settings"],
+        ["uv", "add", "fastapi", "granian[reload]", "pydantic-settings", "pgdevkit[cli,db]"],
         root,
-        "uv add fastapi granian[reload] asyncpg pydantic-settings",
+        "uv add fastapi granian[reload] pydantic-settings pgdevkit[cli,db]",
+    )
+    run(
+        ["uv", "add", "--dev", "pytest", "pytest-asyncio"],
+        root,
+        "uv add --dev pytest pytest-asyncio",
     )
 
     # backend/__init__.py — makes `backend` a proper package
@@ -467,60 +474,24 @@ def main() -> None:
         class Settings(BaseSettings):
             model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-            database_url: str = "postgresql://postgres:postgres@localhost:5432/app"
             cors_origins: list[str] = ["http://localhost:__FE_PORT__"]
 
         settings = Settings()
         """.replace("__FE_PORT__", str(fe_port)),
     )
 
-    # db.py — asyncpg pool + t-string sql() helper (PEP 750)
+    # db.py — pgdevkit's PgPool (psycopg). env_prefix must match [tool.pgdevkit]
+    # env_prefix + "POSTGRES_" so this pool picks up ensure_testdb()'s env vars
+    # under pytest, and the docker-compose Postgres's vars under `just dev`.
     write(
         be / "db.py",
         '''\
-        """Asyncpg pool + t-string SQL helper (PEP 750, Python 3.14)."""
+        """Postgres access via pgdevkit — no ORM, no hand-rolled pool."""
         from __future__ import annotations
 
-        import asyncpg
-        from string.templatelib import Template
+        from pgdevkit.db import PgPool
 
-        from backend.config import settings
-
-        pool: asyncpg.Pool | None = None
-
-
-        async def connect() -> None:
-            global pool
-            pool = await asyncpg.create_pool(settings.database_url, min_size=1, max_size=10)
-
-
-        async def disconnect() -> None:
-            global pool
-            if pool is not None:
-                await pool.close()
-                pool = None
-
-
-        def sql(template: Template) -> tuple[str, list[object]]:
-            """Convert a PEP 750 t-string into (query, params) for asyncpg.
-
-            Usage:
-                query, params = sql(t"SELECT * FROM users WHERE id = {user_id}")
-                row = await conn.fetchrow(query, *params)
-
-            Interpolated values become positional params ($1, $2, ...).
-            Literal parts pass through unchanged. Safe from SQL injection —
-            values never touch string concatenation.
-            """
-            parts: list[str] = []
-            params: list[object] = []
-            for item in template:
-                if isinstance(item, str):
-                    parts.append(item)
-                else:  # Interpolation
-                    params.append(item.value)
-                    parts.append(f"${len(params)}")
-            return "".join(parts), params
+        pool = PgPool(env_prefix="APP_POSTGRES_")
         ''',
     )
 
@@ -533,14 +504,14 @@ def main() -> None:
         from fastapi.middleware.cors import CORSMiddleware
 
         from backend.config import settings
-        from backend.db import connect, disconnect, pool, sql
+        from backend.db import pool
 
 
         @asynccontextmanager
         async def lifespan(_: FastAPI):
-            await connect()
+            await pool.open()
             yield
-            await disconnect()
+            await pool.close()
 
 
         app = FastAPI(title="Backend API", version="0.1.0", lifespan=lifespan)
@@ -556,11 +527,10 @@ def main() -> None:
 
         @app.get("/health")
         async def health() -> dict:
-            assert pool is not None
-            async with pool.acquire() as conn:
-                query, params = sql(t"SELECT 1 AS ok")
-                row = await conn.fetchrow(query, *params)
-            return {"status": "ok", "db": row["ok"] == 1}
+            async with pool.connection() as conn:
+                cur = await conn.execute("SELECT 1 AS ok")
+                row = await cur.fetchone()
+            return {"status": "ok", "db": row[0] == 1}
         """,
     )
 
@@ -604,16 +574,31 @@ def main() -> None:
 
                 [tool.uv]
                 package = true
+
+                [tool.pgdevkit]
+                database_dir = "database"
+                env_prefix = "APP_"
+
+                [tool.pytest.ini_options]
+                testpaths = ["tests"]
+                asyncio_mode = "auto"
                 """
             )
             pyproject.write_text(content, encoding="utf-8")
         run(["uv", "sync"], root, "uv sync (install entry points)")
 
-    # Root .env.example (backend vars; uv runs from root so .env is at root)
+    # Root .env.example (backend vars; uv runs from root so .env is at root).
+    # APP_POSTGRES_* matches [tool.pgdevkit] env_prefix="APP_" + PgPool's
+    # env_prefix="APP_POSTGRES_" in backend/db.py — same vars the docker-compose
+    # `db` service exposes, and the shape ensure_testdb() overrides under pytest.
     write(
         root / ".env.example",
         """\
-        DATABASE_URL=postgresql://postgres:postgres@localhost:5432/app
+        APP_POSTGRES_HOST=localhost
+        APP_POSTGRES_PORT=5432
+        APP_POSTGRES_DB=app
+        APP_POSTGRES_USER=postgres
+        APP_POSTGRES_PASSWORD=postgres
         CORS_ORIGINS=["http://localhost:__FE_PORT__"]
         """.replace("__FE_PORT__", str(fe_port)),
     )
@@ -622,6 +607,48 @@ def main() -> None:
     hello = root / "hello.py"
     if hello.exists():
         hello.unlink()
+
+    # database/ — schema-as-code, source of truth for the Postgres schema.
+    # `pgdb testdb` applies every .sql file here to the local test database;
+    # a human applies the same files to production. See pgdevkit's
+    # docs/database-layout.md for the layer/object-type folder convention.
+    write(root / "database" / ".gitkeep", "")
+
+    # tests/ — pgdevkit's ensure_testdb() spins up a per-branch test database
+    # and applies database/ to it before any test runs.
+    write(
+        root / "tests" / "conftest.py",
+        """\
+        import os
+
+        import pytest
+        from pgdevkit.testdb import ensure_testdb
+
+
+        @pytest.fixture(scope="session", autouse=True)
+        def _testdb_env():
+            env = ensure_testdb()
+            for key, value in env.items():
+                os.environ[key] = value
+        """,
+    )
+    write(
+        root / "tests" / "test_health.py",
+        """\
+        from backend.db import pool
+
+
+        async def test_db_connection():
+            await pool.open()
+            try:
+                async with pool.connection() as conn:
+                    cur = await conn.execute("SELECT 1 AS ok")
+                    row = await cur.fetchone()
+                assert row[0] == 1
+            finally:
+                await pool.close()
+        """,
+    )
 
     print("✅ Backend ready")
 
@@ -692,6 +719,10 @@ def main() -> None:
         # Regenerate the typed API client from the running backend
         generate-api:
             cd frontend && bun run generate-api
+
+        # Run backend tests (spins up/reuses the shared pgdevkit test container)
+        test:
+            uv run pytest
         """.replace("__BE_PORT__", str(be_port)).replace("__FE_PORT__", str(fe_port)),
     )
 
@@ -713,6 +744,14 @@ def main() -> None:
         *.egg-info/
         .python-version
 
+        # pgdevkit — generated concatenation, never hand-edited or committed
+        database/**/all.sql
+
+        # skillup — companion skills materialized locally; only skills.lock.json is committed
+        .claude/skills/
+        .agents/skills/
+        .agent/skills/
+
         # Env
         .env
         .env.*
@@ -727,7 +766,7 @@ def main() -> None:
         # {project}
 
         Full-stack app: Vite + React + TanStack (Router/Query/Form/Table/Virtual) + Zustand on the frontend,
-        FastAPI + asyncpg on the backend, Postgres 17 in Docker.
+        FastAPI + pgdevkit (psycopg) on the backend, Postgres 17 in Docker.
 
         ## Dev
 
@@ -746,6 +785,17 @@ def main() -> None:
         just frontend    # Vite on :{fe_port} (run in a second terminal)
         ```
 
+        ## Tests
+
+        ```bash
+        just test
+        ```
+
+        Uses [pgdevkit](https://github.com/bmsuisse/pgdevkit)'s `ensure_testdb()` fixture
+        (see `tests/conftest.py`) — starts the shared `pgdevkit-postgres` container if
+        needed, creates a database scoped to this project+branch, and applies every
+        `.sql` file under `database/` before tests run.
+
         ## Regenerate typed API client
 
         With the backend running:
@@ -758,7 +808,9 @@ def main() -> None:
 
         ## Stack notes
 
-        - No ORM. Raw SQL via `db.sql()` — PEP 750 t-strings → asyncpg `$1, $2` params.
+        - No ORM. Postgres access via [pgdevkit](https://github.com/bmsuisse/pgdevkit)'s
+          `pgdevkit.db` (psycopg) — see `backend/db.py`. Schema lives as `.sql` files
+          under `database/`; see pgdevkit's `docs/database-layout.md` for the convention.
         - File-based routing: add files under `frontend/src/routes/`.
         - Client state: `useState` + Context first. Zustand only when crossing distant components.
         - URL state (filters, pagination): TanStack Router search params, not Zustand.

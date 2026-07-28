@@ -4,14 +4,14 @@
     {
       "id": 1,
       "prompt": "Set up a new full-stack app called 'expense-tracker' with a React frontend and FastAPI backend.",
-      "expected_output": "The assistant runs `uv run python scripts/create.py expense-tracker`, explains what the script creates (Vite + React + TanStack Router + TanStack Query + Zustand on the frontend with bun, FastAPI + asyncpg on Python 3.14 with uv, Postgres 17 via docker-compose), and provides the startup commands: start Postgres with `docker compose up -d db`, backend with `cd expense-tracker/backend && uv run dev`, frontend with `cd expense-tracker/frontend && bun run dev`.",
+      "expected_output": "The assistant runs `uv run python scripts/create.py expense-tracker`, explains what the script creates (Vite + React + TanStack Router + TanStack Query + Zustand on the frontend with bun, FastAPI + pgdevkit (psycopg) on Python 3.14 with uv, Postgres 17 via docker-compose for dev plus a `database/` schema-as-code folder), and provides the startup commands: start Postgres with `docker compose up -d db`, backend with `cd expense-tracker/backend && uv run dev`, frontend with `cd expense-tracker/frontend && bun run dev`.",
       "files": [],
       "expectations": [
         "The assistant runs scripts/create.py with expense-tracker as the project name",
         "bun is used for the frontend (not npm, yarn, or pnpm)",
         "uv is used for the backend (not pip, poetry, or pipenv)",
         "The frontend stack is identified as Vite + React + TanStack Router + TanStack Query + Zustand + shadcn/ui (not Nuxt, not Next.js, not React Router, not Nuxt UI, not MUI/Chakra/Mantine)",
-        "The backend uses raw asyncpg (no SQLAlchemy, no ORM) and Python 3.14",
+        "The backend uses pgdevkit (psycopg) with no SQLAlchemy and no ORM, and Python 3.14 — not asyncpg",
         "Postgres is started via `docker compose up -d db` before the backend",
         "The backend dev command is `uv run dev` (granian under the hood)",
         "The frontend dev command is `bun run dev` on port 5173"
@@ -20,28 +20,30 @@
     {
       "id": 2,
       "prompt": "After scaffolding a new app, how do I install the companion skills so the AI has context on the stack?",
-      "expected_output": "The assistant runs `uv run python scripts/install-skills.py` and explains the two skills it installs (frontend-design from anthropics/skills, fastapi-templates from wshobson/agents) and where they are installed (.agents/skills/, .agent/skills/, .claude/skills/).",
+      "expected_output": "The assistant explains that skills are installed via `skillup` (not the plugin marketplace, not `npx skills add`): `uv tool install skillup` once, then `skillup add bmsuisse/skills --skill tanstack-best-practices --skill coding-guidelines-typescript --skill coding-guidelines-python --skill fastapi-guideline --skill autoresearch`, `skillup add bmsuisse/pgdevkit --skill pgdevkit`, and `skillup add bmsuisse/devtools --skill bmsdna-devtools`. It notes pgdevkit should always be installed for Postgres work, and that install locations (.claude/skills/, .agents/skills/, .agent/skills/) are gitignored — only .agents/skills.lock.json is committed.",
       "files": [],
       "expectations": [
-        "The assistant runs scripts/install-skills.py",
-        "The installed skills are named: frontend-design and fastapi-templates",
-        "The install locations (.agents/skills/, .agent/skills/, .claude/skills/) are mentioned",
+        "The assistant uses `skillup add`, not `npx skills add` and not the plugin marketplace / extraKnownMarketplaces config",
+        "Mentions installing skillup itself first via `uv tool install skillup`",
+        "Includes bmsuisse/pgdevkit's `pgdevkit` skill and frames it as required/always-install for Postgres work, not optional",
+        "Includes bmsuisse/devtools' `bmsdna-devtools` skill",
+        "Mentions the install locations (.claude/skills/, .agents/skills/, .agent/skills/) are gitignored and only the lock file is committed",
         "No Nuxt or nuxt-ui skill is mentioned (those are from the old stack)"
       ]
     },
     {
       "id": 3,
       "prompt": "I need to add a GET /users/{user_id} endpoint to the backend that returns id, email, and name from the users table. Show me the handler using the project's conventions.",
-      "expected_output": "The assistant writes a FastAPI handler that: (1) uses the `pool` and `sql()` helpers from `db.py`, (2) uses a PEP 750 t-string like `sql(t\"SELECT id, email, name FROM users WHERE id = {user_id}\")`, (3) calls `conn.fetchrow(*sql(...))`, (4) wraps the row in a Pydantic `UserOut` response model, (5) raises `HTTPException(404)` when the row is None. The assistant does NOT import SQLAlchemy, does NOT build a string query with f-strings or `.format()`, and does NOT suggest adding an ORM.",
+      "expected_output": "The assistant writes a FastAPI handler that: (1) uses the `pool` from `backend/db.py` and `pg_retrieve` from `pgdevkit.db`, (2) defines a `UserRow(PostgresTableModel)` (or reuses an existing one) with `get_table_name`/`get_primary_key`, (3) acquires a connection via `async with pool.connection() as conn:` and calls `await pg_retrieve(conn, UserRow, {\"id\": user_id})`, (4) wraps the result in a Pydantic `UserOut` response model, (5) raises `HTTPException(404)` when the row is None. The assistant does NOT import SQLAlchemy or asyncpg, does NOT build a string query with f-strings or `.format()`, and does NOT suggest adding an ORM.",
       "files": [],
       "expectations": [
-        "Uses `t\"...\"` (PEP 750 template string) inside sql() — not f-strings, not .format(), not % formatting",
-        "Calls the sql() helper from db.py and unpacks its result with `*sql(t\"...\")`",
-        "Acquires a connection via `async with pool.acquire() as conn:`",
-        "Uses `conn.fetchrow(...)` for a single-row query (not fetch, not fetchval)",
+        "Uses named `%(name)s`-style params if any raw SQL is written — not f-strings, not .format(), not % formatting, not positional asyncpg-style $1/$2 params",
+        "Uses pgdevkit.db's `pg_retrieve` (or a dedicated .sql file via SqlLoader for anything beyond a PK lookup) rather than hand-rolled SQL",
+        "Acquires a connection via `async with pool.connection() as conn:` (psycopg-style), not `pool.acquire()` (asyncpg-style)",
+        "References a `PostgresTableModel` subclass (e.g. UserRow) for the table-mapped row, not a bare dict/Record",
         "Defines a Pydantic `UserOut` model and sets it via `response_model=UserOut`",
         "Handles the not-found case with `HTTPException(404)`",
-        "Does NOT import or reference SQLAlchemy, sqlmodel, tortoise, or any other ORM",
+        "Does NOT import or reference SQLAlchemy, sqlmodel, tortoise, asyncpg, or any other ORM",
         "Does NOT suggest adding Alembic (no SQLAlchemy means no Alembic)"
       ]
     },
