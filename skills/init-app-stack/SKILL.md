@@ -9,8 +9,8 @@ description: Use this skill whenever the user wants to bootstrap, scaffold, or i
 Bootstrap a full-stack project with:
 
 - **Frontend**: Vite **8+** + React + TanStack Router + TanStack Query + TanStack Form + TanStack Table + TanStack Virtual + Zustand + **shadcn/ui** + TailwindCSS v4, managed with **bun**
-- **Backend**: FastAPI + Granian + raw **asyncpg** (Postgres), managed with **uv**, targeting **Python 3.14** (PEP 750 t-strings for SQL)
-- **DB**: Postgres 17 via `docker-compose.yml`
+- **Backend**: FastAPI + Granian + **[pgdevkit](https://github.com/bmsuisse/pgdevkit)** (psycopg, no ORM), managed with **uv**, targeting **Python 3.14**
+- **DB**: Postgres 17 via `docker-compose.yml` for dev; pgdevkit's `pgdb testdb` for tests; schema lives as `.sql` files under `database/`
 - **Types**: `openapi-typescript` generates a typed client from FastAPI's OpenAPI schema
 - **Task runner**: [`just`](https://github.com/casey/just) — the scaffold writes a root `justfile` (`install`, `db-up`, `db-down`, `backend`, `frontend`, `dev`, `generate-api`). `just dev` runs backend + frontend together (Ctrl+C stops both); it does not start Postgres — run `just db-up` first. It uses `set shell := ["bash", "-uc"]` for `&`/`wait`, so Git Bash must be on `PATH` on Windows. Run `just` with no args to list recipes; always drive the project through `just <recipe>` instead of raw `uv run` / `bun run` / `docker compose` commands.
 - **Ports**: randomly assigned high ports (seeded by project name, so deterministic per project — printed on scaffold completion)
@@ -30,12 +30,13 @@ The script (works on Mac, Linux, Windows):
 3. Writes `src/lib/queryClient.ts`, `src/lib/api.ts` (fetch wrapper with `VITE_API_URL`), `src/lib/utils.ts` (shadcn `cn` helper), `src/stores/` placeholder for Zustand
 4. Writes shadcn config: `components.json`, shadcn-compatible `src/index.css` (OKLCH theme vars, `@theme inline`, `tw-animate-css`, `.dark` class variant), patches `tsconfig.json` + `tsconfig.app.json` with `@/*` path alias
 5. Adds `bun run generate-api` script → fetches `/openapi.json` and runs `openapi-typescript` into `src/lib/api-types.ts`
-6. **Backend**: `uv init --python 3.14` at **project root**, adds `fastapi`, `granian`, `asyncpg`, `pydantic-settings`
-7. Writes `backend/main.py` (lifespan-managed asyncpg pool, CORS for `localhost:5173`), `backend/db.py` (pool + t-string `sql()` helper), `backend/config.py` (pydantic-settings) — all imports use `from backend.xxx import ...`
-8. Adds `dev = "backend.scripts:dev"` and `start = "backend.scripts:start"` to root `pyproject.toml`; granian target is `backend.main:app`
-9. Writes `docker-compose.yml` with a single `db` service (Postgres 17) + named volume
-10. Writes a root `justfile` (`install`, `db-up`, `db-down`, `backend`, `frontend`, `dev`, `generate-api`) as the project's task runner
-11. Writes `.env.example` (frontend + backend), root `.gitignore`, `README.md` with startup steps
+6. **Backend**: `uv init --python 3.14` at **project root**, adds `fastapi`, `granian`, `pydantic-settings`, `pgdevkit[cli,db]`, plus `pytest`/`pytest-asyncio` as dev deps
+7. Writes `backend/main.py` (lifespan-managed `pgdevkit.db.PgPool`, CORS for `localhost:5173`), `backend/db.py` (`PgPool(env_prefix="APP_POSTGRES_")`), `backend/config.py` (pydantic-settings, CORS only) — all imports use `from backend.xxx import ...`
+8. Adds `dev = "backend.scripts:dev"` and `start = "backend.scripts:start"` to root `pyproject.toml`; granian target is `backend.main:app`; adds `[tool.pgdevkit]` (`env_prefix = "APP_"`) and `[tool.pytest.ini_options]` (`asyncio_mode = "auto"`)
+9. Writes `docker-compose.yml` with a single `db` service (Postgres 17) + named volume — this is the **dev** database; pgdevkit's `pgdb testdb` manages a separate, per-branch database for tests
+10. Writes `database/.gitkeep` (schema-as-code root — see [pgdevkit's skill](https://github.com/bmsuisse/pgdevkit) for the layer/object-type folder convention) and `tests/conftest.py` + `tests/test_health.py` wired to pgdevkit's `ensure_testdb()` fixture
+11. Writes a root `justfile` (`install`, `db-up`, `db-down`, `backend`, `frontend`, `dev`, `generate-api`, `test`) as the project's task runner
+12. Writes `.env.example` (frontend + backend, `APP_POSTGRES_*` vars), root `.gitignore` (includes `.claude/skills/`, `.agents/skills/`, `.agent/skills/` — skillup-managed, see Step 3), `README.md` with startup steps
 
 After running:
 
@@ -54,33 +55,29 @@ the git pre-commit hook, and formats all existing files. The project has both
 Python (`backend/`) and TypeScript (`frontend/`) so prek will configure both
 ruff and prettier automatically.
 
-## Step 3: Enable companion skills via marketplace
+## Step 3: Install companion skills with skillup
 
-Add this to your project's `.claude/settings.json` to give the agent deep knowledge of the stack:
+Use [`skillup`](https://github.com/bmsuisse/skillup) — not the plugin marketplace, not `npx skills add` — to give the agent deep, versioned knowledge of the stack:
 
-```json
-{
-  "extraKnownMarketplaces": {
-    "bmsuisse-skills": {
-      "source": {
-        "source": "github",
-        "repo": "bmsuisse/skills"
-      }
-    }
-  },
-  "enabledPlugins": {
-    "coding@bmsuisse-skills": true
-  }
-}
+```bash
+uv tool install skillup   # once per machine; skip if already installed
+
+skillup add bmsuisse/skills --skill tanstack-best-practices --skill coding-guidelines-typescript --skill coding-guidelines-python --skill fastapi-guideline --skill autoresearch
+skillup add bmsuisse/pgdevkit --skill pgdevkit
+skillup add bmsuisse/devtools --skill bmsdna-devtools
 ```
 
-This installs the `coding` plugin which includes:
+This installs:
 
 - `tanstack-best-practices` — TanStack Router + Query patterns, SSR integration, query key factories
 - `coding-guidelines-typescript` — TypeScript strictness, discriminated unions, async typing
 - `coding-guidelines-python` — FastAPI/backend Python standards, ty type checking
 - `fastapi-guideline` — Production FastAPI patterns (CRUD, DI, auth, async)
 - `autoresearch` — Autonomous experiment loop for iterative improvements
+- `pgdevkit` — the Postgres conventions this scaffold's backend already follows (`pgdevkit.db`'s psycopg CRUD helpers, the `database/` schema-as-code folder, `pgdb testdb` for tests). **Always install this one whenever the project touches Postgres** — `backend/db.py` and `database/` are built directly on it, not a loose suggestion.
+- `bmsdna-devtools` — the `bdt` CLI (PR status/create, worktrees, commits, Azure logs); prefer it over raw `git`/`az`/`gh` once installed
+
+`skillup add` writes real copies into `.claude/skills/`, `.agents/skills/`, and `.agent/skills/` (one per agent runtime) and pins commit SHAs in `.agents/skills.lock.json`. The scaffold's `.gitignore` already excludes the three `skills/` directories — commit only the lock file, and run `skillup sync` to restore on a new machine.
 
 ---
 
@@ -90,9 +87,8 @@ This installs the `coding` plugin which includes:
 | ------------------------------------------------------------------------ | ---------------------------------------------------------------------------- |
 | [`references/react-tanstack.md`](references/react-tanstack.md)           | TanStack Router (typed routes, search params, loaders) + Query (caching, mutations) + Zustand patterns |
 | [`references/shadcn-ui.md`](references/shadcn-ui.md)                     | Adding shadcn components, theme tokens, `cn()` usage, dark mode              |
-| [`references/asyncpg-postgres.md`](references/asyncpg-postgres.md)       | Connection pool lifecycle, t-string `sql()` helper, transactions, pagination |
+| [`references/postgres-pgdevkit.md`](references/postgres-pgdevkit.md)     | `pgdevkit.db` pool lifecycle, CRUD helpers, `.sql` file loading, `database/` folder, `pgdb testdb` for tests |
 | [`references/openapi-typed-client.md`](references/openapi-typed-client.md) | Regenerating `api-types.ts` from FastAPI, typed fetch patterns              |
-| [`references/fastapi-templates.md`](references/fastapi-templates.md)     | Backend structure, CRUD repos, dependency injection, auth                    |
 | [`references/fastapi-sse.md`](references/fastapi-sse.md)                 | Adding SSE streaming endpoints (AI chat, live updates, logs)                 |
 | [`references/frontend-design.md`](references/frontend-design.md)         | UI aesthetics, typography, color, motion — avoid generic looks               |
 
@@ -105,13 +101,15 @@ This installs the `coding` plugin which includes:
 - Always use **uv** (not pip/poetry/pipenv) for the backend. Pin Python **3.14**.
 - Backend uses `fastapi` + `granian` — do **not** use `fastapi[standard]` (bundles uvicorn, conflicts with Granian).
 - Run backend dev with `just backend` (wraps `uv run dev` → `granian --interface asgi main:app --reload`).
-- **Do not use SQLAlchemy or any ORM.** Use raw asyncpg with the `sql()` t-string helper in `backend/db.py`:
+- **Do not use SQLAlchemy or any ORM.** Postgres access goes through [pgdevkit](https://github.com/bmsuisse/pgdevkit) (psycopg) — install its skill via `skillup add bmsuisse/pgdevkit --skill pgdevkit` (Step 3) before doing any nontrivial database work, it's the source of truth for these conventions, not this bullet list.
   ```python
-  from backend.db import sql, pool
-  async with pool.acquire() as conn:
-      rows = await conn.fetch(*sql(t"SELECT * FROM users WHERE id = {user_id}"))
+  from backend.db import pool
+  from pgdevkit.db import pg_retrieve
+
+  async with pool.connection() as conn:
+      user = await pg_retrieve(conn, UserRow, {"id": user_id})
   ```
-  The helper converts `t"..."` interpolations to asyncpg's native `$1, $2` positional params — safe from injection, no string formatting.
+  Simple CRUD uses `pgdevkit.db`'s `pg_*` helpers (named `%(name)s` params, never positional or f-string SQL). Anything with joins/CTEs/aggregations gets its own `.sql` file under `backend/db/queries/`, loaded via `pgdevkit.db.SqlLoader`. The schema itself lives as `.sql` files under `database/` (see [`references/postgres-pgdevkit.md`](references/postgres-pgdevkit.md)) — `pgdb testdb` applies it for tests, a human applies it to production.
 - Frontend routing: **file-based** via `@tanstack/router-plugin` — add files under `src/routes/`, route tree is auto-generated.
 - Data fetching: **TanStack Query** only — do not roll `useEffect + fetch`. Use `queryOptions` for reusable query definitions.
 - Forms: **TanStack Form** (`@tanstack/react-form`) — use `useForm` + `form.Field` with shadcn input/label primitives. Do not add react-hook-form.
@@ -124,3 +122,5 @@ This installs the `coding` plugin which includes:
 - Regenerate API types after backend changes: `just generate-api` (requires backend running on `localhost:8000`).
 - CORS is pre-configured for the project's assigned frontend port (seeded from project name). Update for production.
 - Typing on backend: `uv add --dev ty` and run `uv run ty check`.
+- Run backend tests with `just test` — `tests/conftest.py`'s `ensure_testdb()` fixture applies `database/` to a per-branch test database automatically; no manual container setup.
+- Once [`bmsdna-devtools`](https://github.com/bmsuisse/devtools) is installed (Step 3), prefer its `bdt` CLI (`bdt pr create`, `bdt pr status --wait`, `bdt worktree`, `bdt commit`) over raw `git`/`az`/`gh` for PRs, worktrees, and commits.
