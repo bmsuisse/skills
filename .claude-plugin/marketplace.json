@@ -60,13 +60,14 @@
     },
     {
       "name": "ui",
-      "description": "UI framework skills: KendoReact component patterns, theming, and best practices",
+      "description": "UI framework skills: KendoReact component patterns, theming, and visual design best practices",
       "source": "./",
       "skills": [
         "./kendo-ui-react",
         "./rich-data-tables",
         "./kendo-ui-angular",
-        "./kendo-ui-vue"
+        "./kendo-ui-vue",
+        "./inter-without-ai-slop"
       ]
     },
 

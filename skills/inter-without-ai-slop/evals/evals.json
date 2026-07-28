@@ -1,0 +1,26 @@
+{
+  "skill_name": "inter-without-ai-slop",
+  "evals": [
+    {
+      "id": 1,
+      "name": "sales-cockpit-from-scratch",
+      "prompt": "Build a React sales rep cockpit page: a table of open deals (deal name, account, stage, amount, close date, owner) plus 3 KPI tiles above it (pipeline value, win rate, avg deal size). Use Tailwind and Inter as the font. Make it look sharp, not like a generic AI-generated dashboard.",
+      "expected_output": "A React/Tailwind component using Inter for labels/nav/body, but numeric columns (amount, KPI values) use a tabular-figure or monospaced treatment. Badges/pills for deal stage are rationed to one consistent style, not a different pill shape per element type. Accent color is not the terracotta/#D97757 or acid-green-on-black AI-default palette. Density is appropriate for a power-user tool (not oversized whitespace).",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "review-existing-dashboard",
+      "prompt": "Here's our internal ops dashboard component (React + Tailwind, Inter font). It feels a bit 'AI-generated' but I can't put my finger on why. Can you review it and tell me what to change?\n\n```tsx\nexport function OpsDashboard({ rows }: { rows: Row[] }) {\n  return (\n    <div className=\"p-8 space-y-6 font-[Inter]\">\n      <div className=\"grid grid-cols-3 gap-6\">\n        <div className=\"rounded-2xl bg-white p-6 shadow\">\n          <p className=\"text-sm text-gray-500\">Active Jobs</p>\n          <p className=\"text-3xl font-bold\">142</p>\n        </div>\n        <div className=\"rounded-2xl bg-white p-6 shadow\">\n          <p className=\"text-sm text-gray-500\">Failed Today</p>\n          <p className=\"text-3xl font-bold text-orange-500\">7</p>\n        </div>\n        <div className=\"rounded-2xl bg-white p-6 shadow\">\n          <p className=\"text-sm text-gray-500\">Success Rate</p>\n          <p className=\"text-3xl font-bold text-green-600\">96.4%</p>\n        </div>\n      </div>\n      <table className=\"w-full\">\n        <thead><tr><th>Job</th><th>Status</th><th>Duration</th><th>Owner</th></tr></thead>\n        <tbody>\n          {rows.map(r => (\n            <tr key={r.id}>\n              <td>{r.name}</td>\n              <td><span className=\"rounded-full bg-orange-100 text-orange-700 px-3 py-1 text-xs\">{r.status}</span></td>\n              <td>{r.duration}</td>\n              <td><span className=\"rounded-full bg-blue-100 text-blue-700 px-3 py-1 text-xs\">{r.owner}</span></td>\n            </tr>\n          ))}\n        </tbody>\n      </table>\n    </div>\n  );\n}\n```",
+      "expected_output": "Points out concrete tells from the pasted code: every status AND owner wrapped in the same rounded-pill shape (should not both be pills — owner name doesn't need a badge at all), numeric/duration columns rendered as plain Inter with no tabular-figure treatment, hierarchy relying on color alone (orange/green) for KPI tiles rather than weight/size too. Gives specific before/after suggestions, not generic praise or a rewrite of the whole thing unprompted.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "vague_make_it_look_good",
+      "prompt": "I'm building an internal admin panel for our support team to triage tickets (Inter font, Tailwind, list of tickets with priority/status/assignee). Just want it to look good and not screams 'made by AI', what should I keep in mind?",
+      "expected_output": "Applies the skill's checklist to this specific context (dense internal tool, priority/status/assignee columns) rather than giving generic design advice unrelated to Inter/typography. Mentions rationing pill/badge usage across priority vs status vs assignee, tabular figures if there are any numeric/id columns, the known AI-default accent palette to avoid, and that density should stay tight for a support-triage power tool rather than adding marketing-style whitespace.",
+      "files": []
+    }
+  ]
+}
