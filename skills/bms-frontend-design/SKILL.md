@@ -143,6 +143,11 @@ the same file — avoid repeating that:
   **~15px**, letter-spacing **-0.01em**, antialiased.
 - Amounts, KPIs, and other numeric displays: tabular numerals
   (`font-variant-numeric: tabular-nums`) so digits align in columns.
+- Number formatting: Swiss convention, not US. Format with the `de-CH`
+  locale (`value.toLocaleString('de-CH', { minimumFractionDigits: 2,
+  maximumFractionDigits: 2 })`) rather than hardcoding a comma separator —
+  it renders the thousands separator as an apostrophe (`128'450.00`), which
+  is what a comma would silently get wrong for a Swiss audience.
 - Small "eyebrow" labels (section headers, table column meta): ~10–11px,
   bold/semibold, wide letter-spacing (~0.1–0.12em), often uppercase.
 
@@ -169,6 +174,10 @@ table.
 - Header row: slightly muted background (`bg-muted`), often sticky to the
   top of the scroll container.
 - Cell padding: compact, ~8px (`p-2`), small text size.
+- Numeric columns (amounts, counts, percentages): right-align both the
+  header and the cells, and use tabular numerals — right-aligned digits are
+  what let a reader compare magnitudes down a column at a glance; left- or
+  center-aligned numbers don't line up on their most significant digit.
 
 ```tsx
 className={cn(
@@ -186,5 +195,7 @@ className={cn(
 - [ ] Backgrounds: 3-tier scale (`--background` → `--card` → `--muted`), not more
 - [ ] Border-radius: 6/8/12/16-20/full — no ad hoc values
 - [ ] Font: Inter, ~15px base, tabular numerals for numbers
+- [ ] Numbers formatted `de-CH` (apostrophe thousands separator), not a hardcoded comma
 - [ ] Grid zebra: `bg-foreground/5` on alternating rows, keyed off logical index if virtualized
+- [ ] Numeric grid columns: right-aligned header + cells, tabular numerals
 - [ ] Icons: `@heroicons/react` (`24/outline`) only, per [`references/icons.md`](references/icons.md) — never hand-drawn, and never `lucide-react` (that's shadcn-internal only)
