@@ -25,7 +25,7 @@ uv run python scripts/create.py <project-name>
 
 The script (works on Mac, Linux, Windows):
 
-1. **Frontend**: `bun create vite@latest frontend --template react-ts`, installs TanStack Router + Query + Form + Table + Virtual + unified Devtools, Zustand, Zod, TailwindCSS v4, shadcn deps (`class-variance-authority`, `clsx`, `tailwind-merge`, `lucide-react`, `tw-animate-css`), `openapi-typescript`
+1. **Frontend**: `bun create vite@latest frontend --template react-ts`, installs TanStack Router + Query + Form + Table + Virtual + unified Devtools, Zustand, Zod, TailwindCSS v4, shadcn deps (`class-variance-authority`, `clsx`, `tailwind-merge`, `lucide-react`, `tw-animate-css`), `@heroicons/react` (app-level icons — see [`bms-frontend-design`](../bms-frontend-design/)), `openapi-typescript`
 2. Wires `vite.config.ts` with `@tanstack/router-plugin` + `@/` path alias, sets up `src/main.tsx` with `QueryClientProvider` + `RouterProvider`, writes `src/routes/__root.tsx` and `src/routes/index.tsx`
 3. Writes `src/lib/queryClient.ts`, `src/lib/api.ts` (fetch wrapper with `VITE_API_URL`), `src/lib/utils.ts` (shadcn `cn` helper), `src/stores/` placeholder for Zustand
 4. Writes shadcn config: `components.json`, shadcn-compatible `src/index.css` (OKLCH theme vars, `@theme inline`, `tw-animate-css`, `.dark` class variant), patches `tsconfig.json` + `tsconfig.app.json` with `@/*` path alias

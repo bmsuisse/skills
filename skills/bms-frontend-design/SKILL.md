@@ -3,14 +3,17 @@ name: bms-frontend-design
 plugin: coding
 description: >
   The BMS visual identity for internal web apps — left navigation layout,
-  BMS red accent color, background/surface scale, border-radius scale, and a
-  minimal zebra-striping pattern for data grids. Use this whenever scaffolding
-  a new internal BMS app's UI, building or restyling a sidebar/nav, picking
-  colors for a new app, styling a data table or grid, or reviewing frontend
-  code for visual consistency with other BMS apps. Trigger on requests like
-  "make this look like our other internal tools", "add a sidebar nav", "what
-  colors should I use", "style this table", or "set up the theme" for a BMS
-  app — even if the user doesn't say "design system" explicitly. Supersedes
+  BMS red accent color, background/surface scale, border-radius scale, a
+  minimal zebra-striping pattern for data grids, and the Heroicons
+  `24/outline` icon set with a curated concept-to-icon mapping. Use this
+  whenever scaffolding a new internal BMS app's UI, building or restyling a
+  sidebar/nav, picking
+  colors for a new app, styling a data table or grid, choosing icons, or
+  reviewing frontend code for visual consistency with other BMS apps. Trigger
+  on requests like "make this look like our other internal tools", "add a
+  sidebar nav", "what colors should I use", "style this table", "what icon
+  should I use for X", or "set up the theme" for a BMS app — even if the user
+  doesn't say "design system" explicitly. Supersedes
   generic frontend-aesthetic advice (e.g. "pick a bold, unique look per app")
   for anything under the BMS brand — the point here is consistency across
   apps, not differentiation.
@@ -43,8 +46,10 @@ app with more than a couple of pages.
   edge only, using the app's subtle border token (`--border: #f2f2f2`
   light). Don't add a border-radius or shadow to the sidebar itself — it's a
   flat plane, not a card.
-- Nav rows use `rounded-lg` (8px) corners and an 18×18px outline icon (e.g.
-  Heroicons `24/outline`).
+- Nav rows use `rounded-lg` (8px) corners and an 18×18px icon from
+  **`@heroicons/react` (`24/outline`)** — see
+  [`references/icons.md`](references/icons.md) for the concept-to-component
+  mapping and why not to hand-draw icons.
 - **Inactive** row: text at 55% opacity of the foreground color, icon in the
   muted-foreground color, icon stroke-width 1.75. This keeps the resting
   state quiet so the active item reads clearly.
@@ -182,3 +187,4 @@ className={cn(
 - [ ] Border-radius: 6/8/12/16-20/full — no ad hoc values
 - [ ] Font: Inter, ~15px base, tabular numerals for numbers
 - [ ] Grid zebra: `bg-foreground/5` on alternating rows, keyed off logical index if virtualized
+- [ ] Icons: `@heroicons/react` (`24/outline`) only, per [`references/icons.md`](references/icons.md) — never hand-drawn, and never `lucide-react` (that's shadcn-internal only)

@@ -106,18 +106,29 @@ Use it **anywhere** you're composing Tailwind classes:
 
 ---
 
-## Icons (lucide-react)
+## Icons — two libraries, two purposes
 
-Already installed. Import by name:
+Both are installed by the scaffold; they're not interchangeable, use each
+for its own purpose:
 
-```tsx
-import { Check, ChevronRight, Loader2 } from 'lucide-react'
+- **`lucide-react`** — internal to shadcn's generated components (`select.tsx`,
+  `calendar.tsx`, etc. import from it directly). It's a byproduct of using
+  the shadcn CLI, not a choice you make per app. Don't reach for it in your
+  own components.
+- **`@heroicons/react`** (`24/outline`) — the icon library for everything you
+  place yourself: nav items, page/business icons, empty states. Import by
+  name:
 
-<Check className="h-4 w-4" />
-<Loader2 className="h-4 w-4 animate-spin" />
-```
+  ```tsx
+  import { HomeIcon, UsersIcon } from '@heroicons/react/24/outline'
 
-Browse: https://lucide.dev/icons
+  <HomeIcon className="h-[18px] w-[18px]" />
+  ```
+
+For a BMS app's nav and common concepts (dashboard, customers, contracts,
+approvals, settings, ...), use the curated concept-to-icon mapping in the
+`bms-frontend-design` skill's [`references/icons.md`](../../bms-frontend-design/references/icons.md)
+instead of picking a lookalike icon per app.
 
 ---
 
