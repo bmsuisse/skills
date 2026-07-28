@@ -3,9 +3,10 @@ name: ducklake
 description: >
   Guide for working with DuckLake — the open lakehouse format and DuckDB extension that pairs a
   SQL catalog (metadata, transactions) with Parquet files on object/file storage. Covers ATTACH
-  syntax, choosing a catalog database (DuckDB, SQLite, PostgreSQL, MySQL), time travel and
-  snapshots, partitioning, schema evolution, and maintenance (checkpoint, expiring snapshots,
-  file cleanup, compaction). Use this skill whenever the user mentions DuckLake, wants a
+  syntax, choosing a catalog database (DuckDB, SQLite, PostgreSQL), storing data files on Azure
+  Blob Storage / Data Lake Storage, time travel and snapshots, partitioning, schema evolution, and
+  maintenance (checkpoint, expiring snapshots, file cleanup, compaction). Use this skill whenever
+  the user mentions DuckLake, wants a
   "lakehouse" on top of DuckDB/Parquet, needs multiple processes to read/write the same DuckDB
   data concurrently ("multiplayer DuckDB"), or asks about time travel, snapshot expiry, or
   partitioning in a DuckDB-attached database — even if they call it by an ATTACH string like
@@ -16,7 +17,8 @@ description: >
 
 [Docs](https://ducklake.select/docs/stable/) · [Specification](https://ducklake.select/docs/stable/specification/introduction) · [GitHub](https://github.com/duckdb/ducklake)
 
-DuckLake is a lakehouse format: Parquet data files on cheap storage (local disk, S3, GCS, ...) plus
+DuckLake is a lakehouse format: Parquet data files on cheap storage (local disk, Azure Blob/Data
+Lake Storage, ...) plus
 a transactional SQL database (the "catalog") holding all metadata — table/schema definitions,
 snapshots, statistics, partition info. Because the catalog is a real database (not just files),
 multiple DuckDB processes can concurrently read and write the same lakehouse — this is what the
@@ -77,7 +79,6 @@ how many clients need concurrent access:
 | DuckDB (default) | single client only | simplest option, good for local/solo use |
 | SQLite | multiple **local** clients | single-writer, but handles retries/attach automatically |
 | PostgreSQL 12+ | multi-user, remote clients | recommended for shared/production lakehouses |
-| MySQL 8+ | not recommended | known issues with DuckDB's MySQL connector as a catalog |
 
 ```sql
 -- SQLite catalog
@@ -90,6 +91,22 @@ INSTALL postgres;
 ATTACH 'ducklake:postgres:dbname=ducklake_catalog host=localhost' AS my_ducklake (DATA_PATH 'data_files/');
 USE my_ducklake;
 ```
+
+## Cloud storage for data files (Azure)
+
+`DATA_PATH` accepts any DuckDB-supported filesystem, so the Parquet data itself can live on Azure
+Data Lake Storage / Blob Storage — independently of which catalog database you picked above (needs
+the `azure` extension + an azure secret).
+
+```sql
+INSTALL azure;
+CREATE SECRET azure_secret (TYPE azure, PROVIDER credential_chain, ACCOUNT_NAME 'mystorageaccount');
+ATTACH 'ducklake:metadata.ducklake' AS my_ducklake (DATA_PATH 'abfss://my-filesystem/ducklake/');
+```
+
+See [`references/azure.md`](references/azure.md) for the full set of Azure authentication options
+(connection string, credential chain, service principal), `abfss://` vs. `az://`, and combining it
+with a PostgreSQL catalog for a fully Azure-hosted setup.
 
 ## Snapshots & time travel
 
