@@ -75,10 +75,11 @@ def main() -> None:
             "clsx",
             "tailwind-merge",
             "lucide-react",
+            "@heroicons/react",
             "tw-animate-css",
         ],
         fe,
-        "bun add (tanstack, zustand, zod, shadcn deps)",
+        "bun add (tanstack, zustand, zod, shadcn deps, heroicons)",
     )
     run(
         [
