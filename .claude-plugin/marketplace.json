@@ -35,6 +35,7 @@
       "source": "./",
       "skills": [
         "./autoresearch",
+        "./bms-frontend-design",
         "./coding-guidelines-python",
         "./coding-guidelines-typescript",
         "./code-comments",

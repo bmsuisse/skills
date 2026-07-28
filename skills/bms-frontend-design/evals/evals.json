@@ -1,0 +1,23 @@
+{
+  "skill_name": "bms-frontend-design",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I'm scaffolding a new internal BMS app for tracking approvals. Set up the left sidebar navigation and the main color theme (index.css) so it matches our other internal tools.",
+      "expected_output": "A resizable left sidebar (240px default, 180-420px range, 56px collapsed rail) using --sidebar: #fcfcfc background, with inactive/hover/active nav item states matching the spec (55% opacity inactive text, bg-nav-primary/8 active background, BMS red #DC001A used as --nav-primary and/or --primary). CSS variables defined for background/card/muted 3-tier surface scale and a consistent border-radius scale (6/8/12/16-20/full), not ad hoc values.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Add a data table to this BMS app that lists contracts. It uses TanStack Table with TanStack Virtual since there could be thousands of rows. Style it with our usual minimal zebra look.",
+      "expected_output": "Alternating row striping using bg-foreground/5 (or equivalent theme-foreground-at-5%-opacity) rather than a hardcoded gray, keyed off the virtualizer's logical row index (not CSS nth-child/even: selectors, since the grid is virtualized), hover state using accent color at 50% opacity, a single rounded-md bordered container around the table, and border-b only row separators (no per-cell borders).",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "What colors and border-radius should I use for a new internal BMS dashboard? I don't want it to look totally different from our other apps but I also don't want to just copy-paste one specific app.",
+      "expected_output": "Recommends BMS red (#DC001A / oklch(0.58 0.2 27) dark) as either an accent-only nav highlight or full primary (explains the tradeoff, doesn't force one), a 3-tier background/card/muted surface scale, and the 6/8/12/16-20/full border-radius scale — framed as the shared BMS visual language rather than a single app's specific implementation.",
+      "files": []
+    }
+  ]
+}

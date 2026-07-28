@@ -90,7 +90,13 @@ This installs:
 | [`references/postgres-pgdevkit.md`](references/postgres-pgdevkit.md)     | `pgdevkit.db` pool lifecycle, CRUD helpers, `.sql` file loading, `database/` folder, `pgdb testdb` for tests |
 | [`references/openapi-typed-client.md`](references/openapi-typed-client.md) | Regenerating `api-types.ts` from FastAPI, typed fetch patterns              |
 | [`references/fastapi-sse.md`](references/fastapi-sse.md)                 | Adding SSE streaming endpoints (AI chat, live updates, logs)                 |
-| [`references/frontend-design.md`](references/frontend-design.md)         | UI aesthetics, typography, color, motion — avoid generic looks               |
+
+For UI aesthetics — sidebar/nav layout, brand colors, background/surface scale,
+border-radius scale, typography, and data grid styling — use the
+[`bms-frontend-design`](../bms-frontend-design/) skill. It encodes the actual
+BMS visual identity (left nav, BMS red, minimal zebra grids) and supersedes
+generic "pick a bold, unique look" aesthetic advice for BMS internal apps,
+where the goal is consistency across apps rather than differentiation.
 
 ---
 
