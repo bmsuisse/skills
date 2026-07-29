@@ -78,14 +78,15 @@
     {
       "id": 6,
       "prompt": "I added a new Pydantic response model on a FastAPI endpoint. My frontend still has the old shape in its types. How do I refresh?",
-      "expected_output": "The assistant instructs the user to (1) make sure the backend is running on localhost:8000, (2) run `bun run generate-api` in the frontend directory, which invokes `openapi-typescript http://localhost:8000/openapi.json -o src/lib/api-types.ts`. Explains that `src/lib/api-types.ts` is the regenerated typed client — `components['schemas']['<ModelName>']` is the path to the new type. Mentions that `api-types.ts` is in `.gitignore` because it's derived from the backend.",
+      "expected_output": "The assistant instructs the user to run `just generate-api`, which (1) runs `backend/dump_openapi.py` — imports the FastAPI app directly and writes `frontend/openapi.json`, no running server needed — then (2) runs `@hey-api/openapi-ts` (`bun run generate-api` in the frontend directory) to regenerate `frontend/src/lib/generated/` (SDK, TanStack Query options, types, Zod schemas). Explains that the generated output is committed (not gitignored) since it's the reviewable frontend/backend contract.",
       "files": [],
       "expectations": [
-        "Instructs the user to run `bun run generate-api` in the frontend directory",
-        "Mentions that the backend must be running (at localhost:8000) for the /openapi.json endpoint to be reachable",
-        "Explains the output path is `src/lib/api-types.ts`",
-        "Shows how to reference the new type: `components['schemas']['<ModelName>']`",
-        "Does NOT suggest manually writing TypeScript types that mirror the Pydantic model"
+        "Instructs the user to run `just generate-api`",
+        "Explains `dump_openapi.py` imports the FastAPI app directly, so the backend server does not need to be running",
+        "Explains the output path is `frontend/src/lib/generated/` (SDK + TanStack Query options + types, via @hey-api/openapi-ts)",
+        "Shows how to use the new type/endpoint, e.g. importing from `@/lib/generated/types.gen` or a query-options hook from `@/lib/generated/@tanstack/react-query.gen`",
+        "Does NOT suggest manually writing TypeScript types that mirror the Pydantic model",
+        "Does NOT say the generated output is gitignored — it's committed"
       ]
     }
   ]

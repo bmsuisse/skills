@@ -88,13 +88,34 @@ def main() -> None:
             "@tanstack/react-devtools",
             "@tanstack/react-router-devtools",
             "@tanstack/react-query-devtools",
-            "openapi-typescript",
+            "@hey-api/openapi-ts",
             "tailwindcss",
             "@tailwindcss/vite",
             "@types/node",
         ],
         fe,
-        "bun add -d (router-plugin, devtools, openapi-typescript, tailwindcss, @types/node)",
+        "bun add -d (router-plugin, devtools, @hey-api/openapi-ts, tailwindcss, @types/node)",
+    )
+
+    # openapi-ts.config.ts — generates a full SDK (typed fetch functions),
+    # TanStack Query options, and Zod runtime validators from openapi.json.
+    # The @hey-api/client-fetch runtime is bundled into the generated output
+    # (src/lib/generated/client/, core/) — no extra npm dependency needed.
+    write(
+        fe / "openapi-ts.config.ts",
+        """\
+        import { defineConfig } from '@hey-api/openapi-ts'
+
+        export default defineConfig({
+          client: '@hey-api/client-fetch',
+          input: './openapi.json',
+          output: {
+            path: './src/lib/generated',
+            postProcess: ['prettier'],
+          },
+          plugins: ['@tanstack/react-query', 'zod', { name: '@hey-api/sdk', validator: { request: 'zod' } }],
+        })
+        """,
     )
 
     # vite.config.ts — path alias `@/*` → `src/*` (required by shadcn)
@@ -222,6 +243,7 @@ def main() -> None:
         import { RouterProvider, createRouter } from '@tanstack/react-router'
         import { queryClient } from './lib/queryClient'
         import { routeTree } from './routeTree.gen'
+        import './lib/api'
         import './index.css'
 
         const router = createRouter({
@@ -263,21 +285,19 @@ def main() -> None:
         """,
     )
 
-    # src/lib/api.ts — typed fetch wrapper
+    # src/lib/api.ts — configures the generated hey-api client (base URL, cookies).
+    # Imported once for its side effect (see main.tsx) before any query runs.
+    # Does not exist as a usable module until `just generate-api` has run once
+    # (it imports from ./generated, which is codegen output).
     write(
         fe / "src" / "lib" / "api.ts",
         """\
-        const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:__BE_PORT__'
+        import { client } from './generated/client.gen'
 
-        export async function api<T>(path: string, init?: RequestInit): Promise<T> {
-          const res = await fetch(`${BASE}${path}`, {
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
-            ...init,
-          })
-          if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
-          return res.json() as Promise<T>
-        }
+        client.setConfig({
+          baseUrl: import.meta.env.VITE_API_URL ?? 'http://localhost:__BE_PORT__',
+          credentials: 'include',
+        })
         """.replace("__BE_PORT__", str(be_port)),
     )
 
@@ -360,7 +380,7 @@ def main() -> None:
         """\
         import { createFileRoute } from '@tanstack/react-router'
         import { useQuery } from '@tanstack/react-query'
-        import { api } from '@/lib/api'
+        import { healthOptions } from '@/lib/generated/@tanstack/react-query.gen'
         import { cn } from '@/lib/utils'
 
         export const Route = createFileRoute('/')({
@@ -368,10 +388,7 @@ def main() -> None:
         })
 
         function Home() {
-          const { data, isLoading } = useQuery({
-            queryKey: ['health'],
-            queryFn: () => api<{ status: string }>('/health'),
-          })
+          const { data, isLoading } = useQuery(healthOptions())
 
           return (
             <main className="mx-auto max-w-2xl p-8">
@@ -432,9 +449,7 @@ def main() -> None:
         data = json.loads(pkg.read_text(encoding="utf-8"))
         scripts = data.setdefault("scripts", {})
         scripts["build"] = "vite build && tsc --noEmit"
-        scripts["generate-api"] = (
-            f"openapi-typescript http://localhost:{be_port}/openapi.json -o src/lib/api-types.ts"
-        )
+        scripts["generate-api"] = "openapi-ts"
         pkg.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
 
     # Frontend .env.example
@@ -526,13 +541,32 @@ def main() -> None:
         )
 
 
-        @app.get("/health")
+        @app.get("/health", operation_id="health")
         async def health() -> dict:
             async with pool.connection() as conn:
                 cur = await conn.execute("SELECT 1 AS ok")
                 row = await cur.fetchone()
             return {"status": "ok", "db": row[0] == 1}
         """,
+    )
+
+    # dump_openapi.py — writes the OpenAPI schema to frontend/openapi.json by
+    # importing the app object directly (no running server/DB needed, since
+    # app.openapi() never touches the lifespan-managed pool). Source input for
+    # `bun run generate-api` — see justfile's `generate-api` recipe.
+    write(
+        be / "dump_openapi.py",
+        '''\
+        """Dump the FastAPI OpenAPI schema to frontend/openapi.json."""
+        import json
+        from pathlib import Path
+
+        from backend.main import app
+
+        out = Path(__file__).resolve().parents[1] / "frontend" / "openapi.json"
+        out.write_text(json.dumps(app.openapi(), indent=2), encoding="utf-8")
+        print(f"OpenAPI schema written to {out}")
+        ''',
     )
 
     # scripts.py — tiny wrappers so `uv run dev` / `uv run start` work via
@@ -717,8 +751,9 @@ def main() -> None:
             just backend & just frontend &
             wait
 
-        # Regenerate the typed API client from the running backend
+        # Regenerate the typed API client: dump the OpenAPI schema, then run codegen
         generate-api:
+            uv run python -m backend.dump_openapi
             cd frontend && bun run generate-api
 
         # Run backend tests (spins up/reuses the shared pgdevkit test container)
@@ -736,7 +771,6 @@ def main() -> None:
         dist/
         .bun/
         frontend/src/routeTree.gen.ts
-        frontend/src/lib/api-types.ts
 
         # Python / uv
         __pycache__/
@@ -777,9 +811,10 @@ def main() -> None:
         cp frontend/.env.example frontend/.env
         cp .env.example .env
 
-        just install     # uv sync + bun install
-        just db-up       # Postgres on :5432
-        just dev         # FastAPI (:{be_port}) + Vite (:{fe_port}) together
+        just install       # uv sync + bun install
+        just db-up         # Postgres on :5432
+        just generate-api  # dump OpenAPI schema + generate the typed client (once, and after backend model changes)
+        just dev           # FastAPI (:{be_port}) + Vite (:{fe_port}) together
 
         # or run them separately:
         just backend     # FastAPI on :{be_port}
@@ -799,13 +834,15 @@ def main() -> None:
 
         ## Regenerate typed API client
 
-        With the backend running:
-
         ```bash
         just generate-api
         ```
 
-        Writes `frontend/src/lib/api-types.ts` from `/openapi.json`.
+        Runs `backend/dump_openapi.py` (imports the FastAPI app directly, no running
+        server needed) to write `frontend/openapi.json`, then `@hey-api/openapi-ts`
+        generates `frontend/src/lib/generated/` — a typed SDK, TanStack Query options,
+        and Zod runtime validators. Commit the generated output; it's the reviewable
+        record of the frontend/backend contract, not a build artifact.
 
         ## Stack notes
 
@@ -824,6 +861,7 @@ def main() -> None:
   cd {project}
   just install
   just db-up                        # start Postgres
+  just generate-api                 # dump OpenAPI schema + generate the typed client
   just dev                          # FastAPI (:{be_port}) + Vite (:{fe_port}) together
 """)
 

@@ -213,8 +213,8 @@ async def read_user(user_id: int) -> UserOut:
     return UserOut(**user.model_dump())
 ```
 
-FastAPI's `response_model` drives the OpenAPI schema, which `openapi-typescript`
-turns into frontend types.
+FastAPI's `response_model` drives the OpenAPI schema, which `@hey-api/openapi-ts`
+turns into a typed frontend SDK (see [`openapi-typed-client.md`](openapi-typed-client.md)).
 
 ---
 

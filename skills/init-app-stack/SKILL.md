@@ -11,7 +11,7 @@ Bootstrap a full-stack project with:
 - **Frontend**: Vite **8+** + React + TanStack Router + TanStack Query + TanStack Form + TanStack Table + TanStack Virtual + Zustand + **shadcn/ui** + TailwindCSS v4, managed with **bun**
 - **Backend**: FastAPI + Granian + **[pgdevkit](https://github.com/bmsuisse/pgdevkit)** (psycopg, no ORM), managed with **uv**, targeting **Python 3.14**
 - **DB**: Postgres 17 via `docker-compose.yml` for dev; pgdevkit's `pgdb testdb` for tests; schema lives as `.sql` files under `database/`
-- **Types**: `openapi-typescript` generates a typed client from FastAPI's OpenAPI schema
+- **Types**: [`@hey-api/openapi-ts`](https://openapi-ts.dev) generates a typed SDK, TanStack Query options, and Zod runtime validators from FastAPI's OpenAPI schema — the generated output is committed, not gitignored
 - **Task runner**: [`just`](https://github.com/casey/just) — the scaffold writes a root `justfile` (`install`, `db-up`, `db-down`, `backend`, `frontend`, `dev`, `generate-api`). `just dev` runs backend + frontend together (Ctrl+C stops both); it does not start Postgres — run `just db-up` first. It uses `set shell := ["bash", "-uc"]` for `&`/`wait`, so Git Bash must be on `PATH` on Windows. Run `just` with no args to list recipes; always drive the project through `just <recipe>` instead of raw `uv run` / `bun run` / `docker compose` commands.
 - **Ports**: randomly assigned high ports (seeded by project name, so deterministic per project — printed on scaffold completion)
 
@@ -25,18 +25,18 @@ uv run python scripts/create.py <project-name>
 
 The script (works on Mac, Linux, Windows):
 
-1. **Frontend**: `bun create vite@latest frontend --template react-ts`, installs TanStack Router + Query + Form + Table + Virtual + unified Devtools, Zustand, Zod, TailwindCSS v4, shadcn deps (`class-variance-authority`, `clsx`, `tailwind-merge`, `lucide-react`, `tw-animate-css`), `@heroicons/react` (app-level icons — see [`bms-frontend-design`](../bms-frontend-design/)), `openapi-typescript`
-2. Wires `vite.config.ts` with `@tanstack/router-plugin` + `@/` path alias, sets up `src/main.tsx` with `QueryClientProvider` + `RouterProvider`, writes `src/routes/__root.tsx` and `src/routes/index.tsx`
-3. Writes `src/lib/queryClient.ts`, `src/lib/api.ts` (fetch wrapper with `VITE_API_URL`), `src/lib/utils.ts` (shadcn `cn` helper), `src/stores/` placeholder for Zustand
+1. **Frontend**: `bun create vite@latest frontend --template react-ts`, installs TanStack Router + Query + Form + Table + Virtual + unified Devtools, Zustand, Zod, TailwindCSS v4, shadcn deps (`class-variance-authority`, `clsx`, `tailwind-merge`, `lucide-react`, `tw-animate-css`), `@heroicons/react` (app-level icons — see [`bms-frontend-design`](../bms-frontend-design/)), `@hey-api/openapi-ts` (dev dep — the `@hey-api/client-fetch` runtime it configures is bundled into the generated output, not installed separately)
+2. Wires `vite.config.ts` with `@tanstack/router-plugin` + `@/` path alias, sets up `src/main.tsx` with `QueryClientProvider` + `RouterProvider` (and a side-effect `import './lib/api'` to configure the generated client before any query runs), writes `src/routes/__root.tsx` and `src/routes/index.tsx`
+3. Writes `src/lib/queryClient.ts`, `src/lib/api.ts` (configures the generated client's `baseUrl`/`credentials` from `VITE_API_URL`), `src/lib/utils.ts` (shadcn `cn` helper), `src/stores/` placeholder for Zustand, `frontend/openapi-ts.config.ts` (`@hey-api/openapi-ts` config: `@tanstack/react-query` + `zod` + `@hey-api/sdk` plugins, zod request validation, output → `src/lib/generated/`)
 4. Writes shadcn config: `components.json`, shadcn-compatible `src/index.css` (OKLCH theme vars, `@theme inline`, `tw-animate-css`, `.dark` class variant), patches `tsconfig.json` + `tsconfig.app.json` with `@/*` path alias
-5. Adds `bun run generate-api` script → fetches `/openapi.json` and runs `openapi-typescript` into `src/lib/api-types.ts`
+5. Adds `bun run generate-api` script → runs `openapi-ts` against the local `frontend/openapi.json` (see step 7's `dump_openapi.py`)
 6. **Backend**: `uv init --python 3.14` at **project root**, adds `fastapi`, `granian`, `pydantic-settings`, `pgdevkit[cli,db]`, plus `pytest`/`pytest-asyncio` as dev deps
-7. Writes `backend/main.py` (lifespan-managed `pgdevkit.db.PgPool`, CORS for `localhost:5173`), `backend/db.py` (`PgPool(env_prefix="APP_POSTGRES_")`), `backend/config.py` (pydantic-settings, CORS only) — all imports use `from backend.xxx import ...`
+7. Writes `backend/main.py` (lifespan-managed `pgdevkit.db.PgPool`, CORS for `localhost:5173`, `/health` with `operation_id="health"` for a clean generated name), `backend/db.py` (`PgPool(env_prefix="APP_POSTGRES_")`), `backend/config.py` (pydantic-settings, CORS only), `backend/dump_openapi.py` (imports `backend.main.app` directly and writes `app.openapi()` to `frontend/openapi.json` — no running server or DB needed) — all imports use `from backend.xxx import ...`
 8. Adds `dev = "backend.scripts:dev"` and `start = "backend.scripts:start"` to root `pyproject.toml`; granian target is `backend.main:app`; adds `[tool.pgdevkit]` (`env_prefix = "APP_"`) and `[tool.pytest.ini_options]` (`asyncio_mode = "auto"`)
 9. Writes `docker-compose.yml` with a single `db` service (Postgres 17) + named volume — this is the **dev** database; pgdevkit's `pgdb testdb` manages a separate, per-branch database for tests
 10. Writes `database/.gitkeep` (schema-as-code root — see [pgdevkit's skill](https://github.com/bmsuisse/pgdevkit) for the layer/object-type folder convention) and `tests/conftest.py` + `tests/test_health.py` wired to pgdevkit's `ensure_testdb()` fixture
-11. Writes a root `justfile` (`install`, `db-up`, `db-down`, `backend`, `frontend`, `dev`, `generate-api`, `test`) as the project's task runner
-12. Writes `.env.example` (frontend + backend, `APP_POSTGRES_*` vars), root `.gitignore` (includes `.claude/skills/`, `.agents/skills/`, `.agent/skills/` — skillup-managed, see Step 3), `README.md` with startup steps
+11. Writes a root `justfile` (`install`, `db-up`, `db-down`, `backend`, `frontend`, `dev`, `generate-api`, `test`) as the project's task runner — `generate-api` runs `backend/dump_openapi.py` then `bun run generate-api`
+12. Writes `.env.example` (frontend + backend, `APP_POSTGRES_*` vars), root `.gitignore` (includes `.claude/skills/`, `.agents/skills/`, `.agent/skills/` — skillup-managed, see Step 3; does **not** ignore `frontend/openapi.json` or `frontend/src/lib/generated/` — both are committed), `README.md` with startup steps
 
 After running:
 
@@ -44,13 +44,15 @@ After running:
 cd <project-name>
 just install                      # uv sync + bun install
 just db-up                        # start Postgres
+just generate-api                 # dump OpenAPI schema + generate the typed client (needed before frontend builds)
 just dev                          # FastAPI (:8000) + Vite (:5173) together
 ```
 
 ## Step 2: Set up code formatting with prek
 
 After scaffolding, run `/prek` to configure formatters for the whole project.
-This writes `prek.toml`, updates root `pyproject.toml`, adds `.prettierrc`, installs
+This writes `prek.toml` and `scripts/check_files.py` (a file-size + forbidden-pattern
+guard, always included), updates root `pyproject.toml`, adds `.prettierrc`, installs
 the git pre-commit hook, and formats all existing files. The project has both
 Python (`backend/`) and TypeScript (`frontend/`) so prek will configure both
 ruff and prettier automatically.
@@ -88,7 +90,7 @@ This installs:
 | [`references/react-tanstack.md`](references/react-tanstack.md)           | TanStack Router (typed routes, search params, loaders) + Query (caching, mutations) + Zustand patterns |
 | [`references/shadcn-ui.md`](references/shadcn-ui.md)                     | Adding shadcn components, theme tokens, `cn()` usage, dark mode              |
 | [`references/postgres-pgdevkit.md`](references/postgres-pgdevkit.md)     | `pgdevkit.db` pool lifecycle, CRUD helpers, `.sql` file loading, `database/` folder, `pgdb testdb` for tests |
-| [`references/openapi-typed-client.md`](references/openapi-typed-client.md) | Regenerating `api-types.ts` from FastAPI, typed fetch patterns              |
+| [`references/openapi-typed-client.md`](references/openapi-typed-client.md) | Regenerating the SDK/hooks/validators from FastAPI, using the generated client |
 | [`references/fastapi-sse.md`](references/fastapi-sse.md)                 | Adding SSE streaming endpoints (AI chat, live updates, logs)                 |
 
 For UI aesthetics — sidebar/nav layout, brand colors, background/surface scale,
@@ -125,7 +127,8 @@ where the goal is consistency across apps rather than differentiation.
 - URL state (filters, pagination, sort): put in TanStack Router search params with Zod validation, not in Zustand.
 - UI components: **shadcn/ui** — generated into `src/components/ui/` via `bunx --bun shadcn@latest add <component>`. Do not install a MUI/Chakra/Mantine. Style with Tailwind v4 tokens (`bg-background`, `text-foreground`, `text-muted-foreground`, `border-border`) — not raw palette colors like `bg-neutral-800`.
 - Use the `cn()` helper from `@/lib/utils` to conditionally merge Tailwind classes. Imports use the `@/*` alias (configured in `vite.config.ts` + both tsconfigs).
-- Regenerate API types after backend changes: `just generate-api` (requires backend running on `localhost:8000`).
+- Regenerate the typed client after backend model/route changes: `just generate-api` (dumps the OpenAPI schema by importing the app directly, then runs `@hey-api/openapi-ts` — does **not** require the backend running). Commit the resulting `frontend/openapi.json` and `frontend/src/lib/generated/` — they're the reviewable contract, not a build artifact.
+- Data fetching against the backend uses the generated SDK/query-options (`src/lib/generated/sdk.gen.ts`, `src/lib/generated/@tanstack/react-query.gen.ts`) — do not hand-write `fetch()` calls or duplicate request/response types; see [`references/openapi-typed-client.md`](references/openapi-typed-client.md).
 - CORS is pre-configured for the project's assigned frontend port (seeded from project name). Update for production.
 - Typing on backend: `uv add --dev ty` and run `uv run ty check`.
 - Run backend tests with `just test` — `tests/conftest.py`'s `ensure_testdb()` fixture applies `database/` to a per-branch test database automatically; no manual container setup.
