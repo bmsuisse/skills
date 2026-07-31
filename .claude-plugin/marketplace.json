@@ -53,6 +53,7 @@
         "./duckdb",
         "./ducklake",
         "./playwright-python",
+        "./testing-strategy",
         "./prek",
         "./procrastinate",
         "./aiochannel-python",
