@@ -45,6 +45,15 @@ Use pgdevkit's `.test_data.json` sidecar convention for seeding rows —
 `skillup add bmsuisse/pgdevkit --skill pgdevkit` for the full skill; don't
 reinvent fixture loading per project.
 
+## Don't run the full suite locally
+
+CI is responsible for running the whole test suite. Don't run it locally
+unless there's a very good reason (e.g. suspecting a cross-test interaction
+that only shows up running everything together) — it's slow, and green
+locally doesn't replace a green CI run anyway. Run only the tests for what
+changed: the specific file(s) you touched, or the specific new test(s) you
+just wrote.
+
 ## Mock only when unavoidable
 
 Prefer a full simulation of the third-party system over mocking calls to it,
