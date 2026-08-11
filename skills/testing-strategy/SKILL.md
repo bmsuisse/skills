@@ -21,7 +21,9 @@ For any new backend feature, test it twice, in this order:
 2. **Playwright e2e for the same flow** — drives the actual UI against a live
    backend (see [playwright-python](../playwright-python/SKILL.md)), so it
    also catches wiring bugs the HTTP test can't see (wrong field name in the
-   frontend, a button that never fires the request).
+   frontend, a button that never fires the request). Select elements via
+   `data-testid` attributes (`page.getByTestId(...)`), adding one to the
+   component if it's missing.
 
 Both tiers earn their place — the HTTP test is fast and pinpoints backend
 regressions precisely; the e2e test is the only one that proves the feature
