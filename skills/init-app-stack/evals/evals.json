@@ -10,7 +10,7 @@
         "The assistant runs scripts/create.py with expense-tracker as the project name",
         "bun is used for the frontend (not npm, yarn, or pnpm)",
         "uv is used for the backend (not pip, poetry, or pipenv)",
-        "The frontend stack is identified as Vite + React + TanStack Router + TanStack Query + Zustand + shadcn/ui (not Nuxt, not Next.js, not React Router, not Nuxt UI, not MUI/Chakra/Mantine)",
+        "The frontend stack is identified as Vite + React + TanStack Router + TanStack Query + Zustand + @bmsui/ui (BMS's shared, shadcn/ui-based component library) (not Nuxt, not Next.js, not React Router, not Nuxt UI, not MUI/Chakra/Mantine)",
         "The backend uses pgdevkit (psycopg) with no SQLAlchemy and no ORM, and Python 3.14 — not asyncpg",
         "Postgres is started via `docker compose up -d db` before the backend",
         "The backend dev command is `uv run dev` (granian under the hood)",
@@ -64,15 +64,15 @@
     {
       "id": 5,
       "prompt": "I need a Button, Card, and Input for my new users page. How do I add them?",
-      "expected_output": "The assistant instructs the user to run `bunx --bun shadcn@latest add button card input` in the frontend directory, which copies the component source into `src/components/ui/`. Imports use the `@/` alias (e.g. `import { Button } from '@/components/ui/button'`). The assistant does NOT suggest installing MUI, Chakra, Mantine, HeroUI, or any other component library. Tokens like `bg-background`, `text-muted-foreground` are preferred over raw Tailwind palette colors.",
+      "expected_output": "The assistant says these three are already covered by `@bmsui/ui`, a real npm dependency the scaffold installed (from BMS's private Azure Artifacts feed, scoped via `frontend/.npmrc`) — no `add` step needed, just `import { Button, Card, CardContent, Input } from '@bmsui/ui'`. It does NOT tell the user to run `bunx shadcn add button card input` for these three, since that would create a second, divergent copy of components `@bmsui/ui` already provides. It notes the shadcn CLI (`bunx --bun shadcn@latest add <component>`, landing in `src/components/ui/`) is still available as a fallback for anything `@bmsui/ui` doesn't export (e.g. Tabs, Tooltip, Switch). The assistant does NOT suggest installing MUI, Chakra, Mantine, HeroUI, or any other component library. Tokens like `bg-background`, `text-muted-foreground` are preferred over raw Tailwind palette colors.",
       "files": [],
       "expectations": [
-        "Instructs running `bunx --bun shadcn@latest add button card input` (or equivalent shadcn CLI invocation with npx)",
-        "Components land in `src/components/ui/` — the assistant mentions that shadcn copies source into the repo, you own it",
-        "Imports use the `@/components/ui/<name>` path alias (not relative paths)",
+        "Identifies Button, Card, and Input as already available from `@bmsui/ui` — an installed npm dependency, not something to scaffold with the shadcn CLI",
+        "Shows an import like `import { Button, Card, Input } from '@bmsui/ui'` (a single package import, not `@/components/ui/<name>` per-component paths)",
+        "Does NOT instruct running `bunx shadcn add button card input` (or npx equivalent) for these three components — that would duplicate what `@bmsui/ui` already provides",
+        "Mentions the shadcn CLI (`bunx --bun shadcn@latest add <component>`) only as the fallback for components `@bmsui/ui` doesn't cover, not as the default path for Button/Card/Input",
         "Does NOT suggest MUI, Chakra, Mantine, Ant Design, HeroUI, Radix directly, or any other component library",
-        "Styling guidance references semantic tokens (`bg-background`, `text-foreground`, `text-muted-foreground`, `border-border`) — not raw palette classes like `bg-neutral-800` or `text-gray-500`",
-        "Mentions the `cn()` helper from `@/lib/utils` for composing classes"
+        "Styling guidance references semantic tokens (`bg-background`, `text-foreground`, `text-muted-foreground`, `border-border`) — not raw palette classes like `bg-neutral-800` or `text-gray-500`"
       ]
     },
     {

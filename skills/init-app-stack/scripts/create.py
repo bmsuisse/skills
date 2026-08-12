@@ -60,6 +60,20 @@ def main() -> None:
         root,
         "bun create vite (react-ts)",
     )
+
+    # frontend/.npmrc — scopes @bmsui/* to BMS's private Azure Artifacts feed.
+    # Auth isn't handled here: engineers on this feed already have credentials
+    # configured globally (vsts-npm-auth / a PAT in their user-level .npmrc),
+    # the same setup used for bmsdna-devtools/bmsdna-links. CI publishing (a
+    # separate concern from this scaffold) uses npmAuthenticate@0 — see
+    # OneUI's azure-pipelines.yml if you need that pattern.
+    write(
+        fe / ".npmrc",
+        """\
+        @bmsui:registry=https://pkgs.dev.azure.com/bmeurope/_packaging/BMS/npm/registry/
+        """,
+    )
+
     run(["bun", "install"], fe, "bun install")
     run(
         [
@@ -71,6 +85,8 @@ def main() -> None:
             "@tanstack/react-virtual",
             "zustand",
             "zod",
+            "@bmsui/ui",
+            "@bmsui/datagrid",
             "class-variance-authority",
             "clsx",
             "tailwind-merge",
@@ -79,7 +95,7 @@ def main() -> None:
             "tw-animate-css",
         ],
         fe,
-        "bun add (tanstack, zustand, zod, shadcn deps, heroicons)",
+        "bun add (tanstack, zustand, zod, @bmsui/ui + @bmsui/datagrid, shadcn deps, heroicons)",
     )
     run(
         [
@@ -150,6 +166,13 @@ def main() -> None:
         """\
         @import "tailwindcss";
         @import "tw-animate-css";
+
+        /* @bmsui/ui and @bmsui/datagrid ship compiled JS with Tailwind
+           utility classes baked into their dist output. Tailwind v4 does not
+           scan node_modules by default, so without these @source lines their
+           components render structurally but completely unstyled. */
+        @source "../node_modules/@bmsui/ui/dist/**/*.js";
+        @source "../node_modules/@bmsui/datagrid/dist/**/*.js";
 
         @custom-variant dark (&:is(.dark *));
 
@@ -374,14 +397,14 @@ def main() -> None:
         """,
     )
 
-    # src/routes/index.tsx — sample route using Query + shadcn tokens
+    # src/routes/index.tsx — sample route using Query + @bmsui/ui components
     write(
         fe / "src" / "routes" / "index.tsx",
         """\
         import { createFileRoute } from '@tanstack/react-router'
         import { useQuery } from '@tanstack/react-query'
+        import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@bmsui/ui'
         import { healthOptions } from '@/lib/generated/@tanstack/react-query.gen'
-        import { cn } from '@/lib/utils'
 
         export const Route = createFileRoute('/')({
           component: Home,
@@ -392,12 +415,20 @@ def main() -> None:
 
           return (
             <main className="mx-auto max-w-2xl p-8">
-              <h1 className="text-3xl font-semibold tracking-tight">Hello</h1>
-              <p className={cn('mt-2 text-muted-foreground')}>
-                Backend: {isLoading ? '…' : data?.status ?? 'unreachable'}
-              </p>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Hello</CardTitle>
+                  <CardDescription>
+                    Backend: {isLoading ? '…' : data?.status ?? 'unreachable'}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button>Get started</Button>
+                </CardContent>
+              </Card>
               <p className="mt-6 text-sm text-muted-foreground">
-                Add shadcn components: <code>bunx --bun shadcn@latest add button</code>
+                UI components come from <code>@bmsui/ui</code>. For anything it
+                doesn't have: <code>bunx --bun shadcn@latest add &lt;component&gt;</code>
               </p>
             </main>
           )
