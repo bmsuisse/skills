@@ -60,6 +60,7 @@ def main() -> None:
         root,
         "bun create vite (react-ts)",
     )
+
     run(["bun", "install"], fe, "bun install")
     run(
         [
@@ -71,6 +72,8 @@ def main() -> None:
             "@tanstack/react-virtual",
             "zustand",
             "zod",
+            "@bmsuisse/ui",
+            "@bmsuisse/datagrid",
             "class-variance-authority",
             "clsx",
             "tailwind-merge",
@@ -79,7 +82,7 @@ def main() -> None:
             "tw-animate-css",
         ],
         fe,
-        "bun add (tanstack, zustand, zod, shadcn deps, heroicons)",
+        "bun add (tanstack, zustand, zod, @bmsuisse/ui + @bmsuisse/datagrid, shadcn deps, heroicons)",
     )
     run(
         [
@@ -150,6 +153,13 @@ def main() -> None:
         """\
         @import "tailwindcss";
         @import "tw-animate-css";
+
+        /* @bmsuisse/ui and @bmsuisse/datagrid ship compiled JS with Tailwind
+           utility classes baked into their dist output. Tailwind v4 does not
+           scan node_modules by default, so without these @source lines their
+           components render structurally but completely unstyled. */
+        @source "../node_modules/@bmsuisse/ui/dist/**/*.js";
+        @source "../node_modules/@bmsuisse/datagrid/dist/**/*.js";
 
         @custom-variant dark (&:is(.dark *));
 
@@ -374,14 +384,14 @@ def main() -> None:
         """,
     )
 
-    # src/routes/index.tsx — sample route using Query + shadcn tokens
+    # src/routes/index.tsx — sample route using Query + @bmsuisse/ui components
     write(
         fe / "src" / "routes" / "index.tsx",
         """\
         import { createFileRoute } from '@tanstack/react-router'
         import { useQuery } from '@tanstack/react-query'
+        import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@bmsuisse/ui'
         import { healthOptions } from '@/lib/generated/@tanstack/react-query.gen'
-        import { cn } from '@/lib/utils'
 
         export const Route = createFileRoute('/')({
           component: Home,
@@ -392,12 +402,20 @@ def main() -> None:
 
           return (
             <main className="mx-auto max-w-2xl p-8">
-              <h1 className="text-3xl font-semibold tracking-tight">Hello</h1>
-              <p className={cn('mt-2 text-muted-foreground')}>
-                Backend: {isLoading ? '…' : data?.status ?? 'unreachable'}
-              </p>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Hello</CardTitle>
+                  <CardDescription>
+                    Backend: {isLoading ? '…' : data?.status ?? 'unreachable'}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button>Get started</Button>
+                </CardContent>
+              </Card>
               <p className="mt-6 text-sm text-muted-foreground">
-                Add shadcn components: <code>bunx --bun shadcn@latest add button</code>
+                UI components come from <code>@bmsuisse/ui</code>. For anything it
+                doesn't have: <code>bunx --bun shadcn@latest add &lt;component&gt;</code>
               </p>
             </main>
           )

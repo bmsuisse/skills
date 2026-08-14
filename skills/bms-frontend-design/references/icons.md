@@ -15,7 +15,7 @@ Don't confuse this with `lucide-react`, which `init-app-stack` also
 installs — that one is internal to shadcn's generated components (`select.tsx`,
 `calendar.tsx`, etc. import it directly as a byproduct of the shadcn CLI) and
 isn't the library you reach for in your own UI. See
-`init-app-stack/references/shadcn-ui.md`'s icon section for that split.
+`init-app-stack/references/ui-components.md`'s icon section for that split.
 
 ## Usage
 

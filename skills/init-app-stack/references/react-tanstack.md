@@ -241,11 +241,51 @@ function CreateUserForm() {
 }
 ```
 
-Use shadcn `input`, `label`, `button` primitives for UI — do **not** install react-hook-form.
+Use `@bmsuisse/ui`'s `Input`/`Label`/`Button`/`FormField` for UI (fall back to shadcn CLI primitives only for a field type `@bmsuisse/ui` doesn't have) — do **not** install react-hook-form.
 
 ---
 
-## TanStack Table
+## Tables — `@bmsuisse/datagrid`'s `<DataGrid>` first
+
+Use `<DataGrid>` for any list/table UI — don't call `useReactTable` yourself.
+Give it typed columns and a `dataSource`; it owns sorting, filtering, and
+pagination in both client and server modes:
+
+```tsx
+import { DataGrid, type ColumnDef } from '@bmsuisse/datagrid'
+
+const columns: ColumnDef<User>[] = [
+  { id: 'name', type: 'string', header: 'Name', accessorKey: 'name', sortable: true, filterable: true },
+  { id: 'email', type: 'string', header: 'Email', accessorKey: 'email', sortable: true, filterable: true },
+]
+
+function UsersTable({ data }: { data: User[] }) {
+  return (
+    <DataGrid
+      columns={columns}
+      dataSource={{ mode: 'client', data }}
+      getRowId={(row) => row.id}
+    />
+  )
+}
+```
+
+`sortable`/`filterable` default to **false** — opt in per column or the
+column renders with no sort/filter UI even though a default widget exists
+for its `type`. For a paginated server-driven grid, use
+`dataSource={{ mode: 'server', data, rowCount, onStateChange }}` and refetch
+from `onStateChange`'s `GridState` (see the `tanstack-best-practices` skill
+for wiring that refetch through TanStack Query). Full contract — column
+types, filter widgets, `<ColumnSelector>`, row/header actions,
+`<TreeDataGrid>` for lazy hierarchies — is in
+[`references/ui-components.md`](ui-components.md) and
+[bmsui's `AGENTS.md`](https://github.com/bmsuisse/bmsui/blob/main/AGENTS.md).
+
+### Fallback: raw `useReactTable`
+
+Only reach for this when `<DataGrid>` genuinely can't express the shape you
+need (e.g. a wholly custom layout that isn't rows-and-columns). `@tanstack/react-table`
+is still a direct dependency for exactly this case:
 
 ```tsx
 import {
@@ -261,7 +301,7 @@ const columns: ColumnDef<User>[] = [
   { accessorKey: 'email', header: 'Email' },
 ]
 
-function UsersTable({ data }: { data: User[] }) {
+function CustomTable({ data }: { data: User[] }) {
   const table = useReactTable({
     data,
     columns,
@@ -296,7 +336,8 @@ function UsersTable({ data }: { data: User[] }) {
 }
 ```
 
-Table is headless — you own all markup. Style with Tailwind and shadcn tokens.
+This path is headless — you own all markup. Style with Tailwind and
+`@bmsuisse/ui` tokens.
 
 ---
 
@@ -355,5 +396,5 @@ Cookie-based flow: FastAPI sets `Set-Cookie` with `httpOnly + SameSite=Lax`, fro
 | Invalidate queries after mutations                | Manually `setQueryData` without invalidation  |
 | `useSuspenseQuery` inside route loaders          | `useQuery` with `enabled` gating              |
 | TanStack Form (`useForm` + `form.Field`)         | react-hook-form or uncontrolled forms         |
-| TanStack Table (`useReactTable`)                 | Hand-rolled sort/filter/pagination state      |
+| `@bmsuisse/datagrid`'s `<DataGrid>` for tables      | Hand-rolled `useReactTable` sort/filter/pagination state |
 | TanStack Virtual for 100+ row lists              | Rendering all rows into the DOM               |
