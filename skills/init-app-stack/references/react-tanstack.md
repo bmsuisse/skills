@@ -241,18 +241,18 @@ function CreateUserForm() {
 }
 ```
 
-Use `@bmsui/ui`'s `Input`/`Label`/`Button`/`FormField` for UI (fall back to shadcn CLI primitives only for a field type `@bmsui/ui` doesn't have) — do **not** install react-hook-form.
+Use `@bmsuisse/ui`'s `Input`/`Label`/`Button`/`FormField` for UI (fall back to shadcn CLI primitives only for a field type `@bmsuisse/ui` doesn't have) — do **not** install react-hook-form.
 
 ---
 
-## Tables — `@bmsui/datagrid`'s `<DataGrid>` first
+## Tables — `@bmsuisse/datagrid`'s `<DataGrid>` first
 
 Use `<DataGrid>` for any list/table UI — don't call `useReactTable` yourself.
 Give it typed columns and a `dataSource`; it owns sorting, filtering, and
 pagination in both client and server modes:
 
 ```tsx
-import { DataGrid, type ColumnDef } from '@bmsui/datagrid'
+import { DataGrid, type ColumnDef } from '@bmsuisse/datagrid'
 
 const columns: ColumnDef<User>[] = [
   { id: 'name', type: 'string', header: 'Name', accessorKey: 'name', sortable: true, filterable: true },
@@ -278,7 +278,8 @@ from `onStateChange`'s `GridState` (see the `tanstack-best-practices` skill
 for wiring that refetch through TanStack Query). Full contract — column
 types, filter widgets, `<ColumnSelector>`, row/header actions,
 `<TreeDataGrid>` for lazy hierarchies — is in
-[`references/ui-components.md`](ui-components.md) and OneUI's `AGENTS.md`.
+[`references/ui-components.md`](ui-components.md) and
+[bmsui's `AGENTS.md`](https://github.com/bmsuisse/bmsui/blob/main/AGENTS.md).
 
 ### Fallback: raw `useReactTable`
 
@@ -336,7 +337,7 @@ function CustomTable({ data }: { data: User[] }) {
 ```
 
 This path is headless — you own all markup. Style with Tailwind and
-`@bmsui/ui` tokens.
+`@bmsuisse/ui` tokens.
 
 ---
 
@@ -395,5 +396,5 @@ Cookie-based flow: FastAPI sets `Set-Cookie` with `httpOnly + SameSite=Lax`, fro
 | Invalidate queries after mutations                | Manually `setQueryData` without invalidation  |
 | `useSuspenseQuery` inside route loaders          | `useQuery` with `enabled` gating              |
 | TanStack Form (`useForm` + `form.Field`)         | react-hook-form or uncontrolled forms         |
-| `@bmsui/datagrid`'s `<DataGrid>` for tables      | Hand-rolled `useReactTable` sort/filter/pagination state |
+| `@bmsuisse/datagrid`'s `<DataGrid>` for tables      | Hand-rolled `useReactTable` sort/filter/pagination state |
 | TanStack Virtual for 100+ row lists              | Rendering all rows into the DOM               |

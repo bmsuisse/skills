@@ -1,11 +1,13 @@
 # UI Components Reference
 
-Primary source: **`@bmsui/ui`** (base primitives + composed patterns) and
-**`@bmsui/datagrid`** (`<DataGrid>`, `<TreeDataGrid>`) — real npm dependencies
-published to BMS's private Azure Artifacts feed, built from the same
-shadcn/ui + Radix foundation this scaffold used to generate locally. Fallback:
-the **shadcn CLI**, kept wired up (`components.json`, theme CSS, the shadcn
-runtime deps) for anything `@bmsui/ui` doesn't cover.
+Primary source: **[`@bmsuisse/ui`](https://github.com/bmsuisse/bmsui/tree/main/packages/ui)**
+(base primitives + composed patterns) and
+**[`@bmsuisse/datagrid`](https://github.com/bmsuisse/bmsui/tree/main/packages/datagrid)**
+(`<DataGrid>`, `<TreeDataGrid>`) — real npm dependencies published publicly
+from the [bmsuisse/bmsui](https://github.com/bmsuisse/bmsui) monorepo, built
+from the same shadcn/ui + Radix foundation this scaffold used to generate
+locally. Fallback: the **shadcn CLI**, kept wired up (`components.json`,
+theme CSS, the shadcn runtime deps) for anything `@bmsuisse/ui` doesn't cover.
 
 Load this when adding UI components, wiring a data table, theming, dark mode,
 or debugging class merge / unstyled-component issues.
@@ -14,15 +16,14 @@ or debugging class merge / unstyled-component issues.
 
 ## Mental model
 
-- `@bmsui/ui` and `@bmsui/datagrid` are ordinary npm dependencies (see
-  `frontend/package.json`), not copy-pasted source — you don't own this code,
-  you consume it like any other library. Both are internal-only, gated behind
-  `frontend/.npmrc`'s `@bmsui:registry=...` line pointing at BMS's Azure
-  Artifacts feed; every BMS engineer already has feed credentials from other
-  internal packages (`bmsdna-devtools`, etc.), so this isn't a new setup step
-  for them, just a new scope.
+- `@bmsuisse/ui` and `@bmsuisse/datagrid` are ordinary public npm dependencies
+  (see `frontend/package.json`), not copy-pasted source — you don't own this
+  code, you consume it like any other library. They're published from
+  [bmsuisse/bmsui](https://github.com/bmsuisse/bmsui) to the public npm
+  registry, so `bun add @bmsuisse/ui @bmsuisse/datagrid` just works — no
+  registry scoping, feed credentials, or `.npmrc` setup needed.
 - `components.json` still exists and the shadcn CLI still works — it's the
-  fallback for anything `@bmsui/ui` doesn't ship (see "What's covered" below).
+  fallback for anything `@bmsuisse/ui` doesn't ship (see "What's covered" below).
   Anything you pull down that way *is* copy-pasted source you own, same as
   before — it lands in `src/components/ui/` and you edit it freely.
 - Both packages are styled via the same Tailwind v4 semantic tokens
@@ -32,13 +33,16 @@ or debugging class merge / unstyled-component issues.
 
 ---
 
-## What's covered by `@bmsui/ui` / `@bmsui/datagrid`
+## What's covered by `@bmsuisse/ui` / `@bmsuisse/datagrid`
 
-`@bmsui/ui`'s full public surface (`import { ... } from '@bmsui/ui'`):
+`@bmsuisse/ui`'s full public surface (`import { ... } from '@bmsuisse/ui'`):
 
 - **Primitives**: `Button`, `Input`, `Label`, `Textarea`, `Card` (+
   `CardHeader`/`CardTitle`/`CardDescription`/`CardContent`/`CardFooter`),
-  `Badge`, `Dialog`, `Popover`, `Select`, `Skeleton`, `DropdownMenu`
+  `Badge`, `Dialog`, `Popover`, `Select`, `Skeleton`, `Checkbox`, `Switch`,
+  `Tabs`, `Separator`, `ScrollArea`/`ScrollBar`, `Table` (+ `TableHeader`/
+  `TableBody`/`TableRow`/`TableHead`/`TableCell`/`TableCaption`/`TableFooter`),
+  `DropdownMenu`, `Sheet`, `Tooltip`
 - **Patterns** (composed on top of the primitives): `Modal`, `ConfirmDialog`,
   `FormModal`, `FormField` (label + input + error/description wrapper),
   `Combobox` (searchable single-select), `AlertBox` (error/warning/info/
@@ -46,29 +50,30 @@ or debugging class merge / unstyled-component issues.
   `LoadingSpinner` / `LoadingOverlay`
 - **Utility**: `cn` (also available locally from `@/lib/utils` — see below)
 
-`@bmsui/datagrid`'s `<DataGrid>` (TanStack Table v9 under the hood, client
+`@bmsuisse/datagrid`'s `<DataGrid>` (TanStack Table v9 under the hood, client
 and server modes, per-column-type default filter widgets, `<ColumnSelector>`,
 row/header action menus) and `<TreeDataGrid>` (lazy-loading hierarchies)
 cover tables end to end — **use `<DataGrid>` instead of hand-rolling
 `useReactTable`** for any list/table UI; see
-[`tanstack-best-practices`](../../tanstack-best-practices/) and OneUI's
-`AGENTS.md` (linked from that package's README) for the full `ColumnDef`/
-`GridState` contract.
+[`tanstack-best-practices`](../../tanstack-best-practices/) and
+[bmsui's `AGENTS.md`](https://github.com/bmsuisse/bmsui/blob/main/AGENTS.md)
+(linked from that package's README) for the full `ColumnDef`/`GridState`
+contract.
 
-**Not covered — use the shadcn CLI fallback for these**: Checkbox (standalone,
-outside `<DataGrid>`), RadioGroup, Switch, Tabs, Tooltip, Accordion, Avatar,
-Separator, Sheet, Progress, Calendar/date-picker (standalone — `<DataGrid>`
-has one internally for its date-range filter, but it isn't exported), Command,
-Toast/Sonner. Check `@bmsui/ui`'s actual export list (its `src/index.ts`, or
-just try the import) before assuming something is missing — the list above
-reflects `@bmsui/ui@0.1.0` and will grow.
+**Not covered — use the shadcn CLI fallback for these**: RadioGroup,
+Accordion, Avatar, Progress, Calendar/date-picker (standalone — `<DataGrid>`
+has one internally for its date-range filter, but it isn't exported),
+Command, Toast/Sonner. Check `@bmsuisse/ui`'s actual export list (its
+[`src/index.ts`](https://github.com/bmsuisse/bmsui/blob/main/packages/ui/src/index.ts),
+or just try the import) before assuming something is missing — the list
+above reflects `@bmsuisse/ui@0.4.6` and will grow.
 
 ---
 
-## Adding a component that's already in `@bmsui/ui`
+## Adding a component that's already in `@bmsuisse/ui`
 
 ```tsx
-import { Button, Card, CardContent, Input, Label } from '@bmsui/ui'
+import { Button, Card, CardContent, Input, Label } from '@bmsuisse/ui'
 
 export function Save() {
   return (
@@ -86,7 +91,7 @@ export function Save() {
 No `add` step, no generated file — it's just an import, like any other
 dependency.
 
-## Adding a component that's NOT in `@bmsui/ui` (shadcn CLI fallback)
+## Adding a component that's NOT in `@bmsuisse/ui` (shadcn CLI fallback)
 
 ```bash
 cd frontend
@@ -101,7 +106,7 @@ with the `@/` alias:
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 ```
 
-**Do not** re-add something `@bmsui/ui` already exports via the shadcn CLI
+**Do not** re-add something `@bmsuisse/ui` already exports via the shadcn CLI
 (e.g. `bunx shadcn add button`) — that creates a second, divergent copy of a
 component that already exists as a shared dependency. Check the "What's
 covered" list above first.
@@ -125,7 +130,7 @@ covered" list above first.
 | `ring-ring`                  | Focus rings                          |
 
 **Do not use** raw palette classes like `bg-neutral-800`, `text-gray-500`,
-`bg-zinc-50` — they break theming and dark mode. `@bmsui/ui`'s components
+`bg-zinc-50` — they break theming and dark mode. `@bmsuisse/ui`'s components
 already follow this; match it in your own code.
 
 ---
@@ -134,7 +139,7 @@ already follow this; match it in your own code.
 
 Scaffold already defines `.dark` variants in `src/index.css` and registers
 `@custom-variant dark (&:is(.dark *))`. Activate by toggling
-`className="dark"` on `<html>`. `@bmsui/ui`/`@bmsui/datagrid` components
+`className="dark"` on `<html>`. `@bmsuisse/ui`/`@bmsuisse/datagrid` components
 respond to the same `.dark` class — no separate dark-mode wiring needed for
 them.
 
@@ -143,7 +148,7 @@ Minimal theme toggle:
 ```tsx
 // src/components/theme-toggle.tsx
 import { Moon, Sun } from 'lucide-react'
-import { Button } from '@bmsui/ui'
+import { Button } from '@bmsuisse/ui'
 
 export function ThemeToggle() {
   const toggle = () => document.documentElement.classList.toggle('dark')
@@ -163,7 +168,7 @@ the root route.
 
 ## The `cn()` helper
 
-`@bmsui/ui` exports its own `cn`, and the scaffold still writes a local
+`@bmsuisse/ui` exports its own `cn`, and the scaffold still writes a local
 `@/lib/utils` with an identical implementation:
 
 ```ts
@@ -191,7 +196,7 @@ shadcn CLI — it's load-bearing for `components.json`'s `"utils"` alias.
 
 ## Icons — two libraries, two purposes
 
-- **`lucide-react`** — internal to `@bmsui/ui`/`@bmsui/datagrid`'s components
+- **`lucide-react`** — internal to `@bmsuisse/ui`/`@bmsuisse/datagrid`'s components
   and to anything the shadcn CLI generates. It's a byproduct of the
   shadcn/Radix foundation, not a choice you make per app. Don't reach for it
   in your own components.
@@ -214,7 +219,7 @@ instead of picking a lookalike icon per app.
 
 ## Building your own components
 
-Follow the same pattern `@bmsui/ui`'s own components use:
+Follow the same pattern `@bmsuisse/ui`'s own components use:
 
 ```tsx
 // src/components/empty-state.tsx
@@ -244,14 +249,15 @@ Rules:
   **last** so overrides win.
 - Use semantic tokens, never raw palette colors.
 - Don't install a competing component library (MUI, Chakra, Mantine, Ant,
-  HeroUI). If neither `@bmsui/ui` nor the shadcn CLI covers what you need,
+  HeroUI). If neither `@bmsuisse/ui` nor the shadcn CLI covers what you need,
   build it with the primitives (`@radix-ui/react-*` — both are built on
   these; you can add more directly).
 - If what you're building is a genuinely reusable BMS-wide pattern (not
-  specific to this app), consider contributing it to `@bmsui/ui` instead of
+  specific to this app), consider contributing it to `@bmsuisse/ui` instead of
   duplicating it per project — that's the whole reason the package exists.
-  See OneUI's `AGENTS.md` for the survey that produced the current pattern
-  set and the reasoning behind each one.
+  See [bmsui's `AGENTS.md`](https://github.com/bmsuisse/bmsui/blob/main/AGENTS.md)
+  for the survey that produced the current pattern set and the reasoning
+  behind each one.
 
 ---
 
@@ -259,18 +265,16 @@ Rules:
 
 - **Components render with no styling at all (correct DOM structure, no
   Tailwind classes applied)**: `frontend/src/index.css` is missing the
-  `@source` lines for `@bmsui/ui`/`@bmsui/datagrid`. Tailwind v4 does not
-  scan `node_modules` by default — `@bmsui/ui` and `@bmsui/datagrid` ship
+  `@source` lines for `@bmsuisse/ui`/`@bmsuisse/datagrid`. Tailwind v4 does not
+  scan `node_modules` by default — `@bmsuisse/ui` and `@bmsuisse/datagrid` ship
   compiled JS with Tailwind class names baked into JSX, so without an
-  explicit `@source "../node_modules/@bmsui/ui/dist/**/*.js";` (and the same
-  for `@bmsui/datagrid`) those classes never make it into the generated CSS.
+  explicit `@source "../node_modules/@bmsuisse/ui/dist/**/*.js";` (and the same
+  for `@bmsuisse/datagrid`) those classes never make it into the generated CSS.
   The scaffold writes both lines by default — check they weren't deleted.
-- **`401`/`403` installing `@bmsui/ui` or `@bmsui/datagrid`**: `frontend/.npmrc`
-  scopes `@bmsui` to the registry but doesn't carry credentials — that comes
-  from your own machine's npm/bun auth (the same one used for other internal
-  BMS packages). If you've never authenticated against this feed before, ask
-  in the team channel rather than adding a token to a file that gets
-  committed.
+- **Install fails / package not found**: `@bmsuisse/ui` and `@bmsuisse/datagrid`
+  are public npm packages — no `.npmrc` scoping or feed auth needed. A failed
+  install usually means a typo'd name/version or a stale bun lockfile; try
+  `bun add @bmsuisse/ui@latest @bmsuisse/datagrid@latest`.
 - **`Cannot find module '@/components/ui/...'`**: path alias not wired
   (only relevant to shadcn-CLI-added fallback components). Check
   `vite.config.ts` has `resolve.alias['@']`, `tsconfig.json` and

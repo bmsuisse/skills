@@ -61,19 +61,6 @@ def main() -> None:
         "bun create vite (react-ts)",
     )
 
-    # frontend/.npmrc — scopes @bmsui/* to BMS's private Azure Artifacts feed.
-    # Auth isn't handled here: engineers on this feed already have credentials
-    # configured globally (vsts-npm-auth / a PAT in their user-level .npmrc),
-    # the same setup used for bmsdna-devtools/bmsdna-links. CI publishing (a
-    # separate concern from this scaffold) uses npmAuthenticate@0 — see
-    # OneUI's azure-pipelines.yml if you need that pattern.
-    write(
-        fe / ".npmrc",
-        """\
-        @bmsui:registry=https://pkgs.dev.azure.com/bmeurope/_packaging/BMS/npm/registry/
-        """,
-    )
-
     run(["bun", "install"], fe, "bun install")
     run(
         [
@@ -85,8 +72,8 @@ def main() -> None:
             "@tanstack/react-virtual",
             "zustand",
             "zod",
-            "@bmsui/ui",
-            "@bmsui/datagrid",
+            "@bmsuisse/ui",
+            "@bmsuisse/datagrid",
             "class-variance-authority",
             "clsx",
             "tailwind-merge",
@@ -95,7 +82,7 @@ def main() -> None:
             "tw-animate-css",
         ],
         fe,
-        "bun add (tanstack, zustand, zod, @bmsui/ui + @bmsui/datagrid, shadcn deps, heroicons)",
+        "bun add (tanstack, zustand, zod, @bmsuisse/ui + @bmsuisse/datagrid, shadcn deps, heroicons)",
     )
     run(
         [
@@ -167,12 +154,12 @@ def main() -> None:
         @import "tailwindcss";
         @import "tw-animate-css";
 
-        /* @bmsui/ui and @bmsui/datagrid ship compiled JS with Tailwind
+        /* @bmsuisse/ui and @bmsuisse/datagrid ship compiled JS with Tailwind
            utility classes baked into their dist output. Tailwind v4 does not
            scan node_modules by default, so without these @source lines their
            components render structurally but completely unstyled. */
-        @source "../node_modules/@bmsui/ui/dist/**/*.js";
-        @source "../node_modules/@bmsui/datagrid/dist/**/*.js";
+        @source "../node_modules/@bmsuisse/ui/dist/**/*.js";
+        @source "../node_modules/@bmsuisse/datagrid/dist/**/*.js";
 
         @custom-variant dark (&:is(.dark *));
 
@@ -397,13 +384,13 @@ def main() -> None:
         """,
     )
 
-    # src/routes/index.tsx — sample route using Query + @bmsui/ui components
+    # src/routes/index.tsx — sample route using Query + @bmsuisse/ui components
     write(
         fe / "src" / "routes" / "index.tsx",
         """\
         import { createFileRoute } from '@tanstack/react-router'
         import { useQuery } from '@tanstack/react-query'
-        import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@bmsui/ui'
+        import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@bmsuisse/ui'
         import { healthOptions } from '@/lib/generated/@tanstack/react-query.gen'
 
         export const Route = createFileRoute('/')({
@@ -427,7 +414,7 @@ def main() -> None:
                 </CardContent>
               </Card>
               <p className="mt-6 text-sm text-muted-foreground">
-                UI components come from <code>@bmsui/ui</code>. For anything it
+                UI components come from <code>@bmsuisse/ui</code>. For anything it
                 doesn't have: <code>bunx --bun shadcn@latest add &lt;component&gt;</code>
               </p>
             </main>
