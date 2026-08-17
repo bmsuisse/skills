@@ -18,6 +18,7 @@
 |---|---|
 | [aiochannel-python](./skills/aiochannel-python/) | Correct patterns for channel-based asyncio concurrency in Python using the aiochannel library. Use this skill wheneve… |
 | [autoresearch](./skills/autoresearch/) | Autonomous iterative optimization loop for Python, SQL, ML, and Spark/Databricks. Define a measurable goal; the skill… |
+| [azure-cost](./skills/azure-cost/) | Query, analyze, and reduce Azure spending via the Cost Management REST API and Azure CLI. Covers cost breakdowns by s… |
 | [bms](./skills/bms/) | Master skill for the bmsuisse platform — routes to the relevant skills based on sub-command. Always enables caveman c… |
 | [bms-frontend-design](./skills/bms-frontend-design/) | The BMS visual identity for internal web apps — left navigation layout, BMS red accent color, background/surface scal… |
 | [code-comments](./skills/code-comments/) | Write and review code comments so they earn their place instead of adding noise. Use this whenever writing new code (… |
