@@ -1,0 +1,57 @@
+{
+  "skill_name": "azure-cost",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "can u analyze the azure cost make comprehensiv rperort what causing a lot of mony what incerased how can we save mony",
+      "expected_output": "The assistant confirms the active subscription with `az account show`, queries month-to-date cost grouped by ServiceName via the Cost Management REST API (`az rest` against .../providers/Microsoft.CostManagement/query), identifies the top cost drivers and their % of total, runs a same-period comparison against the prior month to find what increased, drills into the top drivers by ResourceId, and produces a report combining the actual cost breakdown with savings recommendations (not recommendations alone).",
+      "files": [],
+      "expectations": [
+        "Confirms subscription/tenant context before querying (az account show)",
+        "Uses az rest against the Cost Management query API, not az costmanagement query",
+        "Groups by ServiceName for a total cost breakdown with percentages",
+        "Performs a same-period (not full-month-vs-partial-month) comparison to find month-over-month increases",
+        "Drills into at least one top service by ResourceId to name a specific resource",
+        "Presents the actual cost breakdown alongside any savings recommendations, not recommendations alone"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "our azure bill jumped this month, storage costs specifically look way higher than last month, can you figure out why and what's driving it",
+      "expected_output": "The assistant filters the Cost Management query to ServiceName=Storage, groups by ResourceId to find which specific storage account(s) grew, compares against the same period last month, and checks storage-specific optimization angles (tier mix, lifecycle policy presence, GRS/Premium in non-prod) rather than just reporting the aggregate delta.",
+      "files": [],
+      "expectations": [
+        "Filters cost query by ServiceName=Storage using the 'operator' (singular) filter field",
+        "Groups by ResourceId to identify the specific storage account(s) responsible for the increase",
+        "Compares against the same period in the prior month, not a mismatched full-month baseline",
+        "Checks storage-specific cost patterns (lifecycle policy, access tier, redundancy tier) as possible causes, not just cost numbers"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "find any orphaned or unused resources in our subscription that are costing us money for nothing, we want a quick win before end of quarter",
+      "expected_output": "The assistant runs Azure Resource Graph KQL queries for unattached disks, unused public IPs, orphaned NICs, and idle load balancers, cross-references each finding against actual cost data (ResourceId-grouped query) to show what each one is actually costing, and prioritizes by cost impact with exact resource IDs and safe deletion commands — without executing any deletion without approval.",
+      "files": [],
+      "expectations": [
+        "Runs Resource Graph queries (az graph query) for unattached disks, orphaned NICs, and/or unused public IPs",
+        "Cross-references orphaned resources against actual per-resource cost data rather than reporting them as free-floating findings",
+        "Lists exact resource IDs for each finding",
+        "Does not execute any delete/destructive command without explicit user approval",
+        "Prioritizes findings by cost impact, not just alphabetically or by resource type"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "we have a few storage accounts that used to be for a dev project, can you check if we can save money by changing their tier or adding lifecycle rules",
+      "expected_output": "The assistant identifies the relevant storage accounts (via Resource Graph or az storage account list), checks their current SKU/redundancy tier and whether a lifecycle management policy exists, flags Premium/GRS-in-dev-tags as downgrade candidates, and proposes a lifecycle policy (hot->cool->archive tiering) with the exact az storage account management-policy command to apply it — backed by the account's actual current cost, not a generic estimate.",
+      "files": [],
+      "expectations": [
+        "Checks current SKU and redundancy tier of the storage account(s) in question",
+        "Checks for an existing lifecycle management policy (az storage account management-policy show)",
+        "Flags Premium or GRS/GZRS tier as a downgrade candidate if tagged dev/test",
+        "Proposes a concrete lifecycle policy JSON with tiering thresholds (e.g. Cool at 30 days, Archive at 180 days)",
+        "Ties the recommendation back to the storage account's actual current cost from the Cost Management API"
+      ]
+    }
+  ]
+}
