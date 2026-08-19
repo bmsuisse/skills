@@ -3,7 +3,8 @@ name: clockify
 description: >
   Query and log time entries in Clockify via its REST API — check a timesheet,
   look up the workspace/user/project, create or update time entries, and
-  follow this workspace's `[JIRA-KEY]: Summary` description convention. Use
+  ALWAYS tag the description with a Jira issue key (`[JIRA-KEY]: Summary`) —
+  never leave a Clockify entry without one. Use
   whenever the user asks about their Clockify timesheet, wants to log/add/
   edit tracked time, or asks "what did I work on", "log N hours on X", "add
   a time entry", "see my timesheet". Trigger on: "clockify", "log time",
@@ -71,13 +72,20 @@ curl -s -X PUT -H "X-Api-Key: $CLOCKIFY_API_KEY" -H "Content-Type: application/j
 `PUT` replaces the whole entry — always resend `start`/`end`/`projectId`,
 not just the field you're changing.
 
-## Description convention
+## Description convention — always reference Jira
 
-Existing entries in this workspace follow `[JIRA-KEY]: Summary`, e.g.
-`[BMSBIDWH-680]: CIP`. When the user names work that maps to a Jira issue,
-resolve the key first (Jira REST API `GET /rest/api/3/issue/{key}`, or
-`GET /rest/api/3/project/search?query=<name>` to find it) and use
-`[KEY]: Title` as the description — don't invent a key.
+Every entry in this workspace follows `[JIRA-KEY]: Summary`, e.g.
+`[BMSBIDWH-680]: CIP`. This is mandatory, not optional — never create or
+update a Clockify time entry with a bare description. Always resolve a Jira
+key first:
+
+```bash
+curl -s -u "$JIRA_EMAIL:$JIRA_API_TOKEN" "$JIRA_SITE/rest/api/3/issue/{key}"          # exact key known
+curl -s -u "$JIRA_EMAIL:$JIRA_API_TOKEN" "$JIRA_SITE/rest/api/3/project/search?query=<name>"  # find it by name
+```
+
+then use `[KEY]: Title` as the description. If no matching Jira issue exists,
+ask the user for the key rather than inventing one or leaving it off.
 
 ## Gotchas
 
