@@ -17,7 +17,6 @@
 | Skill | Description |
 |---|---|
 | [aiochannel-python](./skills/aiochannel-python/) | Correct patterns for channel-based asyncio concurrency in Python using the aiochannel library. Use this skill wheneve… |
-| [app-usage-report](./skills/app-usage-report/) | Investigate a live/production app to answer standard adoption and health questions from real data instead of guesses:… |
 | [autoresearch](./skills/autoresearch/) | Autonomous iterative optimization loop for Python, SQL, ML, and Spark/Databricks. Define a measurable goal; the skill… |
 | [azure-cost](./skills/azure-cost/) | Query, analyze, and reduce Azure spending via the Cost Management REST API and Azure CLI. Covers cost breakdowns by s… |
 | [bms](./skills/bms/) | Master skill for the bmsuisse platform — routes to the relevant skills based on sub-command. Always enables caveman c… |
@@ -61,7 +60,6 @@
 | [spark-connect](./skills/spark-connect/) | Guide for running PySpark code locally against a remote Databricks cluster via Spark Connect (databricks-connect). Us… |
 | [sql-optimization](./skills/sql-optimization/) | "Universal SQL performance optimization assistant for comprehensive query tuning, indexing strategies, and database p… |
 | [tanstack-best-practices](./skills/tanstack-best-practices/) | Comprehensive best practices for TanStack libraries in React applications — covering TanStack Query (React Query) dat… |
-| [tanstack-react-best-practices](./skills/tanstack-react-best-practices/) | React performance optimization guidelines for TanStack applications — covering TanStack Router, TanStack Query, and T… |
 | [testing-strategy](./skills/testing-strategy/) | Decide what kind of test to write and in what order for a backend feature: HTTP-level first, then Playwright e2e for… |
 <!-- SKILLS_TABLE_END -->
 
