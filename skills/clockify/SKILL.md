@@ -87,6 +87,12 @@ curl -s -u "$JIRA_EMAIL:$JIRA_API_TOKEN" "$JIRA_SITE/rest/api/3/project/search?q
 then use `[KEY]: Title` as the description. If no matching Jira issue exists,
 ask the user for the key rather than inventing one or leaving it off.
 
+## Round times to the half hour
+
+`start`/`end` must land on `:00` or `:30` only — never an arbitrary minute
+like `08:22` or `13:47`. Round durations to the nearest 30min (minimum
+30min) before converting to UTC and sending.
+
 ## Gotchas
 
 - **Creating a project can 403 `Access Denied`** for a non-admin API key.
