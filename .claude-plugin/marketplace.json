@@ -57,7 +57,9 @@
         "./prek",
         "./procrastinate",
         "./aiochannel-python",
-        "./python-autotuner"
+        "./python-autotuner",
+        "./app-usage-report",
+        "./clockify"
       ]
     },
     {
