@@ -53,13 +53,17 @@ ambiguous or missing.
 
 ```bash
 curl -s -X POST -H "X-Api-Key: $CLOCKIFY_API_KEY" -H "Content-Type: application/json" \
-  -d '{"start":"2026-08-19T06:00:00Z","end":"2026-08-19T10:00:00Z","projectId":"<id>","description":"[BMSBIDWH-703]: OneSales"}' \
+  -d '{"start":"2026-08-19T06:00:00Z","end":"2026-08-19T10:00:00Z","projectId":"<id>","description":"[BMSBIDWH-703]: OneSales","billable":true}' \
   "https://api.clockify.me/api/v1/workspaces/$WS/time-entries"
 ```
 
 `start`/`end` are always UTC on the wire (`Z` suffix) regardless of the
 workspace's local `timeZone` — convert the user's local time yourself before
 sending, or entries land on the wrong hour/day.
+
+**Always set `"billable": true`** — this workspace bills all tracked work by
+default. Only omit/set `false` when the user explicitly says the work isn't
+billable.
 
 ## Update a time entry
 
@@ -70,7 +74,8 @@ curl -s -X PUT -H "X-Api-Key: $CLOCKIFY_API_KEY" -H "Content-Type: application/j
 ```
 
 `PUT` replaces the whole entry — always resend `start`/`end`/`projectId`,
-not just the field you're changing.
+not just the field you're changing. Include `"billable": true` in that
+resend too, unless the entry is a deliberate exception.
 
 ## Description convention — always reference Jira
 
