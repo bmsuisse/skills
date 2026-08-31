@@ -28,18 +28,18 @@ header() {
 	echo -e "${CYAN}=============== $msg ===============${RESET}"
 }
 
-install_prettier() {
-    header "installing prettier"
+install_biome() {
+    header "installing biome"
 
-    if npm list prettier --depth=0 >/dev/null 2>&1; then
-        log "prettier is already installed"
+    if npm list @biomejs/biome --depth=0 >/dev/null 2>&1; then
+        log "biome is already installed"
     else
-        log "installing prettier..."
-        npm install --save-dev prettier || {
-            warn "failed to install prettier"
+        log "installing biome..."
+        npm install --save-dev @biomejs/biome || {
+            warn "failed to install biome"
             exit 1
         }
-        log "prettier installed successfully"
+        log "biome installed successfully"
     fi
 }
 
@@ -47,7 +47,7 @@ install_dependencies(){
     header "installing uv dependencies"
     uv sync --group format || warn "failed to install uv dependencies"
 
-    install_prettier
+    install_biome
 }
 
 check_dependencies(){
@@ -100,21 +100,21 @@ format_yaml() {
     log "YAML formatting completed"
 }
 
-format_prettier() {
-    header "prettier formatting started"
+format_biome() {
+    header "biome formatting started"
 
-    npx prettier --write "{,*/**/}*.{ts,tsx,js,jsx,css,scss,json,md}" || {
-        warn "prettier failed"
+    npx @biomejs/biome check --write . || {
+        warn "biome failed"
         exit 1
     }
-    log "prettier formatting completed"
+    log "biome formatting completed"
 }
 
 format_all() {
     format_python
     format_sql
     format_yaml
-    format_prettier
+    format_biome
 }
 
 format_commit(){
@@ -135,7 +135,7 @@ show_help() {
         echo -e "       - ${GREEN}format-sql${RESET}               : Run SQL formatter"
         echo -e "       - ${GREEN}format-yaml${RESET}              : Run YAML formatter"
         echo -e "       - ${GREEN}format-all${RESET}               : Run all formatters"
-        echo -e "       - ${GREEN}format-prettier${RESET}          : Run prettier for all non-Python files"
+        echo -e "       - ${GREEN}format-biome${RESET}             : Run biome for ts/tsx/js/jsx/json/css files"
         echo -e "       - ${GREEN}format-commit${RESET}            : Format code and commit changes"
         echo -e "       - ${GREEN}install-dependencies${RESET}     : Install dev and test dependencies"
 		echo -e "       - ${GREEN}check-dependencies${RESET}       : Check for missing dependencies"
@@ -158,8 +158,8 @@ main() {
         format-sql)
             format_sql "$@"
             ;;
-        format-prettier)
-            format_prettier "$@"
+        format-biome)
+            format_biome "$@"
             ;;
         format-yaml)
             format_yaml "$@"

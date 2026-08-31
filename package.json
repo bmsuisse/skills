@@ -4,6 +4,6 @@
     "skill:list": "node scripts/validate-skills.mjs 2>/dev/null | grep '^✅'"
   },
   "devDependencies": {
-    "prettier": "^3.8.1"
+    "@biomejs/biome": "^2.5.11"
   }
 }

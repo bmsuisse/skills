@@ -52,10 +52,10 @@ just dev                          # FastAPI (:8000) + Vite (:5173) together
 
 After scaffolding, run `/prek` to configure formatters for the whole project.
 This writes `prek.toml` and `scripts/check_files.py` (a file-size + forbidden-pattern
-guard, always included), updates root `pyproject.toml`, adds `.prettierrc`, installs
+guard, always included), updates root `pyproject.toml`, adds `biome.json`, installs
 the git pre-commit hook, and formats all existing files. The project has both
 Python (`backend/`) and TypeScript (`frontend/`) so prek will configure both
-ruff and prettier automatically.
+ruff and biome automatically.
 
 ## Step 3: Install companion skills with skillup
 

@@ -1,6 +1,6 @@
-import { Glob, $ } from "bun";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { $, Glob } from "bun";
 
 // Define directories
 const rootDir = join(import.meta.dir, "..");
@@ -11,7 +11,7 @@ await rm(tmpDir, { recursive: true, force: true });
 await mkdir(tmpDir, { recursive: true });
 
 const args = process.argv.slice(2);
-const fileFilter = args.length > 0 ? args[0].replace(/\\/g, '/') : null;
+const fileFilter = args.length > 0 ? args[0].replace(/\\/g, "/") : null;
 
 // We want to scan the "skills" folder for Markdown files
 const mdGlob = new Glob("**/*.md");
@@ -19,21 +19,24 @@ const mdGlob = new Glob("**/*.md");
 let fileMappings = new Map<string, string>();
 let count = 0;
 
-for await (const file of mdGlob.scan({ cwd: join(rootDir, "skills"), absolute: false })) {
+for await (const file of mdGlob.scan({
+  cwd: join(rootDir, "skills"),
+  absolute: false,
+})) {
   if (file.includes("-workspace")) {
     continue;
   }
 
-  if (fileFilter && !file.replace(/\\/g, '/').includes(fileFilter)) {
+  if (fileFilter && !file.replace(/\\/g, "/").includes(fileFilter)) {
     continue;
   }
 
   const fullPath = join(rootDir, "skills", file);
   const content = await Bun.file(fullPath).text();
-  const lines = content.split('\n');
+  const lines = content.split("\n");
 
   let inBlock = false;
-  let blockType = '';
+  let blockType = "";
   let blockStartLine = 0;
   let blockLines: string[] = [];
   let blockCounter = 0;
@@ -48,22 +51,22 @@ for await (const file of mdGlob.scan({ cwd: join(rootDir, "skills"), absolute: f
       inBlock = true;
       blockType = startMatch[1].toLowerCase();
       // Normalize typescript to ts
-      if (blockType === 'typescript') blockType = 'ts';
+      if (blockType === "typescript") blockType = "ts";
       // Record the actual line number the code begins at (to pad correctly)
       blockStartLine = i + 1;
       blockLines = [];
     } else if (inBlock && endMatch) {
       inBlock = false;
       blockCounter++;
-      
+
       // Pad empty lines before code so error reporting matches the exact lines in the Markdown file!
-      const padding = '\n'.repeat(blockStartLine);
-      const outContent = padding + blockLines.join('\n');
-      
+      const padding = "\n".repeat(blockStartLine);
+      const outContent = padding + blockLines.join("\n");
+
       // Flatten the path structure to easily output files into .tmp-check folder
-      const flatName = `skills_${file.replace(/[\/\\]/g, '_')}_block${blockCounter}.${blockType}`;
+      const flatName = `skills_${file.replace(/[\/\\]/g, "_")}_block${blockCounter}.${blockType}`;
       const outPath = join(tmpDir, flatName);
-      
+
       await writeFile(outPath, outContent);
       fileMappings.set(flatName, join("skills", file));
       count++;
@@ -89,24 +92,33 @@ const tsconfig = {
     allowJs: true,
     esModuleInterop: true,
     skipLibCheck: true,
-    forceConsistentCasingInFileNames: true
+    forceConsistentCasingInFileNames: true,
   },
-  include: ["**/*.ts", "**/*.vue"]
+  include: ["**/*.ts", "**/*.vue"],
 };
 
-await writeFile(join(tmpDir, "tsconfig.json"), JSON.stringify(tsconfig, null, 2));
+await writeFile(
+  join(tmpDir, "tsconfig.json"),
+  JSON.stringify(tsconfig, null, 2),
+);
 
 console.log(`🔍 Extracted ${count} Vue/TS blocks. Running vue-tsc...`);
 
 // Run vue-tsc gracefully
-const run = await $`bunx vue-tsc --noEmit -p tsconfig.json`.cwd(tmpDir).nothrow().quiet();
+const run = await $`bunx vue-tsc --noEmit -p tsconfig.json`
+  .cwd(tmpDir)
+  .nothrow()
+  .quiet();
 
 let output = run.stdout.toString() + run.stderr.toString();
 
 // Replace the temporary file names in output with the original Markdown paths
 for (const [flatName, originalName] of fileMappings) {
   // Regex to exactly match filename in the tsc output
-  const regex = new RegExp(flatName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+  const regex = new RegExp(
+    flatName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+    "g",
+  );
   output = output.replace(regex, originalName);
 }
 
@@ -115,7 +127,9 @@ if (output.trim()) {
 }
 
 if (run.exitCode !== 0) {
-  console.error("❌ Type checking failed! Please fix the errors in your Markdown files listed above.");
+  console.error(
+    "❌ Type checking failed! Please fix the errors in your Markdown files listed above.",
+  );
   process.exit(1);
 } else {
   console.log("✅ All Markdown code blocks are beautifully typed.");
