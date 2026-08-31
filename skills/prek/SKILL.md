@@ -6,7 +6,7 @@ description: >
   alternative to pre-commit) with prek.toml config. Use whenever the user
   wants to configure prek, add formatters, set up pre-commit hooks, or enforce
   code style. Triggers on "set up prek", "add formatting", "configure
-  formatters", "pre-commit setup", "add ruff", "set up prettier",
+  formatters", "pre-commit setup", "add ruff", "set up biome",
   "configure sqlfmt". Works on new and existing projects. Always use when
   init-app-stack has just run.
 ---
@@ -20,7 +20,8 @@ files at commit time.
 **Formatters — all use 4 spaces, no tabs, line-length 120:**
 - **Python**: ruff-check --fix + ruff-format (via astral-sh/ruff-pre-commit)
 - **SQL**: `uv run sqlfmt` (local hook)
-- **TypeScript/JS**: `bunx --bun prettier --write` (local hook)
+- **TypeScript/JS**: `bunx --bun biome check --write` (local hook, also lints
+  and organizes imports)
 - **YAML**: builtin check-yaml (if .yaml/.yml files present)
 - **File-size guard**: `scripts/check_files.py` (local hook, always included) — blocks
   commits containing files over a per-extension line-count limit, and (for `.sql`)
@@ -197,7 +198,7 @@ hooks = [
 [[repos]]                                 # include only if .ts/.tsx/.js/.jsx present
 repo = "local"
 hooks = [
-    { id = "prettier", name = "prettier", language = "system", entry = "bunx --bun prettier --write", files = '\\.(ts|tsx|js|jsx|vue)$' },
+    { id = "biome", name = "biome", language = "system", entry = "bunx --bun biome check --write", files = '\\.(ts|tsx|js|jsx|vue)$' },
 ]
 
 [[repos]]                                 # always include — file-size + forbidden-pattern guard
@@ -241,21 +242,44 @@ line_length = 120
 
 ---
 
-## Step 5: Write .prettierrc
+## Step 5: Write biome.json
 
-If TypeScript/JavaScript files are present, write `.prettierrc` to the project
-root (skip if one already exists with different settings — ask first):
+If TypeScript/JavaScript files are present, write `biome.json` to the project
+root (skip if one already exists with different settings — ask first). Also
+add `@biomejs/biome` as a dev dependency (`bun add -d @biomejs/biome`) if not
+already present:
 
 ```json
 {
-  "tabWidth": 4,
-  "useTabs": false,
-  "semi": true,
-  "singleQuote": false,
-  "printWidth": 120,
-  "trailingComma": "es5"
+  "$schema": "https://biomejs.dev/schemas/2.5.11/schema.json",
+  "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 4,
+    "lineWidth": 120
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "double",
+      "semicolons": "always",
+      "trailingCommas": "es5"
+    }
+  },
+  "linter": { "enabled": true }
 }
 ```
+
+If the project already has an eslint config (`.eslintrc*` or
+`eslint.config.*`), migrate it instead of hand-writing rules:
+
+```bash
+bunx @biomejs/biome migrate eslint --write
+bunx @biomejs/biome migrate prettier --write
+```
+
+then remove the old `eslint`, `prettier`, and related plugin dependencies and
+config files.
 
 ---
 

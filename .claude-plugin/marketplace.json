@@ -79,10 +79,7 @@
       "name": "onetrade",
       "description": "OneTrade Coding",
       "source": "./",
-      "skills": [
-        "./codeunit-analyzer",
-        "./kull-generic-backend"
-      ]
+      "skills": ["./codeunit-analyzer", "./kull-generic-backend"]
     },
     {
       "name": "databricks",
@@ -135,10 +132,7 @@
       "name": "writing",
       "description": "Writing skills: Documentation, technical writing, and content creation",
       "source": "./",
-      "skills": [
-        "./remove-ai-writing",
-        "./scientific-revision"
-      ]
+      "skills": ["./remove-ai-writing", "./scientific-revision"]
     },
     {
       "name": "bms",

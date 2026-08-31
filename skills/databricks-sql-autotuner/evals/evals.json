@@ -37,9 +37,7 @@
       "id": 2,
       "prompt": "/databricks-sql-autotuner @evals/fixtures/slow_report.sql",
       "expected_output": "Claude reads the fixture SQL file, then follows the full workflow: profile/cluster discovery, env setup, EXPLAIN, optimization, validation, benchmark. Works identically to the inline SQL path.",
-      "files": [
-        "evals/fixtures/slow_report.sql"
-      ],
+      "files": ["evals/fixtures/slow_report.sql"],
       "assertions": [
         {
           "text": "Read the .sql file via @file syntax rather than treating the path as inline SQL",
