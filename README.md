@@ -33,6 +33,7 @@
 | [databricks-cli](./skills/databricks-cli/) | Databricks CLI operations: auth, profiles, data exploration, bundles, and notebook execution. Use this skill for ANY… |
 | [databricks-sql-autotuner](./skills/databricks-sql-autotuner/) | Databricks SQL query optimizer and error fixer: analyzes a slow or broken SQL query, rewrites it for speed using SQL-… |
 | [deslop](./skills/deslop/) | Remove AI slop from code and pull requests. Use this skill whenever the user wants to clean up AI-generated code, rev… |
+| [dev-workflow](./skills/dev-workflow/) | End-to-end workflow for non-trivial coding tasks: worktree, draft PR early, implement, review, test, publish. Trigger… |
 | [duckdb](./skills/duckdb/) | Guide for working with DuckDB — CLI usage, SQL execution, reading files (CSV, Parquet, JSON, Excel), extensions (http… |
 | [ducklake](./skills/ducklake/) | Guide for working with DuckLake — the open lakehouse format and DuckDB extension that pairs a SQL catalog (metadata,… |
 | [fabricks-devops-issues](./skills/fabricks-devops-issues/) | Orchestrates Azure DevOps "Issue" work-item workflows in the Fabricks.Runtime repo — listing open issues so the user… |
