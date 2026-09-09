@@ -19,17 +19,18 @@ fixed inline — file it and hand it off instead:
    task's worktree). Its next action, before any fix, must be commenting on
    the issue with its session id and that it's working on it:
    `bdt issue comment add <number> --body "..."`.
-5. The subagent closes the issue once the fix is resolved: `bdt issue update
-   <number> --state Closed` (Azure DevOps), or `gh issue close <number>`
-   (GitHub — `--state` on `bdt issue update` is Azure DevOps-only and is
-   silently ignored on GitHub repos).
+5. The subagent closes the issue once the fix is resolved:
+   `bdt issue update <number> --state Closed` (works on both backends).
 
 ## bdt issue tooling reference
 
 `bdt issue create|search|update|delete` and `bdt issue comment
 add|update|delete`, auto-detecting Azure DevOps vs. GitHub from the git
 remote. `create` prints just the issue link; `search` prints `#<number>
-[<state>] <title>` plus the link per match. `--board` (create/search,
-scopes to that Azure Boards team's Area Path — falls back to
-`[tool.bdt.ado].board` in pyproject.toml), `--tag`, and `--state` on
-`update` are Azure DevOps-only; `--label` is GitHub-only.
+[<state>] <title>` plus the link per match. `update --state Closed`/`Done`/
+`Removed`/`Open` work on both backends; other state names (e.g. Active,
+Resolved) only apply where that exact name exists for the work item's
+type, else the state is left unchanged and noted in a comment. `--board`
+(create/search, scopes to that Azure Boards team's Area Path — falls back
+to `[tool.bdt.ado].board` in pyproject.toml) and `--tag` are Azure
+DevOps-only; `--label` is GitHub-only.
