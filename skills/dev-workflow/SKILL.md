@@ -23,10 +23,10 @@ when the tool genuinely isn't available (say so).
    If working from an issue, immediately comment on it with the session id
    (and PR link) so the requestor knows it's being worked on.
 3. **Implement** the task. If you find or fix a bug along the way, create an
-   issue for it (`bdt issue create --title "..."`; even if you close it right
-   away) and reference that issue from a short comment at the fix site —
-   don't inline lengthy explanations of the bug or how it was resolved in
-   source code comments.
+   issue for it (`bdt issue create --title "..."` — prints just the issue
+   link; even if you close it right away) and reference that link from a
+   short comment at the fix site — don't inline lengthy explanations of the
+   bug or how it was resolved in source code comments.
 4. **Review.** Run `/code-review` on the diff and address findings.
 5. **Test.** Run a relevant subset of tests (not the full suite — that's CI's
    job) covering what changed.
