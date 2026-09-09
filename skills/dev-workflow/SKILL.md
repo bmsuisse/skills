@@ -42,7 +42,5 @@ when the tool genuinely isn't available (say so).
 Full test-suite runs, broad regression sweeps, etc. are CI's responsibility —
 don't run them locally unless asked.
 
-`references/unrelated-bugs.md` — read it when you spot a bug that isn't part
-of the current task: how to search/file the issue, when to spin off a
-subagent to fix it instead of inlining the fix, and the bdt issue tooling
-reference.
+`references/unrelated-bugs.md` — read it when you spot a bug outside the
+current task's scope, instead of fixing it inline.
