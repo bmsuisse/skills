@@ -43,4 +43,4 @@ Full test-suite runs, broad regression sweeps, etc. are CI's responsibility —
 don't run them locally unless asked.
 
 `references/unrelated-bugs.md` — read it when you spot a bug outside the
-current task's scope, instead of fixing it inline.
+current task's scope.
