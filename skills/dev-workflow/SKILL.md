@@ -1,6 +1,6 @@
 ---
 name: dev-workflow
-plugin: coding
+plugin: dev-workflow
 description: >
   End-to-end workflow for non-trivial coding tasks: worktree, draft PR early,
   implement, review, test, publish. Trigger whenever starting a task that's
