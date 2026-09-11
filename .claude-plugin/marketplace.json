@@ -103,6 +103,43 @@
       ]
     },
     {
+      "name": "dev-workflow",
+      "description": "Enforces the team dev workflow: worktree-first edits, auto-approved entry into worktree-shaped dirs, and a gate that blocks bdt/az/gh commands which publish or complete a PR until /code-review has run.",
+      "source": "./",
+      "skills": ["./dev-workflow"],
+      "hooks": {
+        "PreToolUse": [
+          {
+            "matcher": "Bash",
+            "hooks": [
+              {
+                "type": "command",
+                "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/gate-pr-publish.py\""
+              }
+            ]
+          },
+          {
+            "matcher": "Edit|Write|NotebookEdit|MultiEdit",
+            "hooks": [
+              {
+                "type": "command",
+                "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/require-worktree-edits.py\""
+              }
+            ]
+          },
+          {
+            "matcher": "EnterWorktree",
+            "hooks": [
+              {
+                "type": "command",
+                "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/allow-worktree-entry.py\""
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
       "name": "azure-diagnostics",
       "description": "Systematic diagnosis and remediation for Azure production issues using AppLens, Monitor, and resource health. Covers Container Apps, Function Apps, and AKS clusters.",
       "source": {

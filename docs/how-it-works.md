@@ -63,6 +63,12 @@ The rewrite is silent. The agent sees the corrected command as if it typed it.
 
 A separate global hook rewrites `pyright` → `uv run ty check`, since `ty` is the team's standard type checker.
 
+The `dev-workflow` plugin ships three enforcement hooks:
+
+- **PreToolUse on Edit/Write/NotebookEdit** (deny) — blocks edits outside a `worktree*`/`.worktree*`/`.claude` path, so changes land in an isolated worktree rather than a shared main checkout.
+- **PreToolUse on EnterWorktree** (allow) — auto-approves entering or creating a worktree whose `path`/`name` matches the same `worktree*`/`.worktree*` pattern, so switching into an already-isolated worktree doesn't hit a permission prompt.
+- **PreToolUse on Bash** (deny) — blocks commands that publish or complete a PR (`bdt pr publish`, `bdt pr create --no-draft`, `az repos pr create/update --auto-complete`, `gh pr create`/`ready`/`merge`, etc.) unless `/code-review` has already run earlier in the session — directly or via a subagent.
+
 ## Plugins
 
 Skills are bundled into **plugins** for easier distribution. A plugin is a named group of skills that install together.
