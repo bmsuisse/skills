@@ -38,6 +38,10 @@ when the tool genuinely isn't available (say so).
    push — don't just report the failure.
 9. If working from an issue, update it with a summary and implementation
    screenshots once the PR is up.
+10. **Clean up.** Never merge the PR yourself — wait for a human to approve
+    and merge it. Once it's merged, remove the worktree (`git worktree remove`
+    or delete the `.claude/worktrees/...` dir) and delete the merged branch,
+    local and remote.
 
 Full test-suite runs, broad regression sweeps, etc. are CI's responsibility —
 don't run them locally unless asked.
