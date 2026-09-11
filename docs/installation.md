@@ -59,7 +59,7 @@ Skills are now active. Type `/` to see available slash commands.
 | `caveman` | caveman, caveman-review, caveman-commit | Token-efficient comms |
 | `azure-deploy` | azure-deploy | Azure deployments |
 | `azure-diagnostics` | azure-diagnostics | Azure diagnostics |
-| `dev-workflow` | dev-workflow (+ hooks: worktree-only edits, PR-publish gate requiring `/code-review`) | Enforcing the team's worktree → draft PR → review → publish flow |
+| `dev-workflow` | dev-workflow (+ hooks: worktree-only edits, auto-approved worktree entry, PR-publish gate requiring `/code-review`) | Enforcing the team's worktree → draft PR → review → publish flow |
 
 ## Per-project setup
 

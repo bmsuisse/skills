@@ -104,7 +104,7 @@
     },
     {
       "name": "dev-workflow",
-      "description": "Enforces the team dev workflow: worktree-first edits, and a gate that blocks bdt/az/gh commands which publish or complete a PR until /code-review has run.",
+      "description": "Enforces the team dev workflow: worktree-first edits, auto-approved entry into worktree-shaped dirs, and a gate that blocks bdt/az/gh commands which publish or complete a PR until /code-review has run.",
       "source": "./",
       "skills": ["./dev-workflow"],
       "hooks": {
@@ -124,6 +124,15 @@
               {
                 "type": "command",
                 "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/require-worktree-edits.py\""
+              }
+            ]
+          },
+          {
+            "matcher": "EnterWorktree",
+            "hooks": [
+              {
+                "type": "command",
+                "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/allow-worktree-entry.py\""
               }
             ]
           }
