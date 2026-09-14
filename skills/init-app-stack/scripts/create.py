@@ -43,6 +43,11 @@ def main() -> None:
     fe = root / "frontend"
     be = root / "backend"
 
+    import re
+    # Filesystem/state-file-safe slug (agent_preview.py's /tmp state file names) --
+    # project names are free text, state file names aren't.
+    project_slug = re.sub(r"[^a-z0-9-]+", "-", project.lower()).strip("-") or "app"
+
     import random
     rng = random.Random(project)  # deterministic per project name
     fe_port = rng.randint(10000, 59999)
@@ -534,8 +539,11 @@ def main() -> None:
         be / "main.py",
         """\
         from contextlib import asynccontextmanager
+        from pathlib import Path
+
         from fastapi import FastAPI
         from fastapi.middleware.cors import CORSMiddleware
+        from fastapi.staticfiles import StaticFiles
 
         from backend.config import settings
         from backend.db import pool
@@ -565,6 +573,15 @@ def main() -> None:
                 cur = await conn.execute("SELECT 1 AS ok")
                 row = await cur.fetchone()
             return {"status": "ok", "db": row[0] == 1}
+
+
+        # Mounted last so the routes above always match first -- serves `bun run
+        # build`'s output for `just agent-preview` (single process, one port). Not
+        # present during normal `just dev`, since Vite serves the frontend then and
+        # frontend/dist won't exist yet.
+        _frontend_dist = Path(__file__).resolve().parents[1] / "frontend" / "dist"
+        if _frontend_dist.exists():
+            app.mount("/", StaticFiles(directory=_frontend_dist, html=True), name="frontend")
         """,
     )
 
@@ -589,19 +606,25 @@ def main() -> None:
 
     # scripts.py — tiny wrappers so `uv run dev` / `uv run start` work via
     # [project.scripts] entry points (uv has no native shell-command aliases).
+    # Port is overridable via BACKEND_PORT (see scripts/agent_preview.py and the
+    # justfile's `agent-preview` recipe, which set it to an OS-picked free port
+    # so concurrent worktrees never collide on __BE_PORT__).
     write(
         be / "scripts.py",
         """\
+        import os
         import subprocess
         import sys
 
+        PORT = os.environ.get("BACKEND_PORT", "__BE_PORT__")
+
 
         def dev() -> None:
-            sys.exit(subprocess.call(["granian", "--interface", "asgi", "backend.main:app", "--port", "__BE_PORT__", "--reload"]))
+            sys.exit(subprocess.call(["granian", "--interface", "asgi", "backend.main:app", "--port", PORT, "--reload"]))
 
 
         def start() -> None:
-            sys.exit(subprocess.call(["granian", "--interface", "asgi", "backend.main:app", "--port", "__BE_PORT__", "--workers", "4"]))
+            sys.exit(subprocess.call(["granian", "--interface", "asgi", "backend.main:app", "--port", PORT, "--workers", "4"]))
         """.replace("__BE_PORT__", str(be_port)),
     )
 
@@ -732,6 +755,216 @@ def main() -> None:
         """,
     )
 
+    # scripts/agent_preview.py — isolated, port-agnostic preview: its own pgdevkit-
+    # scoped Postgres database (project + git branch), the frontend built once and
+    # served by the backend's StaticFiles mount (see main.py) instead of a separate
+    # Vite dev server, and a port picked so it never collides with another
+    # worktree/agent's preview or `just dev`. Modeled on OneSales's
+    # scripts/agent_preview.py, minus the MS-Entra-auth-bypass bits this scaffold
+    # has no equivalent of (no auth here at all yet).
+    write(
+        root / "scripts" / "agent_preview.py",
+        '''\
+        """Start (or stop) an isolated, agent-safe preview of the app: its own
+        Postgres database (via pgdevkit, scoped to this project + git branch -- see
+        pgdevkit.testdb.workspace_db_name), the frontend built once and served by the
+        backend (no separate Vite dev server), and a port picked to not collide with
+        any other worktree's preview or dev server.
+
+        Why this exists: `just dev` hardcodes ports __BE_PORT__ (backend) and __FE_PORT__
+        (frontend) -- multiple concurrent worktrees/agents on the same machine would
+        collide on them. This script never touches another process; it always asks
+        the OS for a free port first (unless overridden with --port or BACKEND_PORT),
+        and always runs against its own isolated database.
+
+        Usage:
+            uv run python scripts/agent_preview.py start
+            uv run python scripts/agent_preview.py start --rebuild
+            uv run python scripts/agent_preview.py start --port 9300
+            uv run python scripts/agent_preview.py status
+            uv run python scripts/agent_preview.py stop
+        """
+
+        from __future__ import annotations
+
+        import argparse
+        import json
+        import os
+        import socket
+        import subprocess
+        import sys
+        import time
+        import urllib.error
+        import urllib.request
+        from pathlib import Path
+
+        REPO_ROOT = Path(__file__).resolve().parents[1]
+        PROJECT_SLUG = "__PROJECT_SLUG__"
+
+
+        def _free_port() -> int:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.bind(("127.0.0.1", 0))
+                return s.getsockname()[1]
+
+
+        def _state_path(db_name: str) -> Path:
+            # One state file per isolated database -- naturally one per project+branch
+            # (see pgdevkit.testdb.workspace_db_name), so two worktrees on different
+            # branches never share or clobber each other's file.
+            return Path(f"/tmp/{PROJECT_SLUG}-agent-preview-{db_name}.json")
+
+
+        def _wait_healthy(base_url: str, timeout_s: float = 30.0) -> None:
+            deadline = time.monotonic() + timeout_s
+            last_error: Exception | None = None
+            while time.monotonic() < deadline:
+                try:
+                    with urllib.request.urlopen(f"{base_url}/health", timeout=2) as resp:
+                        if resp.status == 200:
+                            return
+                except (urllib.error.URLError, TimeoutError, ConnectionError) as exc:
+                    last_error = exc
+                time.sleep(0.5)
+            raise RuntimeError(f"backend never became healthy at {base_url}/health within {timeout_s}s: {last_error}")
+
+
+        def _pid_alive(pid: int) -> bool:
+            try:
+                os.kill(pid, 0)
+            except ProcessLookupError:
+                return False
+            except PermissionError:
+                return True  # exists, owned by someone else
+            return True
+
+
+        def cmd_start(args: argparse.Namespace) -> None:
+            from pgdevkit.testdb import ensure_testdb, status
+
+            print("Provisioning isolated test database (pgdevkit)...")
+            db_env = ensure_testdb()
+            db_name = status()["database"]
+
+            state_path = _state_path(db_name)
+            if state_path.exists():
+                existing = json.loads(state_path.read_text())
+                if _pid_alive(existing["pid"]):
+                    print(f"Already running: {existing['base_url']} (pid {existing['pid']}). Use `stop` first, or `status`.")
+                    return
+                state_path.unlink()  # stale -- process died without cleanup
+
+            dist_dir = REPO_ROOT / "frontend" / "dist"
+            if args.rebuild or not dist_dir.exists():
+                print("Building frontend (bun run build)...")
+                result = subprocess.run(["bun", "run", "build"], cwd=REPO_ROOT / "frontend")
+                if result.returncode != 0:
+                    sys.exit(result.returncode)
+            else:
+                print(f"Reusing existing build at {dist_dir} (pass --rebuild to force a fresh one).")
+
+            port = args.port or int(os.environ.get("BACKEND_PORT", 0)) or _free_port()
+            base_url = f"http://127.0.0.1:{port}"
+
+            env = os.environ.copy()
+            env.update(db_env)
+            env["BACKEND_PORT"] = str(port)
+
+            log_path = Path(f"/tmp/{PROJECT_SLUG}-agent-preview-{db_name}.log")
+            log_file = log_path.open("w")
+            print(f"Starting backend on {base_url} (log: {log_path})...")
+            proc = subprocess.Popen(
+                ["granian", "--interface", "asgi", "backend.main:app", "--port", str(port)],
+                cwd=REPO_ROOT,
+                env=env,
+                stdout=log_file,
+                stderr=subprocess.STDOUT,
+                start_new_session=True,  # survives this script exiting
+            )
+
+            try:
+                _wait_healthy(base_url)
+            except RuntimeError:
+                proc.terminate()
+                print(f"Startup failed -- see {log_path} for backend output.", file=sys.stderr)
+                raise
+
+            state_path.write_text(
+                json.dumps({"pid": proc.pid, "port": port, "base_url": base_url, "db_name": db_name, "log": str(log_path)})
+            )
+
+            print(f"Ready: {base_url}")
+            print(f"Isolated database: {db_name}")
+            print("Stop with: uv run python scripts/agent_preview.py stop")
+
+
+        def _load_state() -> tuple[Path, dict] | None:
+            from pgdevkit.testdb import status
+
+            db_name = status()["database"]
+            state_path = _state_path(db_name)
+            if not state_path.exists():
+                return None
+            return state_path, json.loads(state_path.read_text())
+
+
+        def cmd_status(_args: argparse.Namespace) -> None:
+            found = _load_state()
+            if not found:
+                print("Not running for this workspace.")
+                return
+            state_path, state = found
+            alive = _pid_alive(state["pid"])
+            print(f"{'Running' if alive else 'Stale (process died)'}: {state['base_url']} (pid {state['pid']})")
+            print(f"Database: {state['db_name']}")
+            print(f"Log: {state['log']}")
+            if not alive:
+                print(f"Stale state file: {state_path} (cleared by the next `start`)")
+
+
+        def cmd_stop(_args: argparse.Namespace) -> None:
+            found = _load_state()
+            if not found:
+                print("Not running for this workspace.")
+                return
+            state_path, state = found
+            if _pid_alive(state["pid"]):
+                try:
+                    os.killpg(state["pid"], 9)
+                except ProcessLookupError:
+                    pass
+                print(f"Stopped pid {state['pid']} ({state['base_url']}).")
+            else:
+                print("Process already gone.")
+            state_path.unlink()
+
+
+        def main() -> None:
+            parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+            sub = parser.add_subparsers(dest="command", required=True)
+
+            p_start = sub.add_parser("start", help="Provision the isolated DB, build if needed, start the backend")
+            p_start.add_argument("--rebuild", action="store_true", help="Force `bun run build` even if frontend/dist exists")
+            p_start.add_argument("--port", type=int, default=None, help="Use this port instead of an OS-picked free one (or BACKEND_PORT)")
+            p_start.set_defaults(func=cmd_start)
+
+            p_status = sub.add_parser("status", help="Show whether a preview is running for this workspace")
+            p_status.set_defaults(func=cmd_status)
+
+            p_stop = sub.add_parser("stop", help="Stop the preview running for this workspace, if any")
+            p_stop.set_defaults(func=cmd_stop)
+
+            args = parser.parse_args()
+            args.func(args)
+
+
+        if __name__ == "__main__":
+            main()
+        '''.replace("__PROJECT_SLUG__", project_slug)
+        .replace("__BE_PORT__", str(be_port))
+        .replace("__FE_PORT__", str(fe_port)),
+    )
+
     # ── justfile (task runner) ────────────────────────────────────────────────
     write(
         root / "justfile",
@@ -768,6 +1001,22 @@ def main() -> None:
             trap 'kill 0' EXIT
             just backend & just frontend &
             wait
+
+        # Isolated, port-agnostic preview for agents/parallel worktrees: provisions
+        # its own pgdevkit-scoped Postgres database, builds the frontend once, and
+        # serves it from the backend on a free port the OS picks itself (never kills
+        # another worktree's dev server, never touches another workspace's data).
+        # Prints the URL when ready. Override the port with --port <n> or BACKEND_PORT.
+        agent-preview *args:
+            uv run python scripts/agent_preview.py start {{args}}
+
+        # Check whether a preview is already running for this workspace
+        agent-preview-status:
+            uv run python scripts/agent_preview.py status
+
+        # Stop the preview running for this workspace, if any
+        agent-preview-stop:
+            uv run python scripts/agent_preview.py stop
 
         # Regenerate the typed API client: dump the OpenAPI schema, then run codegen
         generate-api:
@@ -838,6 +1087,25 @@ def main() -> None:
         just backend     # FastAPI on :{be_port}
         just frontend    # Vite on :{fe_port} (run in a second terminal)
         ```
+
+        ## Agent preview (multiple worktrees/agents at once)
+
+        `just dev` hardcodes ports {be_port}/{fe_port}. If more than one worktree or
+        agent might be running dev/screenshot work on this machine at the same time,
+        use `just agent-preview` instead — it provisions its own pgdevkit-scoped
+        Postgres database, builds the frontend once, and serves it from the backend
+        on a free port the OS picks itself (never kills another process, never
+        touches another workspace's data):
+
+        ```bash
+        just agent-preview            # prints the URL when ready, e.g. http://127.0.0.1:53214
+        just agent-preview --rebuild  # force a fresh `bun run build` first
+        just agent-preview-status     # check if one is already running for this workspace
+        just agent-preview-stop       # stop it
+        ```
+
+        Pass `--port <n>` (or set `BACKEND_PORT`) to pin the port instead of letting
+        the OS pick one.
 
         ## Tests
 
