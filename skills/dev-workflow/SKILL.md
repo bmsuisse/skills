@@ -15,8 +15,8 @@ For anything bigger than a trivial fix, follow this sequence. Skip steps only
 when the tool genuinely isn't available (say so).
 
 1. **Worktree.** Create one for the task (`EnterWorktree`, or `git worktree add`
-   if unavailable). If the repo has a `justfile` with a `workflow` recipe, use
-   `just workflow` to set it up instead of doing it by hand.
+   if unavailable). If the repo has a `justfile` with a `worktree` recipe, use
+   `just worktree` to set it up instead of doing it by hand.
 2. **Draft PR early.** Push the initial (even empty/WIP) commit and open a
    draft PR immediately using `bdt` (github/bmsuisse/devtools) — before doing
    the actual work. This gives CI and reviewers visibility from the start.
