@@ -100,7 +100,7 @@ Add to `~/.claude/settings.json` to install all plugins:
 | Plugin                             | Contents                                                                  |
 | ---------------------------------- | ------------------------------------------------------------------------- |
 | `coding@bmsuisse-skills`           | Python, TypeScript, FastAPI, Postgres, TanStack, and general coding skills |
-| `ui@bmsuisse-skills`               | KendoReact component patterns and best practices                          |
+| `ui@bmsuisse-skills`               | Data tables, visual design/QA review, and writing style                   |
 | `onetrade@bmsuisse-skills`         | C-AL / Classic NAV codeunit analysis                                      |
 | `databricks@bmsuisse-skills`       | Databricks CLI + Spark Connect local execution                            |
 | `fabricks-data@bmsuisse-skills`    | Fabricks / Databricks data skills                                         |
@@ -181,7 +181,7 @@ Each plugin bundles a curated set of skills:
 | Plugin             | Skills included                                                                                                                                                                              | Use case                          |
 | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
 | `coding`           | autoresearch, coding-guidelines-python, coding-guidelines-typescript, deslop, fastapi-guideline, init-app-stack, postgres-best-practices, postgres-test-setup, sql-optimization, tanstack-best-practices | General dev work         |
-| `ui`               | kendo-ui-react                                                                                                                                                                               | KendoReact components             |
+| `ui`               | rich-data-tables, inter-without-ai-slop, design-review                                                                                                                                       | Data tables, writing style, visual QA |
 | `onetrade`         | codeunit-analyzer                                                                                                                                                                            | Classic NAV / C-AL analysis       |
 | `databricks`       | databricks-cli, spark-connect                                                                                                                                                                | Databricks & Spark                |
 | `fabricks-data`    | fabricks-glossary, fabricks-sql-analyzer                                                                                                                                                     | Fabricks data platform            |
