@@ -53,7 +53,7 @@ Skills are now active. Type `/` to see available slash commands.
 |---|---|---|
 | `coding` | Python, TypeScript, TanStack, FastAPI, Azure auth, Postgres, autoresearch, init-app-stack | General dev work |
 | `databricks` | databricks-cli, spark-connect | Databricks & Spark |
-| `ui` | kendo-ui-react | KendoReact components |
+| `ui` | rich-data-tables, inter-without-ai-slop, design-review | Data tables, writing style, visual QA |
 | `writing` | remove-ai-writing, scientific-revision | Writing & docs |
 | `bms` | Master skill + all core standards | All standards via `/bms` |
 | `caveman` | caveman, caveman-review, caveman-commit | Token-efficient comms |
