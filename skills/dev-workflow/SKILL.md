@@ -22,26 +22,29 @@ when the tool genuinely isn't available (say so).
    the actual work. This gives CI and reviewers visibility from the start.
    If working from an issue, immediately comment on it with the session id
    (and PR link) so the requestor knows it's being worked on.
-3. **Implement** the task. If you find or fix a bug along the way, create an
+   Post your sessionid/url in there.
+3. **Implementation Plan**: If your task is more complex, you do an implementation plan first, and you also upload it to PR (using `bdt pr comment --file FILE`)
+4. **Implement** the task. If you find or fix a bug along the way, create an
    issue for it (`bdt issue create --title "..."` — prints just the issue
    link; even if you close it right away) and reference that link from a
    short comment at the fix site — don't inline lengthy explanations of the
    bug or how it was resolved in source code comments.
-4. **Review.** Run `/code-review` on the diff and address findings.
-5. **Test.** Run a relevant subset of tests (not the full suite — that's CI's
+   Once a step is done, commit&push. Commit early, commit often.
+6. **Review.** Run `/code-review` on the diff and address findings.
+7. **Test.** Run a relevant subset of tests (not the full suite — that's CI's
    job) covering what changed.
-6. **Screenshots.** If the change is visual/UI, capture before/after
-   screenshots and attach them to the PR. If working from an issue, also post
-   the screenshots as an update on the issue.
-7. **Publish** the PR (mark ready for review) via `bdt`.
-8. **Watch CI.** Run `bdt pr status --wait`. If remote checks fail, fix and
+8. **Screenshots.** If the change is visual/UI, capture before/after
+   screenshots and attach them to the PR. Do screenshots for mobile and desktop.
+   Then do a "/design-review" for the screenshots using a subagent and adress findings.
+   If working from an issue, also post the screenshots as an update on the issue.
+   Do not stop the Web server, ask human to click through changes and verify. once ok for human, proceed.
+10. **Publish** the PR via `bdt pr publish`, which will trigger CI
+11. **Watch CI.** Run `bdt pr status --wait`. If remote checks fail, fix and
    push — don't just report the failure.
-9. If working from an issue, update it with a summary and implementation
+12. If working from an issue, update it with a summary and implementation
    screenshots once the PR is up.
-10. **Clean up.** Never merge the PR yourself — wait for a human to approve
-    and merge it. Once it's merged, remove the worktree (`git worktree remove`
-    or delete the `.claude/worktrees/...` dir) and delete the merged branch,
-    local and remote.
+13. **Clean up.** Never merge the PR yourself — wait for a human to approve
+    and merge it. Once it's merged, remove the worktree using `bdt cleanup worktree`
 
 Full test-suite runs, broad regression sweeps, etc. are CI's responsibility —
 don't run them locally unless asked.
