@@ -32,6 +32,7 @@
 | [database-in-source](./skills/database-in-source/) | Conventions for versioning a PostgreSQL schema as plain `.sql` files inside a `database/` folder in the repo, instead… |
 | [databricks-cli](./skills/databricks-cli/) | Databricks CLI operations: auth, profiles, data exploration, bundles, and notebook execution. Use this skill for ANY… |
 | [databricks-sql-autotuner](./skills/databricks-sql-autotuner/) | Databricks SQL query optimizer and error fixer: analyzes a slow or broken SQL query, rewrites it for speed using SQL-… |
+| [design-review](./skills/design-review/) | Review a web app or page for visual design quality — layout, spacing, typography, colour/contrast, visual hierarchy,… |
 | [deslop](./skills/deslop/) | Remove AI slop from code and pull requests. Use this skill whenever the user wants to clean up AI-generated code, rev… |
 | [dev-workflow](./skills/dev-workflow/) | End-to-end workflow for non-trivial coding tasks: worktree, draft PR early, implement, review, test, publish. Trigger… |
 | [duckdb](./skills/duckdb/) | Guide for working with DuckDB — CLI usage, SQL execution, reading files (CSV, Parquet, JSON, Excel), extensions (http… |
