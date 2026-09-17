@@ -31,8 +31,10 @@ when the tool genuinely isn't available (say so).
 5. **Test.** Run a relevant subset of tests (not the full suite — that's CI's
    job) covering what changed.
 6. **Screenshots.** If the change is visual/UI, capture before/after
-   screenshots and attach them to the PR. If working from an issue, also post
-   the screenshots as an update on the issue.
+   screenshots and attach them to the PR. Run the `design-review` skill over
+   the after-screenshots and fold any findings into the PR description. If
+   working from an issue, also post the screenshots as an update on the
+   issue.
 7. **Publish** the PR (mark ready for review) via `bdt`.
 8. **Watch CI.** Run `bdt pr status --wait`. If remote checks fail, fix and
    push — don't just report the failure.

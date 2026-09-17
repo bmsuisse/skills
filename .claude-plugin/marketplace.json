@@ -71,7 +71,8 @@
         "./rich-data-tables",
         "./kendo-ui-angular",
         "./kendo-ui-vue",
-        "./inter-without-ai-slop"
+        "./inter-without-ai-slop",
+        "./design-review"
       ]
     },
 
