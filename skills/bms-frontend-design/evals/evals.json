@@ -4,13 +4,13 @@
     {
       "id": 1,
       "prompt": "I'm scaffolding a new internal BMS app for tracking approvals. Set up the left sidebar navigation and the main color theme (index.css) so it matches our other internal tools.",
-      "expected_output": "A resizable left sidebar (240px default, 180-420px range, 56px collapsed rail) using --sidebar: #fcfcfc background, with inactive/hover/active nav item states matching the spec (55% opacity inactive text, bg-nav-primary/8 active background, BMS red #DC001A used as --nav-primary and/or --primary). CSS variables defined for background/card/muted 3-tier surface scale and a consistent border-radius scale (6/8/12/16-20/full), not ad hoc values.",
+      "expected_output": "Installs @bmsuisse/ui and builds the sidebar from its Sidebar/SidebarNav/NavGroup/NavItem components rather than hand-rolling the resize/collapse/active-state CSS (which the library already implements at 240px default, 180-420px range, 56px collapsed rail). Defines the --sidebar: #fcfcfc and --nav-primary: #DC001A tokens the components read, computes each NavItem's active prop from the app's router, and defines CSS variables for the background/card/muted 3-tier surface scale and the 6/8/12/16-20/full border-radius scale, not ad hoc values.",
       "files": []
     },
     {
       "id": 2,
       "prompt": "Add a data table to this BMS app that lists contracts. It uses TanStack Table with TanStack Virtual since there could be thousands of rows. Style it with our usual minimal zebra look.",
-      "expected_output": "Alternating row striping using bg-foreground/5 (or equivalent theme-foreground-at-5%-opacity) rather than a hardcoded gray, keyed off the virtualizer's logical row index (not CSS nth-child/even: selectors, since the grid is virtualized), hover state using accent color at 50% opacity, a single rounded-md bordered container around the table, and border-b only row separators (no per-cell borders).",
+      "expected_output": "Recommends replacing the hand-rolled TanStack Table + TanStack Virtual setup with @bmsuisse/datagrid's <DataGrid>, passing the zebra prop for the minimal alternating-row look instead of hand-styling bg-foreground/5 stripes — notes the package already keys the stripe off logical row index so it stays correct under its own virtualization (auto-enabled above 100 rows), and that numeric columns get right-alignment/tabular numerals automatically from column type.",
       "files": []
     },
     {
