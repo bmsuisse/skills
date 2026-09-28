@@ -1,9 +1,9 @@
 ---
 name: tanstack-best-practices
 description: >
-  Comprehensive best practices for TanStack libraries in React applications — covering TanStack Query (React Query) data fetching, caching, and mutations; TanStack Router type-safe routing and search params; TanStack Query + Router integration patterns; TypeScript usage; and common pitfalls to avoid.
+  Comprehensive best practices for TanStack libraries in React applications — covering TanStack Query (React Query) data fetching, caching, and mutations; TanStack Router type-safe routing and search params; TanStack Query + Router integration patterns; TypeScript usage; and common pitfalls to avoid. Also covers this codebase's conventions on top of TanStack: the hey-api-generated API client (`@tanstack/react-query.gen.ts`) instead of hand-written fetch wrappers, `@bmsuisse/datagrid`'s `<DataGrid>` instead of hand-rolled `useReactTable`, and `@bmsuisse/ui` for forms.
 
-  Use this skill whenever someone is: building data fetching logic or server state management with TanStack Query / React Query; setting up or refactoring routing with TanStack Router; integrating Query with Router in loaders; asking about staleTime, cache invalidation, query key factories, optimistic updates, search params, suspense patterns, SSR hydration, or prefetching. Also trigger when the user writes useQuery, useMutation, useNavigate, createFileRoute, createRootRouteWithContext, queryOptions, or ensureQueryData.
+  Use this skill whenever someone is: building data fetching logic or server state management with TanStack Query / React Query; setting up or refactoring routing with TanStack Router; integrating Query with Router in loaders; wiring a `<DataGrid>` to a query; asking about staleTime, cache invalidation, query key factories, optimistic updates, search params, suspense patterns, SSR hydration, or prefetching. Also trigger when the user writes useQuery, useMutation, useNavigate, createFileRoute, createRootRouteWithContext, queryOptions, or ensureQueryData.
 ---
 
 # TanStack Best Practices for React
@@ -12,9 +12,43 @@ Comprehensive patterns for TanStack Query, TanStack Router, and their integratio
 
 ---
 
+## In this codebase (BMS stack)
+
+Before hand-writing fetch/query/table code, check whether these apply — they
+replace the generic patterns below for the endpoints/UI they cover:
+
+- **Data fetching**: if the backend publishes an OpenAPI schema (FastAPI, `Kull.GenericBackend`, …), use the generated SDK + generated TanStack Query options (`src/lib/generated/@tanstack/react-query.gen.ts`, from `@hey-api/openapi-ts`) instead of hand-writing `queryFn`s and query keys — see [openapi-typed-client](../init-app-stack/references/openapi-typed-client.md). Everything under **Query Keys** below still applies, but only for endpoints without a generated client (e.g. a third-party API).
+- **Tables**: use `@bmsuisse/datagrid`'s `<DataGrid>` instead of `useReactTable` for any list/table UI — see [ui-components](../init-app-stack/references/ui-components.md). Wire its server mode to a query the same way as any other paginated fetch:
+
+  ```tsx
+  import { DataGrid, type GridState } from '@bmsuisse/datagrid'
+  import { useQuery } from '@tanstack/react-query'
+
+  function UsersTable() {
+    const [state, setState] = useState<GridState>({ page: 0, pageSize: 20, sort: [], filters: [] })
+    const { data } = useQuery({
+      queryKey: ['users', state],
+      queryFn: () => fetchUsers(state), // or the generated getUsersOptions({ query: toApiParams(state) }).queryFn
+    })
+
+    return (
+      <DataGrid
+        columns={columns}
+        dataSource={{ mode: 'server', data: data?.rows ?? [], rowCount: data?.total ?? 0, onStateChange: setState }}
+        getRowId={(row) => row.id}
+      />
+    )
+  }
+  ```
+- **Forms**: use `@bmsuisse/ui`'s `Input`/`Label`/`Button`/`FormField` with TanStack Form's `useForm` — see [react-tanstack](../init-app-stack/references/react-tanstack.md). Don't install `react-hook-form`.
+
+---
+
 ## TanStack Query
 
 ### Query Keys (CRITICAL)
+
+**Skip the manual factory below if you're using the generated client** — `getUserOptions(...)`, `updateUserMutation()`, etc. from `@tanstack/react-query.gen.ts` already carry typed, stable keys derived from the operation and its params. Write a key factory only for hand-written `queryFn`s (endpoints without a generated client).
 
 **Always use arrays, include all dependencies.**
 
@@ -124,32 +158,10 @@ const mutation = useMutation({
 })
 ```
 
-**Implement optimistic updates for instant UI feedback.** The pattern: cancel outgoing refetches → snapshot old data → set optimistic value → return context for rollback.
-
-```tsx
-const mutation = useMutation({
-  mutationFn: toggleTodoComplete,
-  onMutate: async (todoId) => {
-    await queryClient.cancelQueries({ queryKey: todoKeys.lists() })
-    const previousTodos = queryClient.getQueryData(todoKeys.list({}))
-
-    queryClient.setQueryData(todoKeys.list({}), (old: Todo[]) =>
-      old.map(t => t.id === todoId ? { ...t, completed: !t.completed } : t)
-    )
-    return { previousTodos }
-  },
-  onError: (_err, _id, context) => {
-    queryClient.setQueryData(todoKeys.list({}), context?.previousTodos)
-  },
-  onSettled: () => {
-    queryClient.invalidateQueries({ queryKey: todoKeys.lists() })
-  },
-})
-```
-
-For simple single-component toggles you can skip cache manipulation and use `mutation.isPending` to show the optimistic state directly in the UI — less code and still responsive.
-
 **Use `isPending` (not deprecated `isLoading`) for mutation loading states.** Use `useMutationState` to observe mutation state across components without prop drilling.
+
+For optimistic updates with cancel/snapshot/rollback, see
+[references/performance-and-errors.md](references/performance-and-errors.md#mutations--optimistic-updates).
 
 ---
 
@@ -188,45 +200,15 @@ function QueryErrorBoundary({ children }: { children: React.ReactNode }) {
 
 Place boundaries granularly so one failing section does not break the entire page.
 
-**Configure `retry` appropriately.** The default of 3 retries is fine for transient failures, but retrying 4xx errors wastes time. Inspect the error status:
-
-```tsx
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: (failureCount, error) => {
-        if (error.status === 404 || error.status === 403) return false
-        return failureCount < 3
-      },
-    },
-  },
-})
-```
+**Tune `retry` for 4xx errors** — see [references/performance-and-errors.md](references/performance-and-errors.md#error-handling--retry-policy).
 
 ---
 
 ### Performance (LOW – HIGH value for large lists)
 
-**Use `select` to transform/filter data outside the component.** The selector is memoized and only re-runs when the underlying data changes, preventing unnecessary renders.
-
-```tsx
-// Bad: filtering inside component runs on every render
-const { data: todos } = useQuery({ queryKey: todoKeys.lists(), queryFn: fetchTodos })
-const completed = todos?.filter(t => t.completed) ?? []
-
-// Good: runs only when todos data changes
-const { data: completed } = useQuery({
-  queryKey: todoKeys.lists(),
-  queryFn: fetchTodos,
-  select: (todos) => todos.filter(t => t.completed),
-})
-```
-
-When the selector depends on a prop or state, stabilize it with `useCallback` to avoid breaking memoization.
-
-**Use `useQueries` for dynamic parallel queries** instead of calling `useQuery` in a loop.
-
-**Use `placeholderData: keepPreviousData`** during pagination to avoid flickering while the next page loads.
+Use `select` to transform data outside the component, `useQueries` for dynamic
+parallel queries, and `placeholderData: keepPreviousData` for pagination. Full
+examples: [references/performance-and-errors.md](references/performance-and-errors.md#performance).
 
 ---
 
@@ -281,6 +263,7 @@ File name conventions:
 - `prefetchQuery` never throws and swallows errors — your error boundary won't fire.
 - Direct fetch calls bypass the cache entirely.
 - `ensureQueryData` returns fresh cached data if available, fetches otherwise, and throws on error.
+- With the generated client, pass the generated `xOptions(...)` object straight to `ensureQueryData` — same rule applies.
 
 ```tsx
 export const Route = createFileRoute('/posts')({
@@ -297,30 +280,8 @@ function PostsPage() {
 }
 ```
 
-**For parallel independent loads:**
-
-```tsx
-loader: async ({ context: { queryClient } }) => {
-  await Promise.all([
-    queryClient.ensureQueryData(postQueries.list()),
-    queryClient.ensureQueryData(userQueries.current()),
-  ])
-}
-```
-
-**Use `defer()` for non-critical data** that should not block the route transition:
-
-```tsx
-import { defer } from '@tanstack/react-router'
-
-loader: async ({ context: { queryClient } }) => {
-  const criticalData = await queryClient.ensureQueryData(postQueries.list())
-  return {
-    posts: criticalData,
-    comments: defer(queryClient.ensureQueryData(commentQueries.recent())),
-  }
-}
-```
+For parallel loads and `defer()`-ing non-critical data, see
+[references/advanced-router-patterns.md](references/advanced-router-patterns.md#data-loading--parallel-and-deferred).
 
 ---
 
@@ -407,21 +368,9 @@ const router = createRouter({
 
 ### Code Splitting (MEDIUM)
 
-**Use `.lazy.tsx` files for route components that are not needed on the initial load.** The route file keeps the loader (so data fetches immediately), while the component code loads in parallel.
-
-```tsx
-// routes/posts/$postId.tsx — keeps loader, exports lazy component ref
-export const Route = createFileRoute('/posts/$postId')({
-  loader: ({ context: { queryClient }, params }) =>
-    queryClient.ensureQueryData(postQueries.detail(params.postId)),
-})
-
-// routes/posts/$postId.lazy.tsx — actual component, code-split
-import { createLazyFileRoute } from '@tanstack/react-router'
-export const Route = createLazyFileRoute('/posts/$postId')({
-  component: PostDetail,
-})
-```
+Use `.lazy.tsx` files for route components that aren't needed on the initial
+load — the route file keeps the loader, the component code loads in parallel.
+Full example: [references/advanced-router-patterns.md](references/advanced-router-patterns.md#code-splitting).
 
 ---
 
@@ -472,15 +421,8 @@ interface RouterContext {
 export const Route = createRootRouteWithContext<RouterContext>()({ component: Root })
 ```
 
-**For testing, inject a fresh `QueryClient` per test:**
-
-```tsx
-function renderWithProviders() {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  const router = createRouter({ routeTree, context: { queryClient } })
-  return { ...render(<RouterProvider router={router} />), queryClient }
-}
-```
+For testing, inject a fresh `QueryClient` per test — see
+[references/advanced-router-patterns.md](references/advanced-router-patterns.md#testing--fresh-queryclient-per-test).
 
 ---
 
@@ -525,6 +467,8 @@ const mutation = useMutation({
 | `select` with an unstable function reference | Wrap selector in `useCallback` |
 | Transforming query data in component body | Move transformation into `select` |
 | Calling `useQuery` in a loop | Use `useQueries` for dynamic parallel queries |
+| Hand-written `fetch()`/`queryFn` for an endpoint that has an OpenAPI schema | Use the generated client's `xOptions()` (see [In this codebase](#in-this-codebase-bms-stack)) |
+| Hand-rolled `useReactTable` sort/filter/pagination state | Use `@bmsuisse/datagrid`'s `<DataGrid>` |
 
 ---
 
@@ -536,3 +480,4 @@ const mutation = useMutation({
 - Search param schemas with `.catch()` / `fallback()` provide defaults without throwing — prefer this over try/catch in validateSearch.
 - Define `RouterContext` interface and use `createRootRouteWithContext<RouterContext>()` so loaders get typed context.
 - When using Zod for search params, `z.infer<typeof schema>` gives you a clean type to export and use elsewhere.
+- The generated client's `types.gen.ts` gives you response/request types for free — don't hand-write interfaces that duplicate a Pydantic/DTO model already exposed via OpenAPI.
