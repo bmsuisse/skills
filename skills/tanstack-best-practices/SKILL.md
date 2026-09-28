@@ -21,6 +21,7 @@ replace the generic patterns below for the endpoints/UI they cover:
 - **Tables**: use `@bmsuisse/datagrid`'s `<DataGrid>` instead of `useReactTable` for any list/table UI — see [ui-components](../init-app-stack/references/ui-components.md). Wire its server mode to a query the same way as any other paginated fetch:
 
   ```tsx
+  import { useState } from 'react'
   import { DataGrid, type GridState } from '@bmsuisse/datagrid'
   import { useQuery } from '@tanstack/react-query'
 
