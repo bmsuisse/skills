@@ -20,7 +20,7 @@ files at commit time.
 **Formatters — all use 4 spaces, no tabs, line-length 120:**
 - **Python**: ruff-check --fix + ruff-format (via astral-sh/ruff-pre-commit)
 - **SQL**: `uv run sqlfmt` (local hook)
-- **TypeScript/JS**: `bunx --bun @biomejs/biome@2.5.14 check --write` (local hook, also lints
+- **TypeScript/JS**: `bunx --bun @biomejs/biome check --write` (local hook, also lints
   and organizes imports)
 - **YAML**: builtin check-yaml (if .yaml/.yml files present)
 - **File-size guard**: `scripts/check_files.py` (local hook, always included) — blocks
@@ -204,7 +204,7 @@ hooks = [
 [[repos]]                                 # include only if .ts/.tsx/.js/.jsx present
 repo = "local"
 hooks = [
-    { id = "biome", name = "biome", language = "system", entry = "bunx --bun @biomejs/biome@2.5.14 check --write", files = '\\.(ts|tsx|js|jsx|vue)$' },
+    { id = "biome", name = "biome", language = "system", entry = "bunx --bun @biomejs/biome check --write", files = '\\.(ts|tsx|js|jsx|vue)$' },
 ]
 
 [[repos]]                                 # always include — file-size + forbidden-pattern guard
@@ -284,15 +284,18 @@ line_length = 120
 
 If TypeScript/JavaScript files are present, write `biome.json` to the project
 root (skip if one already exists with different settings — ask first). Also
-add `@biomejs/biome` as an **exact-pinned** dev dependency
-(`bun add -d --exact @biomejs/biome@2.5.14`) if not already present. Keep the
-version in the `$schema` URL, the dev dependency and the prek hook entry
-identical. If a `biome.json` was already written by another skill (e.g.
+add `@biomejs/biome` as a dev dependency (`bun add -d @biomejs/biome`) if not
+already present. Don't pin a version in the hook or `$schema`: `bunx` uses the
+locally installed `@biomejs/biome` when there is one (always use the scoped name —
+bare `biome` on npm is an unrelated package) and `$schema` points into
+`node_modules` (adjust the path if the package lives in a subfolder such as
+`frontend/`), so the lockfile is the source of truth. Upgrade with
+`bun update @biomejs/biome && bunx biome migrate --write`. If a `biome.json` was already written by another skill (e.g.
 `init-app-stack`), keep it as is:
 
 ```json
 {
-  "$schema": "https://biomejs.dev/schemas/2.5.14/schema.json",
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
   "vcs": {
     "enabled": true,
     "clientKind": "git",

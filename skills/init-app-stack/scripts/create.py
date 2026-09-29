@@ -20,8 +20,6 @@ import sys
 import textwrap
 from pathlib import Path
 
-BIOME_VERSION = "2.5.14"
-
 
 def run(cmd: list[str], cwd: Path, label: str) -> None:
     print(f"  → {label}")
@@ -114,9 +112,7 @@ def main() -> None:
         fe,
         "bun add -d (router-plugin, devtools, @hey-api/openapi-ts, tailwindcss, @types/node)",
     )
-    # Biome replaces the vite template's oxlint. Pin exactly: keep in sync with the
-    # `$schema` in biome.json below and the version in the prek skill.
-    run(["bun", "add", "-d", "--exact", f"@biomejs/biome@{BIOME_VERSION}"], fe, f"bun add -d --exact @biomejs/biome@{BIOME_VERSION}")
+    run(["bun", "add", "-d", "@biomejs/biome"], fe, "bun add -d @biomejs/biome")
     if "oxlint" in json.loads((fe / "package.json").read_text(encoding="utf-8")).get("devDependencies", {}):
         run(["bun", "remove", "oxlint"], fe, "bun remove oxlint")
     (fe / ".oxlintrc.json").unlink(missing_ok=True)
@@ -496,9 +492,9 @@ def main() -> None:
         pkg.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
 
     # biome.json at the project root — lint + format + import sorting for TS/JS/JSON/CSS.
-    # Keep in sync with the prek skill's Step 5. `$schema` and BIOME_VERSION must match.
+    # Keep in sync with the prek skill's Step 5.
     biome_config = {
-        "$schema": f"https://biomejs.dev/schemas/{BIOME_VERSION}/schema.json",
+        "$schema": "./frontend/node_modules/@biomejs/biome/configuration_schema.json",
         "vcs": {"enabled": True, "clientKind": "git", "useIgnoreFile": True},
         "files": {
             "includes": [
