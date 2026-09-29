@@ -252,9 +252,22 @@ select = [
     "PERF", "FURB",  # needless loops, manual list/dict building
     "ASYNC",         # blocking calls inside async def
     "RUF",
+    "N",             # PEP 8 naming
+    "PTH",           # pathlib instead of os.path
+    "TID",           # absolute imports only, banned APIs
+    "RET", "PIE",    # consistent returns, misc simplifications
+    "A",             # no shadowing builtins
+    "T20",           # no print()  (per-file-ignore CLI scripts)
+    "LOG",           # logging API misuse
+    "DTZ",           # timezone-aware datetimes
+    "FLY",           # f-string instead of str.join on literals
+    "PLE", "PLW",    # pylint errors + warnings
     # "FAST",        # add only if the project uses FastAPI
 ]
 ignore = ["ANN401"]  # `Any` is a warning via the ruff-warn-any hook, not an error
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
 
 [tool.ruff.format]
 indent-style = "space"
