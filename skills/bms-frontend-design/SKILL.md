@@ -2,112 +2,82 @@
 name: bms-frontend-design
 plugin: coding
 description: >
-  The BMS visual identity for internal web apps — left navigation layout,
-  BMS red accent color, background/surface scale, border-radius scale, a
-  minimal zebra-striping pattern for data grids, the Heroicons `24/outline`
-  icon set with a curated concept-to-icon mapping, and the responsive/mobile
-  breakpoint where the sidebar becomes a slide-in drawer. Use this whenever
-  scaffolding a new internal BMS app's UI, building or restyling a
-  sidebar/nav, picking colors for a new app, styling a data table or grid,
-  choosing icons, making a layout responsive/mobile-friendly, or reviewing
-  frontend code for visual consistency with other BMS apps. Trigger on
-  requests like "make this look like our other internal tools", "add a
-  sidebar nav", "what colors should I use", "style this table", "what icon
-  should I use for X", "how do I make this responsive", or "set up the
+  The BMS visual identity for internal web apps, built on the shared
+  `@bmsuisse/ui` (sidebar/nav, form, dialog, and other primitives) and
+  `@bmsuisse/datagrid` (`<DataGrid>`/`<TreeDataGrid>`) packages — plus the
+  brand tokens (BMS red accent, background/surface scale, border-radius
+  scale, typography) every app still has to define itself, and the
+  Heroicons `24/outline` icon set with a curated concept-to-icon mapping.
+  Use this whenever scaffolding a new internal BMS app's UI, building or
+  restyling a sidebar/nav, picking colors for a new app, styling a data
+  table or grid, choosing icons, making a layout responsive/mobile-friendly,
+  or reviewing frontend code for visual consistency with other BMS apps.
+  Trigger on requests like "make this look like our other internal tools",
+  "add a sidebar nav", "what colors should I use", "style this table", "what
+  icon should I use for X", "how do I make this responsive", or "set up the
   theme" for a BMS app — even if the user doesn't say "design system"
-  explicitly. Supersedes
-  generic frontend-aesthetic advice (e.g. "pick a bold, unique look per app")
-  for anything under the BMS brand — the point here is consistency across
-  apps, not differentiation.
+  explicitly. Supersedes generic frontend-aesthetic advice (e.g. "pick a
+  bold, unique look per app") for anything under the BMS brand — the point
+  here is consistency across apps, not differentiation.
 ---
 
 # BMS Frontend Design
 
-Concrete, reusable visual conventions for BMS internal web apps, extracted
-from two production codebases (OneSales, CCMT2). Unlike generic "make it look
-distinctive" advice, the goal here is the opposite: every internal BMS app
-should feel like it belongs to the same family. Apply these values directly —
-don't reinvent a new palette or radius scale per app.
+Visual conventions for BMS internal web apps. Most of the UI mechanics —
+sidebar, nav rows, mobile drawer, resizable panels, data grid — already
+live in `@bmsuisse/ui` and `@bmsuisse/datagrid` (public npm packages
+published from the `bmsuisse/bmsui` monorepo, no private feed needed).
+**Reach for those first; don't rebuild what they already do.** What's left
+here: the brand tokens every app still defines itself (colors, radius,
+type), and a few decisions the libraries deliberately leave to the app.
 
-This assumes a Tailwind v4 + shadcn/ui setup (CSS variables consumed via
-`@theme inline`, `bg-background`/`text-foreground`-style utilities, a `.dark`
-class variant) — the same setup `init-app-stack` scaffolds. Define the
-variables below in `src/index.css` alongside the generated shadcn tokens
-rather than hardcoding hex values in components; that's what makes dark mode
-and future rebrands (a different `--primary`) work for free.
+```
+bun add @bmsuisse/ui @bmsuisse/datagrid
+```
+
+Assumes the Tailwind v4 + shadcn/ui setup `init-app-stack` scaffolds: CSS
+variables in `src/index.css` consumed via `@theme inline`, a `.dark` class
+variant. Define tokens there, not as hardcoded hex in components — that's
+what makes dark mode and future rebrands (a different `--primary`) work for
+free, and it's how `@bmsuisse/ui`'s components pick up your app's colors.
 
 ## Layout — left navigation
 
-A resizable sidebar on the left is the default shell for any internal BMS
-app with more than a couple of pages.
+Use `Sidebar`, `SidebarNav`, `NavGroup`, and `NavItem` from `@bmsuisse/ui`
+instead of hand-building a sidebar. Resizing (240px default, 180–420px
+range, persisted via the `width`/`onWidthChange` props), the 56px
+icon-only rail collapse with hover tooltips, active/hover/inactive row
+states, and section-group labels with their own collapse chevron are all
+built in — don't reimplement any of that per app.
 
-- Default width **240px**, resizable between **180–420px**, persisted (e.g.
-  `localStorage`). Collapses to a **56px** icon-only rail rather than hiding
-  entirely — users should always have nav access.
-- Sidebar background: near-white, `--sidebar: #fcfcfc`. Border on the right
-  edge only, using the app's subtle border token (`--border: #f2f2f2`
-  light). Don't add a border-radius or shadow to the sidebar itself — it's a
-  flat plane, not a card.
-- Nav rows use `rounded-lg` (8px) corners and an 18×18px icon from
-  **`@heroicons/react` (`24/outline`)** — see
-  [`references/icons.md`](references/icons.md) for the concept-to-component
-  mapping and why not to hand-draw icons.
-- **Inactive** row: text at 55% opacity of the foreground color, icon in the
-  muted-foreground color, icon stroke-width 1.75. This keeps the resting
-  state quiet so the active item reads clearly.
-- **Hover** (inactive rows): muted background at 60% opacity — a hint, not a
-  highlight.
-- **Active** row: full-opacity text + `font-semibold`, background = the
-  brand accent at **8% tint** (`bg-nav-primary/8`), icon colored with the
-  brand accent, stroke-width 2. The 8% tint is deliberately subtle — this is
-  not a filled pill, just enough wash to draw the eye.
-- Section group labels (e.g. "Work", "Tools", "Info"): 11px, medium weight,
-  muted-foreground at 80% opacity, with a collapse chevron per group.
+What's still on the app:
+- Define the tokens the components read:
+  ```css
+  --sidebar: #fcfcfc;        /* Sidebar background */
+  --nav-primary: #DC001A;    /* BMS red — active-row highlight, see Brand colors */
+  ```
+- Compute `active` per row from your own router — `NavItem` has no router
+  opinion (`active={pathname === "/overview"}`).
+- Pick the icon per `NavItem` — see
+  [`references/icons.md`](references/icons.md) for the concept-to-icon
+  mapping.
+- Persist `Sidebar`'s `width`/`collapsed` state yourself (e.g.
+  `localStorage`) via the `onWidthChange`/`onCollapsedChange` callbacks —
+  the component doesn't persist it for you.
 
-```css
---sidebar: #fcfcfc;
---nav-primary: #DC001A; /* BMS red — see Brand colors below */
-```
+## Responsive — mobile
 
-```tsx
-// active nav item
-className="rounded-lg font-semibold text-foreground bg-nav-primary/8"
-// icon: className="h-[18px] w-[18px] text-nav-primary" strokeWidth={2}
+Don't shrink `Sidebar` itself below `md` — its resize handle and
+rail-collapse don't apply on mobile. Instead reuse the same
+`NavGroup`/`NavItem` children inside a `Sheet` via the separately-exported
+`SidebarNav` (see that component's doc comment). `ResponsivePanel` and
+`useMediaQuery` (also `@bmsuisse/ui`) cover the general "different layout
+below a breakpoint" case elsewhere in an app.
 
-// inactive nav item
-className="rounded-lg text-foreground/55 hover:bg-muted/60 hover:text-foreground"
-// icon: className="h-[18px] w-[18px] text-muted-foreground" strokeWidth={1.75}
-```
-
-## Responsive — mobile nav
-
-Tailwind's responsive system is mobile-first: an unprefixed utility applies
-at every size, and a breakpoint prefix (`sm:`, `md:`, `lg:`, `xl:`, `2xl:`)
-overrides it starting at that min-width. Default to writing the mobile
-layout unprefixed and layering `md:` (768px) on top for desktop, rather than
-the other way round — it's easy to end up with desktop-only CSS by accident
-if you start from a `lg:` design and never account for what happens below it.
-
-The persistent 240px sidebar (above) is a desktop pattern, not a mobile one.
-Below `md`, replace it entirely with a slide-in drawer rather than trying to
-shrink it further:
-
-- Sidebar `<aside>`: `hidden md:relative md:flex` — invisible below `md`,
-  the normal resizable sidebar at `md` and above.
-- Below `md`: a `Sheet`/drawer component sliding in from the left
-  (`side="left"`), width `min(352px, 88vw)` so it caps out on tablets but
-  still fits narrow phones, opened by a menu button that itself is only
-  shown below `md` (`md:hidden` on the trigger).
-- Drag-to-resize and the collapse-to-rail toggle are desktop-only
-  affordances (`md:block` / `md:inline-flex` on those controls) — mobile
-  nav is just open-or-closed, not resizable or collapsible to a rail.
-- Respect safe areas on mobile: pad with `env(safe-area-inset-*)` (commonly
-  aliased to CSS vars like `--sat`/`--sab`/`--sal`/`--sar`) so content
-  doesn't sit under a notch or a home indicator.
-- Use `100dvh` (dynamic viewport height), not `100vh`, for full-height
-  mobile layouts — `100vh` doesn't account for the browser chrome that
-  appears/disappears as the user scrolls on mobile, which leaves a gap or
-  causes scroll-jank.
+For anything you build by hand outside these components: use `100dvh`, not
+`100vh` (avoids the gap/scroll-jank `100vh` causes as mobile browser chrome
+appears/disappears), and pad with `env(safe-area-inset-*)` so content
+doesn't sit under a notch or home indicator.
 
 ## Brand colors
 
@@ -125,8 +95,7 @@ than mixing them:
    links, focus rings), not just in the nav.
 
 Either way, define it as a CSS variable (`--nav-primary` and/or `--primary`),
-never a hardcoded hex in a component — that's what lets dark mode and future
-brand variants work without a find-and-replace.
+never a hardcoded hex in a component.
 
 Semantic colors follow the same hue-preserving pattern between light and
 dark mode: keep the hue, raise lightness and saturation slightly for dark
@@ -143,8 +112,7 @@ backgrounds so they still read as the same color family.
 
 Keep it to three tiers — page, card, muted — rather than the overlapping
 `--surface`/`--surface-2`/`--surface-3` families that tend to accumulate
-once a codebase has been through a few redesigns. Three tiers is enough to
-express elevation and easier for every contributor to reason about.
+once a codebase has been through a few redesigns.
 
 | Tier | Use for | Light | Dark |
 |---|---|---|---|
@@ -158,8 +126,9 @@ subtle lift is what makes a card read as elevated without needing a shadow.
 ## Border-radius scale
 
 Use one consistent scale everywhere instead of picking a radius per
-component. Source material had three competing `--radius` definitions in
-the same file — avoid repeating that:
+component — `@bmsuisse/ui`'s own components (nav rows, buttons, cards) are
+already built against these values, so anything you build outside the
+library should match them too.
 
 | Radius | Use for |
 |---|---|
@@ -174,7 +143,10 @@ the same file — avoid repeating that:
 - **Inter** (variable font), falling back to `system-ui`. Base body size
   **~15px**, letter-spacing **-0.01em**, antialiased.
 - Amounts, KPIs, and other numeric displays: tabular numerals
-  (`font-variant-numeric: tabular-nums`) so digits align in columns.
+  (`font-variant-numeric: tabular-nums`) so digits align in columns. Use
+  `@bmsuisse/ui`'s `KpiCard` for KPI tiles and `@bmsuisse/datagrid` numeric
+  columns — both already apply this; the rule mainly matters for numeric
+  displays outside those two.
 - Number formatting: Swiss convention, not US. Format with the `de-CH`
   locale (`value.toLocaleString('de-CH', { minimumFractionDigits: 2,
   maximumFractionDigits: 2 })`) rather than hardcoding a comma separator —
@@ -183,52 +155,49 @@ the same file — avoid repeating that:
 - Small "eyebrow" labels (section headers, table column meta): ~10–11px,
   bold/semibold, wide letter-spacing (~0.1–0.12em), often uppercase.
 
-## Data grids — minimal zebra
+## Data grids
 
-A very subtle alternating-row treatment, not a classic high-contrast zebra
-table.
+Use `<DataGrid>` / `<TreeDataGrid>` from `@bmsuisse/datagrid` for anything
+grid-shaped (sortable/filterable rows, more than a couple dozen records) —
+don't hand-build a `<table>` for it. The package already covers:
 
-- Stripe alternating rows with the theme's **foreground/text color at 5%
-  opacity** (e.g. Tailwind's `bg-foreground/5`) — never a hardcoded gray
-  hex. Deriving the stripe from the foreground token means it automatically
-  adapts to dark mode without a separate dark-mode override.
-- **If the grid is virtualized** (e.g. TanStack Virtual, only visible rows
-  exist in the DOM), do not stripe with CSS `:nth-child`/`even:` selectors —
-  that stripes by DOM position, which visibly flickers as rows mount/unmount
-  during scroll. Key the stripe off the logical row index instead
-  (`row.index % 2 === 1`), not DOM position.
-- Row hover: the theme's accent color at 50% opacity (`hover:bg-accent/50`),
-  layered on top of the stripe.
-- Wrap the whole table in a single `rounded-md` (~10px) bordered container —
-  no per-cell borders.
-- Row separators: a single bottom border per row (the theme's subtle border
-  token) — no vertical/left/right borders.
-- Header row: slightly muted background (`bg-muted`), often sticky to the
-  top of the scroll container.
-- Cell padding: compact, ~8px (`p-2`), small text size.
-- Numeric columns (amounts, counts, percentages): right-align both the
-  header and the cells, and use tabular numerals — right-aligned digits are
-  what let a reader compare magnitudes down a column at a glance; left- or
-  center-aligned numbers don't line up on their most significant digit.
+- **Zebra striping**: pass `zebra` — it's keyed off logical row index, not
+  DOM position, so it stays correct under virtualization instead of
+  flickering as rows mount/unmount during scroll.
+- **Virtualization**: auto-enables above 100 rows (`virtualize` prop to
+  tune the threshold), backed by `@tanstack/react-virtual`.
+- **Numeric columns**: right-aligned header + cells and tabular numerals
+  follow automatically from the column's `type` — no per-column styling
+  needed.
+- Column filters/sort, column resizing and visibility (`ColumnSelector`),
+  row actions (`ActionsMenu`), sticky group headers, and cell editing.
 
-```tsx
-className={cn(
-  "border-b p-2 text-sm",
-  isClickable && "cursor-pointer hover:bg-accent/50",
-  rowIndex % 2 === 1 && "bg-foreground/5",
-)}
-```
+Reach for the raw `Table`/`TableRow`/`TableCell` primitives (also in
+`@bmsuisse/ui`) only for small, static, non-interactive tables — a settings
+summary, not a data grid.
+
+## Keeping the shared libraries current
+
+Both packages move fast — check `npm view @bmsuisse/ui version` /
+`@bmsuisse/datagrid version` (or `github.com/bmsuisse/bmsui`'s commit
+history) before assuming a capability is missing, and bump the
+`package.json` version rather than working around a gap that's already
+fixed upstream.
+
+If something's genuinely missing, build it locally only when it's
+app-specific. Anything any BMS app would want (a new nav pattern, a grid
+filter widget, a chart type) belongs in `bmsuisse/bmsui` itself
+(`packages/ui`/`packages/datagrid`, design rationale in that repo's
+`AGENTS.md`) — open a PR there instead of forking it into one app.
 
 ## Quick reference
 
-- [ ] Sidebar: 240px default, 180–420px resizable range, 56px collapsed rail
-- [ ] Mobile (`<md`): sidebar replaced by a slide-in drawer, not shrunk in place; safe-area padding and `100dvh` used instead of `100vh`
-- [ ] Nav active state: `bg-nav-primary/8` + full-opacity text, not a filled pill
+- [ ] Sidebar/nav built from `@bmsuisse/ui`'s `Sidebar`/`SidebarNav`/`NavGroup`/`NavItem`, not hand-rolled
+- [ ] Mobile sidebar: `SidebarNav` children reused inside a `Sheet`, not a shrunk `Sidebar`; `100dvh`/safe-area insets for hand-built mobile layouts
+- [ ] Grids built from `@bmsuisse/datagrid`'s `DataGrid`/`TreeDataGrid` with `zebra`, not a hand-rolled `<table>`
 - [ ] Brand red `#DC001A` used as accent-only or full-primary — pick one, don't mix
 - [ ] Backgrounds: 3-tier scale (`--background` → `--card` → `--muted`), not more
 - [ ] Border-radius: 6/8/12/16-20/full — no ad hoc values
-- [ ] Font: Inter, ~15px base, tabular numerals for numbers
-- [ ] Numbers formatted `de-CH` (apostrophe thousands separator), not a hardcoded comma
-- [ ] Grid zebra: `bg-foreground/5` on alternating rows, keyed off logical index if virtualized
-- [ ] Numeric grid columns: right-aligned header + cells, tabular numerals
-- [ ] Icons: `@heroicons/react` (`24/outline`) only, per [`references/icons.md`](references/icons.md) — never hand-drawn, and never `lucide-react` (that's shadcn-internal only)
+- [ ] Font: Inter, ~15px base; numbers formatted `de-CH`, tabular numerals outside the grid
+- [ ] Icons: `@heroicons/react` (`24/outline`) only, per [`references/icons.md`](references/icons.md) — never hand-drawn
+- [ ] `@bmsuisse/ui`/`@bmsuisse/datagrid` current, or a genuinely global gap filed as a PR against `bmsuisse/bmsui` instead of forked locally

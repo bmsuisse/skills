@@ -20,7 +20,7 @@
 | [autoresearch](./skills/autoresearch/) | Autonomous iterative optimization loop for Python, SQL, ML, and Spark/Databricks. Define a measurable goal; the skill… |
 | [azure-cost](./skills/azure-cost/) | Query, analyze, and reduce Azure spending via the Cost Management REST API and Azure CLI. Covers cost breakdowns by s… |
 | [bms](./skills/bms/) | Master skill for the bmsuisse platform — routes to the relevant skills based on sub-command. Always enables caveman c… |
-| [bms-frontend-design](./skills/bms-frontend-design/) | The BMS visual identity for internal web apps — left navigation layout, BMS red accent color, background/surface scal… |
+| [bms-frontend-design](./skills/bms-frontend-design/) | The BMS visual identity for internal web apps, built on the shared `@bmsuisse/ui` (sidebar/nav, form, dialog, and oth… |
 | [clockify](./skills/clockify/) | Query and log time entries in Clockify via its REST API — check a timesheet, look up the workspace/user/project, crea… |
 | [code-comments](./skills/code-comments/) | Write and review code comments so they earn their place instead of adding noise. Use this whenever writing new code (… |
 | [codeunit-analyzer](./skills/codeunit-analyzer/) | Comprehensive C-AL performance analyzer for Classic Microsoft Dynamics NAV (Navision). Targets Classic NAV anti-patte… |
@@ -29,7 +29,6 @@
 | [coding-guidelines-typescript](./skills/coding-guidelines-typescript/) | Apply and enforce TypeScript-specific coding standards. Use alongside coding-guidelines for any TypeScript file — cov… |
 | [cross-repo-discovery](./skills/cross-repo-discovery/) | Find where a repo lives — locally or in the Azure DevOps org — before assuming a piece of functionality doesn't exist… |
 | [data-modeling-dimensional](./skills/data-modeling-dimensional/) | Dimensional data modeling guide for the Fabricks platform — covers the full pipeline from staging through raw, transf… |
-| [database-in-source](./skills/database-in-source/) | Conventions for versioning a PostgreSQL schema as plain `.sql` files inside a `database/` folder in the repo, instead… |
 | [databricks-cli](./skills/databricks-cli/) | Databricks CLI operations: auth, profiles, data exploration, bundles, and notebook execution. Use this skill for ANY… |
 | [databricks-sql-autotuner](./skills/databricks-sql-autotuner/) | Databricks SQL query optimizer and error fixer: analyzes a slow or broken SQL query, rewrites it for speed using SQL-… |
 | [design-review](./skills/design-review/) | Review a web app or page for visual design quality — layout, spacing, typography, colour/contrast, visual hierarchy,… |
@@ -51,8 +50,6 @@
 | [kull-generic-backend](./skills/kull-generic-backend/) | Kull.GenericBackend — an ASP.NET Core middleware (Kull-AG/kull-generic-backend, NuGet package Kull.GenericBackend) th… |
 | [nicegui](./skills/nicegui/) | Build Python web UIs with NiceGUI — covering layout, widgets, data binding, routing, and the AgGrid data grid. Use th… |
 | [playwright-python](./skills/playwright-python/) | Browser automation and visual verification with Playwright in Python. Use this whenever the user wants to drive a bro… |
-| [postgres-best-practices](./skills/postgres-best-practices/) | PostgreSQL coding standards for Python projects using psycopg (no ORM). Use this skill whenever the user is writing o… |
-| [postgres-test-setup](./skills/postgres-test-setup/) | Set up and work with a local PostgreSQL test database in Docker for integration/e2e tests. Use this skill whenever th… |
 | [prek](./skills/prek/) | Set up code formatting and pre-commit hooks using prek (fast Rust-based alternative to pre-commit) with prek.toml con… |
 | [procrastinate](./skills/procrastinate/) | PostgreSQL-based async task queue for Python using Procrastinate. Use this skill whenever the user is working with Pr… |
 | [python-autotuner](./skills/python-autotuner/) | Python code optimizer and error fixer: analyzes a Python file or function, rewrites it for speed and quality one chan… |

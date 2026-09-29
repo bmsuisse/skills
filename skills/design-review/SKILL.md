@@ -35,7 +35,7 @@ designed it"?
 
 ## Capturing Screenshots
 
-Use Playwright (the `playwright-python` skill, `playwright-cli`, or an MCP
+Use Playwright (the `playwright-python` skill, `playwright-cli`, `chrome-devtools-mcp` or an MCP
 Playwright server — whichever is available) to capture the page/app:
 
 - Prefer a deployed/PR-preview URL over `localhost` if one exists (more
@@ -46,6 +46,7 @@ Playwright server — whichever is available) to capture the page/app:
   issues only appear in one.
 - Capture full-page screenshots, not just the viewport, so below-the-fold
   content gets reviewed too.
+- Also observe scrolling behavior
 
 ## What to Check
 
