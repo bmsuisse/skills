@@ -14,6 +14,7 @@ Creates:
         docker-compose.yml   Postgres 17 dev service
 """
 
+import json
 import subprocess
 import sys
 import textwrap
@@ -28,6 +29,13 @@ def run(cmd: list[str], cwd: Path, label: str) -> None:
     if result.returncode != 0:
         print(f"❌ Failed: {label}", file=sys.stderr)
         sys.exit(result.returncode)
+
+
+def run_soft(cmd: list[str], cwd: Path, label: str) -> None:
+    """Like run(), but warns instead of aborting — for checks after everything is already written."""
+    print(f"  → {label}")
+    if subprocess.run(cmd, cwd=cwd).returncode != 0:
+        print(f"⚠️  {label} reported problems — fix them before committing.", file=sys.stderr)
 
 
 def write(path: Path, content: str) -> None:
@@ -109,7 +117,8 @@ def main() -> None:
     # Biome replaces the vite template's oxlint. Pin exactly: keep in sync with the
     # `$schema` in biome.json below and the version in the prek skill.
     run(["bun", "add", "-d", "--exact", f"@biomejs/biome@{BIOME_VERSION}"], fe, f"bun add -d --exact @biomejs/biome@{BIOME_VERSION}")
-    run(["bun", "remove", "oxlint"], fe, "bun remove oxlint")
+    if "oxlint" in json.loads((fe / "package.json").read_text(encoding="utf-8")).get("devDependencies", {}):
+        run(["bun", "remove", "oxlint"], fe, "bun remove oxlint")
     (fe / ".oxlintrc.json").unlink(missing_ok=True)
 
     # openapi-ts.config.ts — generates a full SDK (typed fetch functions),
@@ -452,7 +461,6 @@ def main() -> None:
 
     # tsconfig.json + tsconfig.app.json — add `@/*` path alias (required by shadcn)
     # Stock Vite tsconfigs may include // comments; use a tolerant loader.
-    import json
     import re
 
     def load_jsonc(p: Path) -> dict:
@@ -1262,12 +1270,12 @@ def main() -> None:
 
     # Everything is written — normalize all generated Python so the project starts lint-clean.
     run(["uv", "run", "ruff", "format", "--quiet"], root, "ruff format (normalize generated code)")
-    run(["uv", "run", "ruff", "check", "--fix", "--quiet"], root, "ruff check --fix (normalize generated code)")
+    run_soft(["uv", "run", "ruff", "check", "--fix", "--quiet"], root, "ruff check --fix (normalize generated code)")
     run(["uv", "run", "ruff", "format", "--quiet"], root, "ruff format (re-format after import sorting)")
     # Biome finds ../biome.json from frontend/. --write applies safe fixes, formatting and import sorting;
-    # the second `check` fails the scaffold if anything the fixer can't resolve is left.
-    run(["bunx", "--bun", "biome", "check", "--write", "."], fe, "biome check --write (normalize generated frontend code)")
-    run(["bunx", "--bun", "biome", "check", "."], fe, "biome check (verify lint-clean)")
+    # the second `check` warns if anything the fixer can't resolve is left.
+    run_soft(["bunx", "--bun", "biome", "check", "--write", "."], fe, "biome check --write (normalize generated frontend code)")
+    run_soft(["bunx", "--bun", "biome", "check", "."], fe, "biome check (verify lint-clean)")
 
     print(f"""
 🎉 Project '{project}' is ready!
