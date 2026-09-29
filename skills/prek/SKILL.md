@@ -241,6 +241,7 @@ sections. Don't overwrite keys the user already set:
 line-length = 120
 indent-width = 4
 target-version = "py314"
+extend-exclude = ["*.md"]  # ruff 0.16 also lints/formats Python blocks in Markdown
 
 [tool.ruff.lint]
 select = [
@@ -310,7 +311,8 @@ bare `biome` on npm is an unrelated package) and `$schema` points into
       "**/*.json",
       "**/*.css",
       "!**/generated",
-      "!**/routeTree.gen.ts",
+      "!**/*.generated.*",
+      "!**/*.gen.ts",
       "!**/openapi.json",
       "!**/dist"
     ]
@@ -380,7 +382,16 @@ bare `biome` on npm is an unrelated package) and `$schema` points into
         },
         "useShorthandFunctionType": "error",
         "useDefaultParameterLast": "error",
-        "useNamingConvention": "error"
+        "useNamingConvention": {
+          "level": "error",
+          "options": {
+            "conventions": [
+              { "selector": { "kind": "objectLiteralProperty" }, "formats": ["camelCase", "snake_case", "CONSTANT_CASE", "PascalCase"] },
+              { "selector": { "kind": "typeProperty" }, "formats": ["camelCase", "snake_case", "CONSTANT_CASE", "PascalCase"] },
+              { "selector": { "kind": "classProperty" }, "formats": ["camelCase", "snake_case", "CONSTANT_CASE", "PascalCase"] }
+            ]
+          }
+        }
       },
       "complexity": {
         "noForEach": "error",
@@ -416,8 +427,11 @@ Notes on the rule choices:
 - `noNonNullAssertion` cannot be satisfied "with a comment": narrow the value or
   `throw` instead.
 - `noFloatingPromises`, `noMisusedPromises` and `useAwaitThenable` are `nursery`
-  (type-aware) rules — hence the exact version pin. Upgrade Biome deliberately and
+  (type-aware) rules that may be renamed between releases — after upgrading Biome,
   re-run `biome migrate`.
+- `useNamingConvention` allows `snake_case` for object/type/class properties, since
+  API payloads (FastAPI/Pydantic) are snake_case; without this it dominates the report.
+- Generated code (`*.generated.*`, `*.gen.ts`, `generated/`) is excluded in `files.includes`.
 - `useFilenamingConvention` is deliberately off: TanStack Router's `__root.tsx` /
   `$id.tsx` route files violate it. `useExplicitType` is off because it flags every
   React component.

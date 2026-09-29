@@ -499,7 +499,7 @@ def main() -> None:
         "files": {
             "includes": [
                 "**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx", "**/*.json", "**/*.css",
-                "!**/generated", "!**/routeTree.gen.ts", "!**/openapi.json", "!**/dist",
+                "!**/generated", "!**/*.generated.*", "!**/*.gen.ts", "!**/openapi.json", "!**/dist",
             ]
         },
         "formatter": {"enabled": True, "indentStyle": "space", "indentWidth": 4, "lineWidth": 120},
@@ -536,7 +536,15 @@ def main() -> None:
                     "useConsistentTypeDefinitions": {"level": "error", "options": {"style": "interface"}},
                     "useShorthandFunctionType": "error",
                     "useDefaultParameterLast": "error",
-                    "useNamingConvention": "error",
+                    "useNamingConvention": {
+                        "level": "error",
+                        "options": {
+                            "conventions": [
+                                {"selector": {"kind": kind}, "formats": ["camelCase", "snake_case", "CONSTANT_CASE", "PascalCase"]}
+                                for kind in ("objectLiteralProperty", "typeProperty", "classProperty")
+                            ]
+                        },
+                    },
                 },
                 "complexity": {
                     "noForEach": "error",
@@ -740,6 +748,7 @@ def main() -> None:
                 line-length = 120
                 indent-width = 4
                 target-version = "py314"
+                extend-exclude = ["*.md"]
 
                 [tool.ruff.format]
                 indent-style = "space"
