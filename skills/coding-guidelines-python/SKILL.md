@@ -13,14 +13,8 @@ description: >
 
 ## Linting — ruff
 
-Ruff enforces the mechanical rules — full annotations (`ANN`), `X | None` unions
-(`UP`), mutable defaults (`B006`), needless loops (`PERF`, `SIM`, `C4`, `FURB`),
-blocking calls in async code (`ASYNC`), plus uniformity rules — naming (`N`), `pathlib` over `os.path` (`PTH`), absolute imports only (`TID`), consistent returns (`RET`), no `print` (`T20`), tz-aware datetimes (`DTZ`); `ruff format` fixes layout. Don't restate them in review; run
-`uv run ruff check` and fix what it reports. The selects live in `prek`'s
-`[tool.ruff.lint]` block. `ANN401` (`Any`) is only a warning: avoid `Any`, but
-it isn't a blocker.
-
-Do not add `from __future__ import annotations` — it is unnecessary on Python 3.14.
+We use ruff with strict rules (config in `prek`); run `uv run ruff check` and fix what it reports.
+`ANN401` (`Any`) is only a warning. Don't add `from __future__ import annotations` (unneeded on 3.14).
 
 ## Type checking — ty
 
