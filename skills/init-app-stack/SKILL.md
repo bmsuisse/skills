@@ -26,7 +26,7 @@ uv run python scripts/create.py <project-name>
 
 The script (works on Mac, Linux, Windows):
 
-1. **Frontend**: `bun create vite@latest frontend --template react-ts`, then installs TanStack Router + Query + Form + Table + Virtual + unified Devtools, Zustand, Zod, `@bmsuisse/ui` + `@bmsuisse/datagrid` (public npm packages, no registry/auth setup needed), TailwindCSS v4, shadcn CLI fallback deps (`class-variance-authority`, `clsx`, `tailwind-merge`, `lucide-react`, `tw-animate-css`), `@heroicons/react` (app-level icons — see [`bms-frontend-design`](../bms-frontend-design/)), `@hey-api/openapi-ts` (dev dep — the `@hey-api/client-fetch` runtime it configures is bundled into the generated output, not installed separately)
+1. **Frontend**: `bun create vite@latest frontend --template react-ts`, then installs TanStack Router + Query + Form + Table + Virtual + unified Devtools, Zustand, Zod, `@bmsuisse/ui` + `@bmsuisse/datagrid` (public npm packages, no registry/auth setup needed), TailwindCSS v4, shadcn CLI fallback deps (`class-variance-authority`, `clsx`, `tailwind-merge`, `lucide-react`, `tw-animate-css`), `@heroicons/react` (app-level icons — see [`bms-frontend-design`](../bms-frontend-design/)), `@hey-api/openapi-ts` (dev dep — the `@hey-api/client-fetch` runtime it configures is bundled into the generated output, not installed separately), `@biomejs/biome` (dev dep, exact-pinned; replaces the Vite template's `oxlint` and `frontend/.oxlintrc.json`; `bun run lint` = `biome check`, `bun run format` = `biome check --write`)
 2. Wires `vite.config.ts` with `@tanstack/router-plugin` + `@/` path alias, sets up `src/main.tsx` with `QueryClientProvider` + `RouterProvider` (and a side-effect `import './lib/api'` to configure the generated client before any query runs), writes `src/routes/__root.tsx` and `src/routes/index.tsx`
 3. Writes `src/lib/queryClient.ts`, `src/lib/api.ts` (configures the generated client's `baseUrl`/`credentials` from `VITE_API_URL`), `src/lib/utils.ts` (shadcn `cn` helper), `src/stores/` placeholder for Zustand, `frontend/openapi-ts.config.ts` (`@hey-api/openapi-ts` config: `@tanstack/react-query` + `zod` + `@hey-api/sdk` plugins, zod request validation, output → `src/lib/generated/`)
 4. Writes shadcn CLI fallback config: `components.json`, shadcn-compatible `src/index.css` (OKLCH theme vars, `@theme inline`, `tw-animate-css`, `.dark` class variant, plus `@source` lines pointing at `@bmsuisse/ui`'s and `@bmsuisse/datagrid`'s `dist/` so Tailwind v4 picks up their compiled class names from `node_modules`), patches `tsconfig.json` + `tsconfig.app.json` with `@/*` path alias
@@ -38,7 +38,8 @@ The script (works on Mac, Linux, Windows):
 10. Writes `database/.gitkeep` (schema-as-code root — see [pgdevkit's skill](https://github.com/bmsuisse/pgdevkit) for the layer/object-type folder convention) and `tests/conftest.py` + `tests/test_health.py` wired to pgdevkit's `ensure_testdb()` fixture
 11. Writes `scripts/agent_preview.py` — `start`/`status`/`stop` subcommands for the isolated, parallel-safe preview described above (provisions a pgdevkit test DB via `ensure_testdb()`, builds the frontend if missing/`--rebuild`, launches `granian` directly on an OS-picked or `--port`-pinned port, polls `/health`, tracks the running instance in a `/tmp/<project>-agent-preview-<db>.json` state file keyed by the pgdevkit workspace DB name so concurrent worktrees never clash)
 12. Writes a root `justfile` (`install`, `db-up`, `db-down`, `backend`, `frontend`, `dev`, `agent-preview`, `agent-preview-status`, `agent-preview-stop`, `generate-api`, `test`) as the project's task runner — `generate-api` runs `backend/dump_openapi.py` then `bun run generate-api`
-13. Writes `.env.example` (frontend + backend, `APP_POSTGRES_*` vars), root `.gitignore` (includes `.claude/skills/`, `.agents/skills/`, `.agent/skills/` — skillup-managed, see Step 3; does **not** ignore `frontend/openapi.json` or `frontend/src/lib/generated/` — both are committed), `README.md` with startup steps including the agent-preview workflow
+13. Writes root `biome.json` — strict lint rules (`noExplicitAny`, `noNonNullAssertion`, `noConsole`, `noForEach`, `useImportType`, `useConsistentTypeDefinitions`, type-aware `noFloatingPromises`, …), 4-space/double-quote/120-col formatting, import sorting; `generated/`, `routeTree.gen.ts` and `openapi.json` are excluded. The scaffold finishes with `biome check --write` + a verifying `biome check` so the frontend starts lint-clean
+14. Writes `.env.example` (frontend + backend, `APP_POSTGRES_*` vars), root `.gitignore` (includes `.claude/skills/`, `.agents/skills/`, `.agent/skills/` — skillup-managed, see Step 3; does **not** ignore `frontend/openapi.json` or `frontend/src/lib/generated/` — both are committed), `README.md` with startup steps including the agent-preview workflow
 
 After running:
 
@@ -61,8 +62,8 @@ the git pre-commit hook, and formats all existing files. The project has both
 Python (`backend/`) and TypeScript (`frontend/`) so prek will configure both
 ruff and biome automatically.
 The scaffold has already written `[tool.ruff.lint]` (including `FAST` and the
-stack-specific banned imports); prek must keep those keys and only add what is
-missing — notably the non-blocking `ruff-warn-any` hook for `ANN401`.
+stack-specific banned imports) and the root `biome.json`; prek must keep those and
+only add what is missing — notably the non-blocking `ruff-warn-any` hook for `ANN401`.
 
 ## Step 3: Install companion skills with skillup
 

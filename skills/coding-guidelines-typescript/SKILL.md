@@ -19,6 +19,15 @@ catching bugs before runtime, making contracts explicit, and eliminating the
 "it works if you pass the right thing" class of errors. Follow them automatically
 whenever working in TypeScript — don't wait for the user to ask.
 
+## Linting — biome
+
+Biome enforces the mechanical rules — `noExplicitAny`, `noNonNullAssertion`,
+`noConsole`, `noForEach`, `useImportType`, `useConsistentTypeDefinitions`,
+`useConsistentArrayType`, floating/misused promises, unused code — and handles
+formatting and import sorting. Don't restate them in review; run `bun run lint`
+(`biome check`) and fix what it reports rather than adding `biome-ignore`. The rule set
+lives in `prek`'s `biome.json`.
+
 ## No `any`
 
 `any` disables the type checker for that value and everything that touches it.
@@ -41,22 +50,19 @@ function parse<T>(data: unknown): T {
 Generics over `unknown` casts: if the shape is known at call time, express it
 as a generic parameter so the compiler can verify it end-to-end.
 
-## No non-null assertions without a comment
+## No non-null assertions
 
-`!` is a lie you tell the compiler. It suppresses null checks and shifts errors
-to runtime. Only use it when you have information the compiler cannot infer, and
-always document *why* on the same line.
+`!` is a lie you tell the compiler; `noNonNullAssertion` rejects it and a comment
+does not make it pass. Narrow the value or fail loudly instead.
 
 ```typescript
 // ❌ — silently crashes if getElementById returns null
 const el = document.getElementById("root")!;
 
-// ✅ — explicit contract documented at the assertion point
-const el = document.getElementById("root")!; // guaranteed by index.html template
+// ✅ — the contract is checked, and the failure is explicit
+const el = document.getElementById("root");
+if (!el) throw new Error("#root element not found");
 ```
-
-When you find yourself reaching for `!`, first ask whether an earlier narrowing
-or a default value would express the intent more clearly.
 
 ## Explicit return types on exported functions
 
@@ -176,16 +182,16 @@ async function fetchUser(id: string): Promise<User | null> {
 
 ## Pre-commit checklist (TypeScript)
 
-Run `npm run check` before every commit. Then verify:
+Run `bun run lint` (`biome check`) and the type check (`tsc --noEmit`) before every commit. Then verify what biome can't:
 
 - [ ] No `any` — use `unknown`, a generic, or a proper type guard
-- [ ] No undocumented non-null assertions (`!`)
+- [ ] No non-null assertions (`!`) — narrow or throw
 - [ ] Explicit return types on all exported functions and methods
 - [ ] Contracts expressed as `interface` or `abstract class`, not inline duck typing
 - [ ] No raw `string` in conditions — use a union type or `const` enum
 - [ ] No unexplained `as SomeType` assertions
 - [ ] Async functions have typed `Promise<T>` return types (not `Promise<any>`)
-- [ ] `npm run check` passes
+- [ ] `bun run lint` and `tsc --noEmit` pass
 
 ## References
 

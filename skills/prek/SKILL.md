@@ -20,7 +20,7 @@ files at commit time.
 **Formatters — all use 4 spaces, no tabs, line-length 120:**
 - **Python**: ruff-check --fix + ruff-format (via astral-sh/ruff-pre-commit)
 - **SQL**: `uv run sqlfmt` (local hook)
-- **TypeScript/JS**: `bunx --bun biome check --write` (local hook, also lints
+- **TypeScript/JS**: `bunx --bun @biomejs/biome@2.5.14 check --write` (local hook, also lints
   and organizes imports)
 - **YAML**: builtin check-yaml (if .yaml/.yml files present)
 - **File-size guard**: `scripts/check_files.py` (local hook, always included) — blocks
@@ -204,7 +204,7 @@ hooks = [
 [[repos]]                                 # include only if .ts/.tsx/.js/.jsx present
 repo = "local"
 hooks = [
-    { id = "biome", name = "biome", language = "system", entry = "bunx --bun biome check --write", files = '\\.(ts|tsx|js|jsx|vue)$' },
+    { id = "biome", name = "biome", language = "system", entry = "bunx --bun @biomejs/biome@2.5.14 check --write", files = '\\.(ts|tsx|js|jsx|vue)$' },
 ]
 
 [[repos]]                                 # always include — file-size + forbidden-pattern guard
@@ -284,13 +284,34 @@ line_length = 120
 
 If TypeScript/JavaScript files are present, write `biome.json` to the project
 root (skip if one already exists with different settings — ask first). Also
-add `@biomejs/biome` as a dev dependency (`bun add -d @biomejs/biome`) if not
-already present:
+add `@biomejs/biome` as an **exact-pinned** dev dependency
+(`bun add -d --exact @biomejs/biome@2.5.14`) if not already present. Keep the
+version in the `$schema` URL, the dev dependency and the prek hook entry
+identical. If a `biome.json` was already written by another skill (e.g.
+`init-app-stack`), keep it as is:
 
 ```json
 {
-  "$schema": "https://biomejs.dev/schemas/2.5.11/schema.json",
-  "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
+  "$schema": "https://biomejs.dev/schemas/2.5.14/schema.json",
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
+  "files": {
+    "includes": [
+      "**/*.ts",
+      "**/*.tsx",
+      "**/*.js",
+      "**/*.jsx",
+      "**/*.json",
+      "**/*.css",
+      "!**/generated",
+      "!**/routeTree.gen.ts",
+      "!**/openapi.json",
+      "!**/dist"
+    ]
+  },
   "formatter": {
     "enabled": true,
     "indentStyle": "space",
@@ -304,9 +325,100 @@ already present:
       "trailingCommas": "es5"
     }
   },
-  "linter": { "enabled": true }
+  "css": {
+    "parser": {
+      "tailwindDirectives": true
+    }
+  },
+  "assist": {
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    }
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "preset": "recommended",
+      "correctness": {
+        "noUnusedImports": "error",
+        "noUnusedVariables": "error",
+        "noUnusedFunctionParameters": "error",
+        "noUnusedPrivateClassMembers": "error"
+      },
+      "suspicious": {
+        "noExplicitAny": "error",
+        "noConsole": "error",
+        "noEvolvingTypes": "error",
+        "noDoubleEquals": "error",
+        "useAwait": "error"
+      },
+      "style": {
+        "noNonNullAssertion": "error",
+        "noParameterAssign": "error",
+        "noUselessElse": "error",
+        "useConst": "error",
+        "useTemplate": "error",
+        "useImportType": "error",
+        "useExportType": "error",
+        "useNodejsImportProtocol": "error",
+        "useConsistentArrayType": {
+          "level": "error",
+          "options": {
+            "syntax": "shorthand"
+          }
+        },
+        "useConsistentTypeDefinitions": {
+          "level": "error",
+          "options": {
+            "style": "interface"
+          }
+        },
+        "useShorthandFunctionType": "error",
+        "useDefaultParameterLast": "error",
+        "useNamingConvention": "error"
+      },
+      "complexity": {
+        "noForEach": "error",
+        "useFlatMap": "error",
+        "useOptionalChain": "error",
+        "useArrowFunction": "error",
+        "noUselessTernary": "error",
+        "noExcessiveCognitiveComplexity": {
+          "level": "error",
+          "options": {
+            "maxAllowedComplexity": 15
+          }
+        }
+      },
+      "performance": {
+        "noAccumulatingSpread": "error",
+        "noDelete": "error"
+      },
+      "nursery": {
+        "noFloatingPromises": "error",
+        "noMisusedPromises": "error",
+        "useAwaitThenable": "error"
+      }
+    }
+  }
 }
 ```
+
+Notes on the rule choices:
+
+- Every rule is `error`; Biome supports `"warn"` per rule if a rule needs to be
+  softened (unlike ruff). `noExplicitAny` stays an error — use `unknown` or a generic.
+- `noNonNullAssertion` cannot be satisfied "with a comment": narrow the value or
+  `throw` instead.
+- `noFloatingPromises`, `noMisusedPromises` and `useAwaitThenable` are `nursery`
+  (type-aware) rules — hence the exact version pin. Upgrade Biome deliberately and
+  re-run `biome migrate`.
+- `useFilenamingConvention` is deliberately off: TanStack Router's `__root.tsx` /
+  `$id.tsx` route files violate it. `useExplicitType` is off because it flags every
+  React component.
+- The `recommended` preset also enables React/a11y/hooks rules when React is used.
 
 If the project already has an eslint config (`.eslintrc*` or
 `eslint.config.*`), migrate it instead of hand-writing rules:

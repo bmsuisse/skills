@@ -15,7 +15,8 @@
         "Postgres is started via `docker compose up -d db` before the backend",
         "The backend dev command is `uv run dev` (granian under the hood)",
         "The frontend dev command is `bun run dev` on port 5173",
-        "The scaffolded pyproject.toml contains a strict [tool.ruff.lint] config (ANN, FAST, PERF, TID, ...) with ANN401 ignored, and ruff + ty are dev dependencies"
+        "The scaffolded pyproject.toml contains a strict [tool.ruff.lint] config (ANN, FAST, PERF, TID, ...) with ANN401 ignored, and ruff + ty are dev dependencies",
+        "A root biome.json with strict lint rules (noExplicitAny, noNonNullAssertion, noFloatingPromises, ...) is written, @biomejs/biome is an exact-pinned frontend dev dependency, and the Vite template's oxlint is removed"
       ]
     },
     {

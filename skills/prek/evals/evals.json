@@ -28,6 +28,8 @@
         "prek.toml has ruff-pre-commit repo with ruff-check and ruff-format hooks",
         "prek.toml has a local biome hook for .ts/.tsx/.js/.jsx files",
         "biome.json is written with indentWidth: 4, indentStyle: \"space\" and lineWidth: 120",
+        "biome.json enables linter rules beyond the defaults (noExplicitAny, noNonNullAssertion, noConsole, useImportType, noFloatingPromises) and organizeImports",
+        "@biomejs/biome is pinned exactly and the prek hook entry uses the same version",
         "pyproject.toml contains [tool.ruff.format] with indent-style = \"space\"",
         "prek install is run"
       ]
@@ -41,6 +43,8 @@
         "prek.toml uses [[repos]] array-of-tables structure",
         "prek.toml has ONLY a local biome hook (no ruff-pre-commit, no sqlfmt repos)",
         "biome.json is written with indentWidth: 4, indentStyle: \"space\" and lineWidth: 120",
+        "biome.json enables linter rules beyond the defaults (noExplicitAny, noNonNullAssertion, noConsole, useImportType, noFloatingPromises) and organizeImports",
+        "@biomejs/biome is pinned exactly and the prek hook entry uses the same version",
         "prek install is run to wire up the git hook",
         "User is told which formatters were installed and how to run manually"
       ]
