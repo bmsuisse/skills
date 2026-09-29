@@ -183,10 +183,16 @@ hooks = [
 
 [[repos]]                                 # include only if .py files present
 repo = "https://github.com/astral-sh/ruff-pre-commit"
-rev = "v0.11.0"                           # verify: https://github.com/astral-sh/ruff-pre-commit/releases
+rev = "v0.16.9"                           # verify: https://github.com/astral-sh/ruff-pre-commit/releases
 hooks = [
     { id = "ruff-check", args = ["--fix"] },
     { id = "ruff-format" },
+]
+
+[[repos]]                                 # include only if .py files present — warning only, never blocks
+repo = "local"
+hooks = [
+    { id = "ruff-warn-any", name = "ruff warn: typing.Any (ANN401)", language = "system", entry = "uv run ruff check --select ANN401 --exit-zero --output-format concise", types = ["python"], verbose = true },
 ]
 
 [[repos]]                                 # include only if .sql files present
@@ -215,6 +221,11 @@ hooks = [
 ]
 ```
 
+**Why ANN401 is a separate hook:** ruff has no warning severity — every
+violation fails `ruff-check`. `ANN401` (`typing.Any`) is ignored in the lint
+config and re-run by `ruff-warn-any` with `--exit-zero`, so it prints but never
+blocks the commit. If the project uses FastAPI, uncomment `"FAST"` in `select`.
+
 **Tip on ruff rev**: run `uv run ruff --version` in the project to see the
 installed version, then use the matching tag from the ruff-pre-commit releases.
 
@@ -229,7 +240,21 @@ sections. Don't overwrite keys the user already set:
 [tool.ruff]
 line-length = 120
 indent-width = 4
-target-version = "py313"
+target-version = "py314"
+
+[tool.ruff.lint]
+select = [
+    "E", "F", "I",   # pycodestyle, pyflakes, isort
+    "UP",            # pyupgrade — X | None, modern syntax
+    "B",             # bugbear — mutable defaults etc.
+    "ANN",           # full type annotations
+    "SIM", "C4",     # simplifiable code, needless comprehensions/casts
+    "PERF", "FURB",  # needless loops, manual list/dict building
+    "ASYNC",         # blocking calls inside async def
+    "RUF",
+    # "FAST",        # add only if the project uses FastAPI
+]
+ignore = ["ANN401"]  # `Any` is a warning via the ruff-warn-any hook, not an error
 
 [tool.ruff.format]
 indent-style = "space"

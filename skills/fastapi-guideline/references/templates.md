@@ -65,7 +65,6 @@ settings = get_settings()
 
 ```python
 # db/connection.py
-from __future__ import annotations
 import os
 from psycopg_pool import AsyncConnectionPool
 
@@ -136,7 +135,6 @@ Repositories call `get_pg_connection()` directly — no FastAPI `Depends` needed
 
 ```python
 # db/repositories/item_repository.py
-from __future__ import annotations
 from psycopg.rows import dict_row
 from app.db.connection import get_pg_connection
 from app.db.postgres import pg_retrieve, pg_insert, pg_delete
@@ -174,7 +172,6 @@ item_repository = ItemRepository()
 
 ```python
 # models/item_models.py
-from __future__ import annotations
 from datetime import datetime
 from typing import Sequence
 from pydantic import BaseModel, ConfigDict

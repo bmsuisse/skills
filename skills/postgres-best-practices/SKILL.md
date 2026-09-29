@@ -156,7 +156,6 @@ Never mix positional `%s` and named `%(name)s`. Never build SQL with f-strings o
 
 ```python
 # models/user_models.py
-from __future__ import annotations
 from datetime import datetime
 from pydantic import BaseModel, ConfigDict
 from db.pg_base import PostgresTableModel

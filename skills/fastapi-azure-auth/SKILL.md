@@ -48,7 +48,6 @@ a dict with `private_key`, `thumbprint`, and `certificate` (certificate auth).
 Certificate auth is preferred for production; secret is fine for development.
 
 ```python
-from __future__ import annotations
 import os
 from pathlib import Path
 import pem
@@ -73,7 +72,6 @@ def get_credential() -> str | dict:
 Call `setup(app)` once at startup. It wires three endpoints and one middleware.
 
 ```python
-from __future__ import annotations
 import json
 import logging
 import os
@@ -218,7 +216,6 @@ def setup(app: FastAPI, *, tenant_id: str) -> dict:
 Role helpers that work with asyncpg (t-string SQL) and a 5-minute in-process cache.
 
 ```python
-from __future__ import annotations
 import os
 import time
 from typing import Final

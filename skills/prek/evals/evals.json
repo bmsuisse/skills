@@ -12,6 +12,8 @@
         "prek.toml has a repo = \"local\" entry with a sqlfmt hook",
         "prek.toml does NOT contain a biome hook (no TS files)",
         "pyproject.toml contains [tool.ruff] with indent-width = 4 and line-length = 120",
+        "pyproject.toml contains [tool.ruff.lint] with select including ANN, PERF and UP, and ignore containing ANN401",
+        "prek.toml has a non-blocking ANN401 hook using --exit-zero",
         "pyproject.toml contains [tool.sqlfmt] with line_length = 120",
         "prek install is run to wire up the git hook"
       ]

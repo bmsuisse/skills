@@ -11,18 +11,16 @@ description: >
 
 # Python Coding Guidelines
 
-## Typing
+## Linting — ruff
 
-Every function has parameter types and a return type. Use `from __future__ import annotations`
-at the top of every file. Prefer `X | None` over `Optional[X]`. Use generics
-where appropriate (`list[str]`, `dict[str, int]`).
+Ruff enforces the mechanical rules — full annotations (`ANN`), `X | None` unions
+(`UP`), mutable defaults (`B006`), needless loops (`PERF`, `SIM`, `C4`, `FURB`),
+blocking calls in async code (`ASYNC`). Don't restate them in review; run
+`uv run ruff check` and fix what it reports. The selects live in `prek`'s
+`[tool.ruff.lint]` block. `ANN401` (`Any`) is only a warning: avoid `Any`, but
+it isn't a blocker.
 
-```python
-from __future__ import annotations
-
-def transform(items: list[str], limit: int) -> list[str]:
-    return items[:limit]
-```
+Do not add `from __future__ import annotations` — it is unnecessary on Python 3.14.
 
 ## Type checking — ty
 
@@ -52,23 +50,6 @@ from abc import ABC, abstractmethod
 class Processor(ABC):
     @abstractmethod
     def process(self, data: str) -> str: ...
-```
-
-## No mutable default arguments
-
-Mutable defaults are shared across all calls — a classic Python trap.
-
-```python
-# ❌
-def append(item: str, items: list[str] = []) -> list[str]:
-    items.append(item)
-    return items
-
-# ✅
-def append(item: str, items: list[str] | None = None) -> list[str]:
-    result = items or []
-    result.append(item)
-    return result
 ```
 
 ## Dataclasses over raw dicts
@@ -147,11 +128,9 @@ Load it when you need to cite or explain the reasoning behind a guideline.
 
 ## Pre-commit checklist (Python)
 
-- [ ] All function parameters and return types annotated
-- [ ] `from __future__ import annotations` at the top of every file
+- [ ] `uv run ruff check` passes
 - [ ] `uv run ty check` passes with zero errors
 - [ ] `uv run pytest` passes
-- [ ] No mutable default arguments
 - [ ] No `dict[str, Any]` as a data carrier — use a dataclass or TypedDict
 - [ ] No raw string constants in conditions — use `Literal` or `Enum`
 - [ ] No module-level mutable variables
