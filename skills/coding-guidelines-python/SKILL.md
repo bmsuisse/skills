@@ -11,17 +11,13 @@ description: >
 
 # Python Coding Guidelines
 
-## Typing
+## Linting — ruff
 
-Every function has parameter types and a return type. Prefer `X | None` over `Optional[X]`. Use generics
-where appropriate (`list[str]`, `dict[str, int]`).
+We use ruff with strict rules (config in `prek`); run `uv run ruff check` and fix what it reports.
+`ANN401` (`Any`) is only a warning. Don't add `from __future__ import annotations` (unneeded on 3.14).
 
-```python
-def transform(items: list[str], limit: int) -> list[str]:
-    return items[:limit]
-```
+## Type checking — ty
 
-Test with: 
 ```bash
 uv run ty check
 ```
@@ -107,7 +103,7 @@ Load it when you need to cite or explain the reasoning behind a guideline.
 
 ## Pre-commit checklist (Python)
 
-- [ ] All function parameters and return types annotated
+- [ ] `uv run ruff check` passes
 - [ ] `uv run ty check` passes with zero errors
 - [ ] `uv run -m pytest YOURFILE.py` passes
 - [ ] No `dict[str, Any]` as a data carrier — use a dataclass or TypedDict

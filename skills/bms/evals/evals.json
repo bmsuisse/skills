@@ -33,10 +33,10 @@
     {
       "id": 3,
       "prompt": "/bms python\n\nWrite a function that takes a list of order IDs and returns the filtered ones where the ID starts with 'ORD'. Make it properly typed.",
-      "expected_output": "Function with full type annotations, from __future__ import annotations, X | None pattern if applicable, no Any",
+      "expected_output": "Function with full type annotations, X | None pattern if applicable, no Any",
       "files": [],
       "expectations": [
-        "Includes 'from __future__ import annotations' at top",
+        "Does not include 'from __future__ import annotations' (unnecessary on Python 3.14)",
         "Function has explicit parameter type annotation (list[str])",
         "Function has explicit return type annotation (list[str])",
         "No 'Any' type used",

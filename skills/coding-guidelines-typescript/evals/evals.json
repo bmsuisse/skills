@@ -18,14 +18,14 @@
     {
       "id": 2,
       "prompt": "I have this TypeScript code, please review it and fix any type safety issues:\n\n```typescript\nexport function processItems(items: any[], callback: any) {\n  const results = [];\n  for (const item of items) {\n    const result = callback(item);\n    results.push(result);\n  }\n  return results;\n}\n\nexport function findById(collection: any[], id: string) {\n  return collection.find(x => x.id === id);\n}\n\nconst config = JSON.parse(localStorage.getItem('config')!) as { theme: string; lang: string };\n```",
-      "expected_output": "Refactored code replacing 'any' with generics, removing unexplained non-null assertion, adding explicit return types on exported functions, and adding a runtime type guard for the JSON.parse result.",
+      "expected_output": "Refactored code replacing 'any' with generics, removing the non-null assertion, adding explicit return types on exported functions, and adding a runtime type guard for the JSON.parse result.",
       "files": [],
       "expectations": [
         "processItems is rewritten with generic type parameters instead of 'any[]' and 'any' callback",
         "processItems has an explicit return type annotation",
         "findById is rewritten with a generic or typed parameter instead of 'any[]'",
         "findById has an explicit return type annotation",
-        "The non-null assertion '!' on localStorage.getItem is removed or documented",
+        "The non-null assertion '!' on localStorage.getItem is removed (narrowed or thrown on null), not merely commented",
         "The 'as' cast on JSON.parse is replaced with or supplemented by a runtime type guard"
       ]
     },

@@ -14,6 +14,7 @@ Creates:
         docker-compose.yml   Postgres 17 dev service
 """
 
+import json
 import subprocess
 import sys
 import textwrap
@@ -26,6 +27,13 @@ def run(cmd: list[str], cwd: Path, label: str) -> None:
     if result.returncode != 0:
         print(f"❌ Failed: {label}", file=sys.stderr)
         sys.exit(result.returncode)
+
+
+def run_soft(cmd: list[str], cwd: Path, label: str) -> None:
+    """Like run(), but warns instead of aborting — for checks after everything is already written."""
+    print(f"  → {label}")
+    if subprocess.run(cmd, cwd=cwd).returncode != 0:
+        print(f"⚠️  {label} reported problems — fix them before committing.", file=sys.stderr)
 
 
 def write(path: Path, content: str) -> None:
@@ -104,6 +112,10 @@ def main() -> None:
         fe,
         "bun add -d (router-plugin, devtools, @hey-api/openapi-ts, tailwindcss, @types/node)",
     )
+    run(["bun", "add", "-d", "@biomejs/biome"], fe, "bun add -d @biomejs/biome")
+    if "oxlint" in json.loads((fe / "package.json").read_text(encoding="utf-8")).get("devDependencies", {}):
+        run(["bun", "remove", "oxlint"], fe, "bun remove oxlint")
+    (fe / ".oxlintrc.json").unlink(missing_ok=True)
 
     # openapi-ts.config.ts — generates a full SDK (typed fetch functions),
     # TanStack Query options, and Zod runtime validators from openapi.json.
@@ -273,7 +285,10 @@ def main() -> None:
           }
         }
 
-        createRoot(document.getElementById('root')!).render(
+        const rootElement = document.getElementById('root')
+        if (!rootElement) throw new Error('#root element not found')
+
+        createRoot(rootElement).render(
           <StrictMode>
             <QueryClientProvider client={queryClient}>
               <RouterProvider router={router} />
@@ -442,7 +457,6 @@ def main() -> None:
 
     # tsconfig.json + tsconfig.app.json — add `@/*` path alias (required by shadcn)
     # Stock Vite tsconfigs may include // comments; use a tolerant loader.
-    import json
     import re
 
     def load_jsonc(p: Path) -> dict:
@@ -473,7 +487,80 @@ def main() -> None:
         scripts = data.setdefault("scripts", {})
         scripts["build"] = "vite build && tsc --noEmit"
         scripts["generate-api"] = "openapi-ts"
+        scripts["lint"] = "biome check"
+        scripts["format"] = "biome check --write"
         pkg.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+
+    # biome.json at the project root — lint + format + import sorting for TS/JS/JSON/CSS.
+    # Keep in sync with the prek skill's Step 5.
+    biome_config = {
+        "$schema": "./frontend/node_modules/@biomejs/biome/configuration_schema.json",
+        "vcs": {"enabled": True, "clientKind": "git", "useIgnoreFile": True},
+        "files": {
+            "includes": [
+                "**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx", "**/*.json", "**/*.css",
+                "!**/generated", "!**/*.generated.*", "!**/*.gen.ts", "!**/openapi.json", "!**/dist",
+            ]
+        },
+        "formatter": {"enabled": True, "indentStyle": "space", "indentWidth": 4, "lineWidth": 120},
+        "javascript": {"formatter": {"quoteStyle": "double", "semicolons": "always", "trailingCommas": "es5"}},
+        "css": {"parser": {"tailwindDirectives": True}},
+        "assist": {"actions": {"source": {"organizeImports": "on"}}},
+        "linter": {
+            "enabled": True,
+            "rules": {
+                "preset": "recommended",
+                "correctness": {
+                    "noUnusedImports": "error",
+                    "noUnusedVariables": "error",
+                    "noUnusedFunctionParameters": "error",
+                    "noUnusedPrivateClassMembers": "error",
+                },
+                "suspicious": {
+                    "noExplicitAny": "error",
+                    "noConsole": "error",
+                    "noEvolvingTypes": "error",
+                    "noDoubleEquals": "error",
+                    "useAwait": "error",
+                },
+                "style": {
+                    "noNonNullAssertion": "error",
+                    "noParameterAssign": "error",
+                    "noUselessElse": "error",
+                    "useConst": "error",
+                    "useTemplate": "error",
+                    "useImportType": "error",
+                    "useExportType": "error",
+                    "useNodejsImportProtocol": "error",
+                    "useConsistentArrayType": {"level": "error", "options": {"syntax": "shorthand"}},
+                    "useConsistentTypeDefinitions": {"level": "error", "options": {"style": "interface"}},
+                    "useShorthandFunctionType": "error",
+                    "useDefaultParameterLast": "error",
+                    "useNamingConvention": {
+                        "level": "error",
+                        "options": {
+                            "strictCase": False,
+                            "conventions": [
+                                {"selector": {"kind": kind}, "formats": ["camelCase", "snake_case", "CONSTANT_CASE", "PascalCase"]}
+                                for kind in ("objectLiteralProperty", "typeProperty", "classProperty")
+                            ]
+                        },
+                    },
+                },
+                "complexity": {
+                    "noForEach": "error",
+                    "useFlatMap": "error",
+                    "useOptionalChain": "error",
+                    "useArrowFunction": "error",
+                    "noUselessTernary": "error",
+                    "noExcessiveCognitiveComplexity": {"level": "error", "options": {"maxAllowedComplexity": 15}},
+                },
+                "performance": {"noAccumulatingSpread": "error", "noDelete": "error"},
+                "nursery": {"noFloatingPromises": "error", "noMisusedPromises": "error", "useAwaitThenable": "error"},
+            },
+        },
+    }
+    (root / "biome.json").write_text(json.dumps(biome_config, indent=2) + "\n", encoding="utf-8")
 
     # Frontend .env.example
     write(
@@ -496,9 +583,9 @@ def main() -> None:
         "uv add fastapi granian[reload] pydantic-settings pgdevkit[cli,db]",
     )
     run(
-        ["uv", "add", "--dev", "pytest", "pytest-asyncio"],
+        ["uv", "add", "--dev", "pytest", "pytest-asyncio", "ruff", "ty"],
         root,
-        "uv add --dev pytest pytest-asyncio",
+        "uv add --dev pytest pytest-asyncio ruff ty",
     )
 
     # backend/__init__.py — makes `backend` a proper package
@@ -526,8 +613,6 @@ def main() -> None:
         be / "db.py",
         '''\
         """Postgres access via pgdevkit — no ORM, no hand-rolled pool."""
-        from __future__ import annotations
-
         from pgdevkit.db import PgPool
 
         pool = PgPool(env_prefix="APP_POSTGRES_")
@@ -538,6 +623,7 @@ def main() -> None:
     write(
         be / "main.py",
         """\
+        from collections.abc import AsyncIterator
         from contextlib import asynccontextmanager
         from pathlib import Path
 
@@ -550,7 +636,7 @@ def main() -> None:
 
 
         @asynccontextmanager
-        async def lifespan(_: FastAPI):
+        async def lifespan(_: FastAPI) -> AsyncIterator[None]:
             await pool.open()
             yield
             await pool.close()
@@ -658,10 +744,60 @@ def main() -> None:
                 [tool.pytest.ini_options]
                 testpaths = ["tests"]
                 asyncio_mode = "auto"
+
+                [tool.ruff]
+                line-length = 120
+                indent-width = 4
+                target-version = "py314"
+                extend-exclude = ["*.md"]
+
+                [tool.ruff.format]
+                indent-style = "space"
+                quote-style = "double"
+                line-ending = "auto"
+
+                [tool.ruff.lint]
+                select = [
+                    "E", "F", "I",   # pycodestyle, pyflakes, isort
+                    "UP",            # pyupgrade - X | None, modern syntax
+                    "B",             # bugbear - mutable defaults etc.
+                    "ANN",           # full type annotations
+                    "SIM", "C4",     # simplifiable code, needless comprehensions/casts
+                    "PERF", "FURB",  # needless loops, manual list/dict building
+                    "ASYNC",         # blocking calls inside async def
+                    "FAST",          # FastAPI: Annotated deps, redundant response_model
+                    "RUF",
+                    "N",             # PEP 8 naming
+                    "PTH",           # pathlib instead of os.path
+                    "TID",           # absolute imports only, banned APIs
+                    "RET", "PIE",    # consistent returns, misc simplifications
+                    "A",             # no shadowing builtins
+                    "T20",           # no print()
+                    "LOG",           # logging API misuse
+                    "DTZ",           # timezone-aware datetimes
+                    "FLY",           # f-string instead of str.join on literals
+                    "PLE", "PLW",    # pylint errors + warnings
+                ]
+                ignore = ["ANN401"]  # `Any` is a warning via the ruff-warn-any prek hook, not an error
+
+                [tool.ruff.lint.per-file-ignores]
+                "scripts/**" = ["T20"]
+                "backend/scripts.py" = ["T20"]
+                "backend/dump_openapi.py" = ["T20"]
+
+                [tool.ruff.lint.flake8-tidy-imports]
+                ban-relative-imports = "all"
+
+                [tool.ruff.lint.flake8-tidy-imports.banned-api]
+                "sqlalchemy".msg = "No ORM - use pgdevkit (psycopg)."
+                "uvicorn".msg = "Granian is the server."
+                "sse_starlette".msg = "Use fastapi.sse.EventSourceResponse."
                 """
             )
             pyproject.write_text(content, encoding="utf-8")
         run(["uv", "sync"], root, "uv sync (install entry points)")
+        # uv init's hello-world stub is unused (the app lives in backend/) and would fail ANN/T20.
+        (root / "main.py").unlink(missing_ok=True)
 
     # Root .env.example (backend vars; uv runs from root so .env is at root).
     # APP_POSTGRES_* matches [tool.pgdevkit] env_prefix="APP_" + PgPool's
@@ -702,7 +838,7 @@ def main() -> None:
 
 
         @pytest.fixture(scope="session", autouse=True)
-        def _testdb_env():
+        def _testdb_env() -> None:
             env = ensure_testdb()
             for key, value in env.items():
                 os.environ[key] = value
@@ -714,7 +850,7 @@ def main() -> None:
         from backend.db import pool
 
 
-        async def test_db_connection():
+        async def test_db_connection() -> None:
             await pool.open()
             try:
                 async with pool.connection() as conn:
@@ -785,9 +921,8 @@ def main() -> None:
             uv run python scripts/agent_preview.py stop
         """
 
-        from __future__ import annotations
-
         import argparse
+        import contextlib
         import json
         import os
         import socket
@@ -857,13 +992,13 @@ def main() -> None:
             dist_dir = REPO_ROOT / "frontend" / "dist"
             if args.rebuild or not dist_dir.exists():
                 print("Building frontend (bun run build)...")
-                result = subprocess.run(["bun", "run", "build"], cwd=REPO_ROOT / "frontend")
+                result = subprocess.run(["bun", "run", "build"], cwd=REPO_ROOT / "frontend", check=False)
                 if result.returncode != 0:
                     sys.exit(result.returncode)
             else:
                 print(f"Reusing existing build at {dist_dir} (pass --rebuild to force a fresh one).")
 
-            port = args.port or int(os.environ.get("BACKEND_PORT", 0)) or _free_port()
+            port = args.port or int(os.environ.get("BACKEND_PORT") or 0) or _free_port()
             base_url = f"http://127.0.0.1:{port}"
 
             env = os.environ.copy()
@@ -929,10 +1064,8 @@ def main() -> None:
                 return
             state_path, state = found
             if _pid_alive(state["pid"]):
-                try:
+                with contextlib.suppress(ProcessLookupError):
                     os.killpg(state["pid"], 9)
-                except ProcessLookupError:
-                    pass
                 print(f"Stopped pid {state['pid']} ({state['base_url']}).")
             else:
                 print("Process already gone.")
@@ -1140,6 +1273,15 @@ def main() -> None:
         - URL state (filters, pagination): TanStack Router search params, not Zustand.
         """,
     )
+
+    # Everything is written — normalize all generated Python so the project starts lint-clean.
+    run(["uv", "run", "ruff", "format", "--quiet"], root, "ruff format (normalize generated code)")
+    run_soft(["uv", "run", "ruff", "check", "--fix", "--quiet"], root, "ruff check --fix (normalize generated code)")
+    run(["uv", "run", "ruff", "format", "--quiet"], root, "ruff format (re-format after import sorting)")
+    # Biome finds ../biome.json from frontend/. --write applies safe fixes, formatting and import sorting;
+    # the second `check` warns if anything the fixer can't resolve is left.
+    run_soft(["bunx", "--bun", "biome", "check", "--write", "."], fe, "biome check --write (normalize generated frontend code)")
+    run_soft(["bunx", "--bun", "biome", "check", "."], fe, "biome check (verify lint-clean)")
 
     print(f"""
 🎉 Project '{project}' is ready!

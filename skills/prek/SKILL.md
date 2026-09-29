@@ -20,7 +20,7 @@ files at commit time.
 **Formatters — all use 4 spaces, no tabs, line-length 120:**
 - **Python**: ruff-check --fix + ruff-format (via astral-sh/ruff-pre-commit)
 - **SQL**: `uv run sqlfmt` (local hook)
-- **TypeScript/JS**: `bunx --bun biome check --write` (local hook, also lints
+- **TypeScript/JS**: `bunx --bun @biomejs/biome check --write` (local hook, also lints
   and organizes imports)
 - **YAML**: builtin check-yaml (if .yaml/.yml files present)
 - **File-size guard**: `scripts/check_files.py` (local hook, always included) — blocks
@@ -183,10 +183,16 @@ hooks = [
 
 [[repos]]                                 # include only if .py files present
 repo = "https://github.com/astral-sh/ruff-pre-commit"
-rev = "v0.11.0"                           # verify: https://github.com/astral-sh/ruff-pre-commit/releases
+rev = "v0.16.9"                           # verify: https://github.com/astral-sh/ruff-pre-commit/releases
 hooks = [
     { id = "ruff-check", args = ["--fix"] },
     { id = "ruff-format" },
+]
+
+[[repos]]                                 # include only if .py files present — warning only, never blocks
+repo = "local"
+hooks = [
+    { id = "ruff-warn-any", name = "ruff warn: typing.Any (ANN401)", language = "system", entry = "uv run ruff check --select ANN401 --exit-zero --output-format concise", types = ["python"], verbose = true },
 ]
 
 [[repos]]                                 # include only if .sql files present
@@ -198,7 +204,7 @@ hooks = [
 [[repos]]                                 # include only if .ts/.tsx/.js/.jsx present
 repo = "local"
 hooks = [
-    { id = "biome", name = "biome", language = "system", entry = "bunx --bun biome check --write", files = '\\.(ts|tsx|js|jsx|vue)$' },
+    { id = "biome", name = "biome", language = "system", entry = "bunx --bun @biomejs/biome check --write", files = '\\.(ts|tsx|js|jsx|vue)$' },
 ]
 
 [[repos]]                                 # always include — file-size + forbidden-pattern guard
@@ -215,6 +221,15 @@ hooks = [
 ]
 ```
 
+**Why ANN401 is a separate hook:** ruff has no warning severity — every
+violation fails `ruff-check`. `ANN401` (`typing.Any`) is ignored in the lint
+config and re-run by `ruff-warn-any` with `--exit-zero`, so it prints but never
+blocks the commit. If the project uses FastAPI, uncomment `"FAST"` in `select` and
+migrate dependencies to `Annotated[...]` (`FAST002`) — that also resolves `B008` on
+`Depends()`/`Query()` defaults; alternatively set `extend-immutable-calls` under
+`[tool.ruff.lint.flake8-bugbear]`. Always set an explicit `select`: ruff 0.16 widened its
+default rule set, so unconfigured repos suddenly report far more.
+
 **Tip on ruff rev**: run `uv run ruff --version` in the project to see the
 installed version, then use the matching tag from the ruff-pre-commit releases.
 
@@ -229,7 +244,35 @@ sections. Don't overwrite keys the user already set:
 [tool.ruff]
 line-length = 120
 indent-width = 4
-target-version = "py313"
+target-version = "py314"
+extend-exclude = ["*.md"]  # ruff 0.16 also lints/formats Python blocks in Markdown
+
+[tool.ruff.lint]
+select = [
+    "E", "F", "I",   # pycodestyle, pyflakes, isort
+    "UP",            # pyupgrade — X | None, modern syntax
+    "B",             # bugbear — mutable defaults etc.
+    "ANN",           # full type annotations
+    "SIM", "C4",     # simplifiable code, needless comprehensions/casts
+    "PERF", "FURB",  # needless loops, manual list/dict building
+    "ASYNC",         # blocking calls inside async def
+    "RUF",
+    "N",             # PEP 8 naming
+    "PTH",           # pathlib instead of os.path
+    "TID",           # absolute imports only, banned APIs
+    "RET", "PIE",    # consistent returns, misc simplifications
+    "A",             # no shadowing builtins
+    "T20",           # no print()  (per-file-ignore CLI scripts)
+    "LOG",           # logging API misuse
+    "DTZ",           # timezone-aware datetimes
+    "FLY",           # f-string instead of str.join on literals
+    "PLE", "PLW",    # pylint errors + warnings
+    # "FAST",        # add only if the project uses FastAPI
+]
+ignore = ["ANN401"]  # `Any` is a warning via the ruff-warn-any hook, not an error
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
 
 [tool.ruff.format]
 indent-style = "space"
@@ -247,12 +290,37 @@ line_length = 120
 If TypeScript/JavaScript files are present, write `biome.json` to the project
 root (skip if one already exists with different settings — ask first). Also
 add `@biomejs/biome` as a dev dependency (`bun add -d @biomejs/biome`) if not
-already present:
+already present. Don't pin a version in the hook or `$schema`: `bunx` uses the
+locally installed `@biomejs/biome` when there is one (always use the scoped name —
+bare `biome` on npm is an unrelated package) and `$schema` points into
+`node_modules` (adjust the path if the package lives in a subfolder such as
+`frontend/`), so the lockfile is the source of truth. Upgrade with
+`bun update @biomejs/biome && bunx biome migrate --write`. If a `biome.json` was already written by another skill (e.g.
+`init-app-stack`), keep it as is:
 
 ```json
 {
-  "$schema": "https://biomejs.dev/schemas/2.5.11/schema.json",
-  "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
+  "files": {
+    "includes": [
+      "**/*.ts",
+      "**/*.tsx",
+      "**/*.js",
+      "**/*.jsx",
+      "**/*.json",
+      "**/*.css",
+      "!**/generated",
+      "!**/*.generated.*",
+      "!**/*.gen.ts",
+      "!**/openapi.json",
+      "!**/dist"
+    ]
+  },
   "formatter": {
     "enabled": true,
     "indentStyle": "space",
@@ -266,9 +334,115 @@ already present:
       "trailingCommas": "es5"
     }
   },
-  "linter": { "enabled": true }
+  "css": {
+    "parser": {
+      "tailwindDirectives": true
+    }
+  },
+  "assist": {
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    }
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "preset": "recommended",
+      "correctness": {
+        "noUnusedImports": "error",
+        "noUnusedVariables": "error",
+        "noUnusedFunctionParameters": "error",
+        "noUnusedPrivateClassMembers": "error"
+      },
+      "suspicious": {
+        "noExplicitAny": "error",
+        "noConsole": "error",
+        "noEvolvingTypes": "error",
+        "noDoubleEquals": "error",
+        "useAwait": "error"
+      },
+      "style": {
+        "noNonNullAssertion": "error",
+        "noParameterAssign": "error",
+        "noUselessElse": "error",
+        "useConst": "error",
+        "useTemplate": "error",
+        "useImportType": "error",
+        "useExportType": "error",
+        "useNodejsImportProtocol": "error",
+        "useConsistentArrayType": {
+          "level": "error",
+          "options": {
+            "syntax": "shorthand"
+          }
+        },
+        "useConsistentTypeDefinitions": {
+          "level": "error",
+          "options": {
+            "style": "interface"
+          }
+        },
+        "useShorthandFunctionType": "error",
+        "useDefaultParameterLast": "error",
+        "useNamingConvention": {
+          "level": "error",
+          "options": {
+            "strictCase": false,
+            "conventions": [
+              { "selector": { "kind": "objectLiteralProperty" }, "formats": ["camelCase", "snake_case", "CONSTANT_CASE", "PascalCase"] },
+              { "selector": { "kind": "typeProperty" }, "formats": ["camelCase", "snake_case", "CONSTANT_CASE", "PascalCase"] },
+              { "selector": { "kind": "classProperty" }, "formats": ["camelCase", "snake_case", "CONSTANT_CASE", "PascalCase"] }
+            ]
+          }
+        }
+      },
+      "complexity": {
+        "noForEach": "error",
+        "useFlatMap": "error",
+        "useOptionalChain": "error",
+        "useArrowFunction": "error",
+        "noUselessTernary": "error",
+        "noExcessiveCognitiveComplexity": {
+          "level": "error",
+          "options": {
+            "maxAllowedComplexity": 15
+          }
+        }
+      },
+      "performance": {
+        "noAccumulatingSpread": "error",
+        "noDelete": "error"
+      },
+      "nursery": {
+        "noFloatingPromises": "error",
+        "noMisusedPromises": "error",
+        "useAwaitThenable": "error"
+      }
+    }
+  }
 }
 ```
+
+Notes on the rule choices:
+
+- Every rule is `error`; Biome supports `"warn"` per rule if a rule needs to be
+  softened (unlike ruff). `noExplicitAny` stays an error — use `unknown` or a generic.
+- `noNonNullAssertion` cannot be satisfied "with a comment": narrow the value or
+  `throw` instead.
+- `noFloatingPromises`, `noMisusedPromises` and `useAwaitThenable` are `nursery`
+  (type-aware) rules that may be renamed between releases — after upgrading Biome,
+  re-run `biome migrate`.
+- If the project already has Biome formatter settings (indent, line width), keep them
+  instead of forcing 4 spaces / 120 — reformatting every file is not worth it.
+- `useNamingConvention` (with `strictCase: false`, so `userID` is fine) allows `snake_case` for object/type/class properties, since
+  API payloads (FastAPI/Pydantic) are snake_case; without this it dominates the report.
+- Generated code (`*.generated.*`, `*.gen.ts`, `generated/`) is excluded in `files.includes`.
+- `useFilenamingConvention` is deliberately off: TanStack Router's `__root.tsx` /
+  `$id.tsx` route files violate it. `useExplicitType` is off because it flags every
+  React component.
+- The `recommended` preset also enables React/a11y/hooks rules when React is used.
 
 If the project already has an eslint config (`.eslintrc*` or
 `eslint.config.*`), migrate it instead of hand-writing rules:

@@ -23,7 +23,8 @@ Production-ready FastAPI with async-first patterns, Granian as the server, and n
 2. **Granian is the server.** Never use `uvicorn` or `fastapi dev`. See [`references/granian.md`](references/granian.md).
 3. **SSE streaming** uses the native `EventSourceResponse` from `fastapi.sse` (added in FastAPI 0.135.0). Never use third-party `sse-starlette`. See [`references/sse.md`](references/sse.md).
 4. **Always use `uv`** for dependency management. Never pip, poetry, or pipenv.
-5. **No ORM.** Database access uses psycopg directly via `AsyncConnectionPool`. Follow the `postgres-best-practices` skill for all DB patterns (queries in `.sql` files, `pg_*` helpers, `PostgresTableModel`, named parameters).
+5. **Lint with ruff `FAST` + `ASYNC`.** Add `"FAST"` to `[tool.ruff.lint] select` (see the `prek` skill). `FAST` catches redundant `response_model`, non-`Annotated` dependencies and unused path params; `ASYNC` catches blocking calls inside `async def`.
+6. **No ORM.** Database access uses psycopg directly via `AsyncConnectionPool`. Follow the `postgres-best-practices` skill for all DB patterns (queries in `.sql` files, `pg_*` helpers, `PostgresTableModel`, named parameters).
 
 ---
 
