@@ -539,6 +539,7 @@ def main() -> None:
                     "useNamingConvention": {
                         "level": "error",
                         "options": {
+                            "strictCase": False,
                             "conventions": [
                                 {"selector": {"kind": kind}, "formats": ["camelCase", "snake_case", "CONSTANT_CASE", "PascalCase"]}
                                 for kind in ("objectLiteralProperty", "typeProperty", "classProperty")

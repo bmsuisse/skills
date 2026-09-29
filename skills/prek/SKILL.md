@@ -224,7 +224,11 @@ hooks = [
 **Why ANN401 is a separate hook:** ruff has no warning severity — every
 violation fails `ruff-check`. `ANN401` (`typing.Any`) is ignored in the lint
 config and re-run by `ruff-warn-any` with `--exit-zero`, so it prints but never
-blocks the commit. If the project uses FastAPI, uncomment `"FAST"` in `select`.
+blocks the commit. If the project uses FastAPI, uncomment `"FAST"` in `select` and
+migrate dependencies to `Annotated[...]` (`FAST002`) — that also resolves `B008` on
+`Depends()`/`Query()` defaults; alternatively set `extend-immutable-calls` under
+`[tool.ruff.lint.flake8-bugbear]`. Always set an explicit `select`: ruff 0.16 widened its
+default rule set, so unconfigured repos suddenly report far more.
 
 **Tip on ruff rev**: run `uv run ruff --version` in the project to see the
 installed version, then use the matching tag from the ruff-pre-commit releases.
@@ -385,6 +389,7 @@ bare `biome` on npm is an unrelated package) and `$schema` points into
         "useNamingConvention": {
           "level": "error",
           "options": {
+            "strictCase": false,
             "conventions": [
               { "selector": { "kind": "objectLiteralProperty" }, "formats": ["camelCase", "snake_case", "CONSTANT_CASE", "PascalCase"] },
               { "selector": { "kind": "typeProperty" }, "formats": ["camelCase", "snake_case", "CONSTANT_CASE", "PascalCase"] },
@@ -429,7 +434,9 @@ Notes on the rule choices:
 - `noFloatingPromises`, `noMisusedPromises` and `useAwaitThenable` are `nursery`
   (type-aware) rules that may be renamed between releases — after upgrading Biome,
   re-run `biome migrate`.
-- `useNamingConvention` allows `snake_case` for object/type/class properties, since
+- If the project already has Biome formatter settings (indent, line width), keep them
+  instead of forcing 4 spaces / 120 — reformatting every file is not worth it.
+- `useNamingConvention` (with `strictCase: false`, so `userID` is fine) allows `snake_case` for object/type/class properties, since
   API payloads (FastAPI/Pydantic) are snake_case; without this it dominates the report.
 - Generated code (`*.generated.*`, `*.gen.ts`, `generated/`) is excluded in `files.includes`.
 - `useFilenamingConvention` is deliberately off: TanStack Router's `__root.tsx` /
