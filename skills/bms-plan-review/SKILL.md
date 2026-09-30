@@ -26,7 +26,7 @@ Read [`references/ponytail.md`](references/ponytail.md) first; use it as the yar
    - Layering: SQL for declarative work, Python for business logic, frontend
      only where needed (same rule as `bms-code-review` step 1). Order should be Database → Backend → Frontend.
    - Database: `coding-guidelines-sql`, `sql-optimization`, `pgdevkit`. Are
-     table sizes known? Migration safety?
+     table sizes known (`pgdb get-stats <database dir> <schema.table> …` from latest pgdevkit)? Migration safety?
    - Backend: `coding-guidelines-python`, `fastapi-guideline`, `fastapi-azure-auth` (auth for every new endpoint).
    - Frontend: `coding-guidelines-typescript`, `tanstack-best-practices`,
      `bms-frontend-design`; bmsuisse packages used where they exist (`cross-repo-discovery`).
