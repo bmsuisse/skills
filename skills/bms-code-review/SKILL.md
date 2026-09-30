@@ -25,6 +25,24 @@ that skips a rung: reinvented helper, new dependency for a few lines,
 single-implementation abstraction, speculative config. Never flag validation,
 security or accessibility for removal."*
 
+## Subagent types (model and reasoning effort)
+
+Spawn each role with the matching agent type so it runs on Sonnet at the right
+reasoning effort. Installed via the `dev-workflow` plugin the types are
+namespaced (`dev-workflow:bms-review-core` etc.); as project agents they are
+plain `bms-review-core`. Use whichever appears in your agent list. Haiku is not good enough for any role (it misses the
+blocking bugs and states false facts); don't use it.
+
+| Agent type | Effort | Roles |
+|---|---|---|
+| `bms-review-core` | high | Correctness, Security, **all verifiers** |
+| `bms-review-standard` | medium | Architecture gate, SQL/Database, Backend, Frontend, Performance |
+| `bms-review-light` | low | Agent docs & skills, Duplication |
+
+If these agent types are not installed (they ship with the `dev-workflow`
+plugin), fall back to `general-purpose` with `model: "sonnet"`. Merging and
+report writing (you) stay at your own effort.
+
 ## Effort
 
 - `--quick` (what `dev-workflow` step 5 uses; also the default for diffs under ~5 files that touch no SQL/auth): one
@@ -45,7 +63,7 @@ security or accessibility for removal."*
    - **SQL/DB**: `*.sql`, migrations, `*.test_data.json`, files calling `.execute(`
    - **Backend**: `*.py` outside tests
    - **Frontend**: `*.ts`, `*.tsx`, `*.vue`, `*.css` and `package.json`
-   - **Docs/agent config**: `AGENTS.md`, `CLAUDE.md`, `.claude/`, `skills/`, `README`, `docs/`
+   - **Docs/agent config**: `AGENTS.md`, `.claude/`, `skills/`, `README`, `docs/`
 2. Run static checks first; they are cheap and deterministic:
    `bdt lint <changed paths>` (Postgres/psycopg SQL rules, pydantic-model
    placement, tooling config) and `bdt find-injection --diff` (SQL built from
@@ -89,7 +107,7 @@ Spawn only the ones the diff calls for.
 | **Duplication** | any code change | [bmsuisse/duplicatecode](https://github.com/bmsuisse/duplicatecode) (run its CLI on the changed paths) | Copy-pasted or near-identical logic, re-implemented helpers that already exist in the repo or in bmsuisse packages (`cross-repo-discovery`) |
 | **Security** | any code change | `bdt find-injection --diff` output (devtools#54), `fastapi-azure-auth` | Verify each "review" item `find-injection` listed (real risk or false positive?), plus what a static tool can't see: missing input validation, secrets. **If auth-related code or routes changed** (or new endpoints were added): verify every route is authenticated and authorised |
 | **Correctness** | any code change | `coding-guidelines-*` for the language | Does the implementation do what the issue/PR says? Read the whole enclosing function (bugs in untouched lines of a touched function are in scope). Hunk checklist: inverted conditions, off-by-one, falsy-zero, missing `await`, swallowed `except`, copy-paste wrong variable, mutual exclusion of optional FKs. **Removed-behavior audit:** for every deleted/replaced guard, validation or test, name the invariant and where it is re-established. **Cross-file trace:** grep callers of each changed function; check new preconditions and return shapes. **Concurrency:** check-then-act races, lock order (deadlocks), idempotency under concurrent retry, uniqueness enforced by a constraint rather than a read. **Numerics:** money as `Decimal`/numeric never float, NaN/Infinity, precision, ties in ORDER BY (add a unique tiebreaker for OFFSET paging). **Sibling-guard sweep:** when the diff adds a member to a mutually-exclusive or enumerated set (prospect vs customer, a new status/role), grep every site that tests the old members and record whether each was updated; also review any "fix: found in review" commit itself. **Fix location:** if a diff patches several callers of one shared function, name the single fix inside that function. **Side-effect ordering:** an irreversible external write (ERP/Graph/email/payment) followed by a fallible call leaves orphans or duplicates on retry. **Input-class sweep** for new parsers, guards and fallbacks: one probe each for empty, quoted, case, comments/literals, CTE/alias names, unparseable input; report the classes tried. Where cheap, reproduce with a tiny script or `pytest -k` before reporting |
-| **Agent docs & skills** | always | — | Grep the whole repo (docs site, README, code comments) for claims like "not supported"/"silently disables" about behaviour the diff changes. Were `AGENTS.md`/`CLAUDE.md` and friends followed? Do they need updating because of this change? Point out relevant skills from `bmsuisse/skills` (e.g. `pgdevkit` for Postgres/test data, `testing-strategy`, `fastapi-guideline`, `tanstack-best-practices`) — pick by changed files |
+| **Agent docs & skills** | always | — | Grep the whole repo (docs site, README, code comments) for claims like "not supported"/"silently disables" about behaviour the diff changes. Were `AGENTS.md` and friends followed? Do they need updating because of this change? Point out relevant skills from `bmsuisse/skills` (e.g. `pgdevkit` for Postgres/test data, `testing-strategy`, `fastapi-guideline`, `tanstack-best-practices`) — pick by changed files |
 | **Performance** | SQL/DB or backend data access changed | `sql-optimization`, `coding-guidelines-sql` | Work that should be one SQL statement but is a Python loop / N+1; missing indexes; unbounded results. **Are table sizes known?** If not, query them via the database MCP or ask the user before signing off — never guess |
 | **SQL/Database** | SQL/DB files changed | `coding-guidelines-sql`, `sql-optimization`, `pgdevkit` | Naming, constraints, migration safety (locks, backfills, reversibility), test-data sidecars |
 | **Backend** | Python changed | `coding-guidelines-python`, `fastapi-guideline`, `testing-strategy` | Style, typing, layering, error handling, tests exist (HTTP-level first) |
@@ -97,7 +115,7 @@ Spawn only the ones the diff calls for.
 
 For a **large** frontend change (many files or new screens), give the Frontend
 subagent its own sub-fan-out: one for data fetching/state (TanStack), one for
-components/design, and run `/design-review` if screenshots exist.
+components.
 
 ## 3. Verify and report
 

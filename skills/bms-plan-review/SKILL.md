@@ -19,7 +19,7 @@ Read [`references/ponytail.md`](references/ponytail.md) first; use it as the yar
 ## Steps
 
 1. Read the plan, the linked issue/PR (all comments), and the repo's
-   `AGENTS.md`/`CLAUDE.md`. Check the code the plan touches (use CodeGraph
+   `AGENTS.md`. Check the code the plan touches (use CodeGraph
    if `.codegraph/` exists).
 2. Check the plan against the relevant existing skills; load those that match
    the plan's scope and say which you used:
