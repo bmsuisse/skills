@@ -9,6 +9,8 @@
 
 > Reusable AI agent skills for our engineering team — composable instructions that extend coding agents (Claude Code, Cursor, Codex CLI, etc.) with company-specific workflows and best practices.
 
+> **Skills are a last resort.** Anything that can be enforced deterministically — a lint rule, a formatter setting, a pre-commit hook, a CLI check — belongs in linters or tooling, not in a skill. Put it in [bmsuisse/devtools](https://github.com/bmsuisse/devtools) (`bdt lint`, `bdt pr`, …) so it is checked automatically instead of relying on an agent to remember it. Write a skill only for judgment, conventions and context that tooling cannot express, and link to the matching devtools check where one exists.
+
 ---
 
 ## Available Skills
