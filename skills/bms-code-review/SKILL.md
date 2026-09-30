@@ -18,7 +18,8 @@ delegating to specialised subagents. You are the orchestrator: gather context,
 spawn subagents **in parallel** (single message, multiple Agent calls), merge
 and de-duplicate their findings, and report one ranked list.
 
-Load the `ponytail` skill first and tell every subagent to load it too.
+Read [`references/ponytail.md`](references/ponytail.md) first and tell every subagent to read it too
+(pass the file path). It is the yardstick for over-engineering findings.
 
 ## 0. Prepare
 

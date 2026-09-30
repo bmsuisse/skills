@@ -14,7 +14,7 @@ description: >
 Review a written implementation plan (a file, PR comment, or the plan in the
 conversation) **before implementation starts**. Cheaper to fix here than in code review.
 
-Load the `ponytail` skill first.
+Read [`references/ponytail.md`](references/ponytail.md) first; use it as the yardstick for over-engineering in the plan.
 
 ## Steps
 
