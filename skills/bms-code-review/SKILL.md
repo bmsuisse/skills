@@ -32,7 +32,8 @@ Read [`references/ponytail.md`](references/ponytail.md) first and tell every sub
 
 1. Determine the diff: `git diff $(git merge-base HEAD origin/main)...HEAD`
    (or `gh pr diff <n>`). If empty, also try `git diff HEAD`; if that is empty
-   too, say so and stop — never invent findings. Save the diff to a file and
+   too, the branch may already be merged: review the merge commit's parents
+   (`git diff <merge>^1 <merge>^2`) or say so and stop — never invent findings. Save the diff to a file and
    give every subagent its path, a 2–3 line description of the feature, and
    issue-specific "look specifically for" bullets. List changed files and classify them:
    - **SQL/DB**: `*.sql`, migrations, `*.test_data.json`, files calling `.execute(`
@@ -76,8 +77,8 @@ Spawn only the ones the diff calls for.
 |---|---|---|---|
 | **Duplication** | any code change | [bmsuisse/duplicatecode](https://github.com/bmsuisse/duplicatecode) (run its CLI on the changed paths) | Copy-pasted or near-identical logic, re-implemented helpers that already exist in the repo or in bmsuisse packages (`cross-repo-discovery`) |
 | **Security** | any code change | `bdt find-injection --diff` output (devtools#54), `fastapi-azure-auth` | Verify each "review" item `find-injection` listed (real risk or false positive?), plus what a static tool can't see: missing input validation, secrets. **If auth-related code or routes changed** (or new endpoints were added): verify every route is authenticated and authorised |
-| **Correctness** | any code change | `coding-guidelines-*` for the language | Does the implementation do what the issue/PR says? Read the whole enclosing function (bugs in untouched lines of a touched function are in scope). Hunk checklist: inverted conditions, off-by-one, falsy-zero, missing `await`, swallowed `except`, copy-paste wrong variable, mutual exclusion of optional FKs. **Removed-behavior audit:** for every deleted/replaced guard, validation or test, name the invariant and where it is re-established. **Cross-file trace:** grep callers of each changed function; check new preconditions and return shapes. **Concurrency:** check-then-act races, lock order (deadlocks), idempotency under concurrent retry, uniqueness enforced by a constraint rather than a read. **Numerics:** money as `Decimal`/numeric never float, NaN/Infinity, precision, ties in ORDER BY (add a unique tiebreaker for OFFSET paging). Where cheap, reproduce with a tiny script or `pytest -k` before reporting |
-| **Agent docs & skills** | always | — | Were `AGENTS.md`/`CLAUDE.md` and friends followed? Do they need updating because of this change? Point out relevant skills from `bmsuisse/skills` (e.g. `pgdevkit` for Postgres/test data, `testing-strategy`, `fastapi-guideline`, `tanstack-best-practices`) — pick by changed files |
+| **Correctness** | any code change | `coding-guidelines-*` for the language | Does the implementation do what the issue/PR says? Read the whole enclosing function (bugs in untouched lines of a touched function are in scope). Hunk checklist: inverted conditions, off-by-one, falsy-zero, missing `await`, swallowed `except`, copy-paste wrong variable, mutual exclusion of optional FKs. **Removed-behavior audit:** for every deleted/replaced guard, validation or test, name the invariant and where it is re-established. **Cross-file trace:** grep callers of each changed function; check new preconditions and return shapes. **Concurrency:** check-then-act races, lock order (deadlocks), idempotency under concurrent retry, uniqueness enforced by a constraint rather than a read. **Numerics:** money as `Decimal`/numeric never float, NaN/Infinity, precision, ties in ORDER BY (add a unique tiebreaker for OFFSET paging). **Sibling-guard sweep:** when the diff adds a member to a mutually-exclusive or enumerated set (prospect vs customer, a new status/role), grep every site that tests the old members and record whether each was updated; also review any "fix: found in review" commit itself. **Fix location:** if a diff patches several callers of one shared function, name the single fix inside that function. **Side-effect ordering:** an irreversible external write (ERP/Graph/email/payment) followed by a fallible call leaves orphans or duplicates on retry. **Input-class sweep** for new parsers, guards and fallbacks: one probe each for empty, quoted, case, comments/literals, CTE/alias names, unparseable input; report the classes tried. Where cheap, reproduce with a tiny script or `pytest -k` before reporting |
+| **Agent docs & skills** | always | — | Grep the whole repo (docs site, README, code comments) for claims like "not supported"/"silently disables" about behaviour the diff changes. Were `AGENTS.md`/`CLAUDE.md` and friends followed? Do they need updating because of this change? Point out relevant skills from `bmsuisse/skills` (e.g. `pgdevkit` for Postgres/test data, `testing-strategy`, `fastapi-guideline`, `tanstack-best-practices`) — pick by changed files |
 | **Performance** | SQL/DB or backend data access changed | `sql-optimization`, `coding-guidelines-sql` | Work that should be one SQL statement but is a Python loop / N+1; missing indexes; unbounded results. **Are table sizes known?** If not, query them via the database MCP or ask the user before signing off — never guess |
 | **SQL/Database** | SQL/DB files changed | `coding-guidelines-sql`, `sql-optimization`, `pgdevkit` | Naming, constraints, migration safety (locks, backfills, reversibility), test-data sidecars |
 | **Backend** | Python changed | `coding-guidelines-python`, `fastapi-guideline`, `testing-strategy` | Style, typing, layering, error handling, tests exist (HTTP-level first) |
@@ -104,8 +105,9 @@ components/design, and run `/design-review` if screenshots exist.
    (input/state → wrong result), and a fix. When citing a convention, quote
    the exact rule and its source file. Don't assert facts about the repo
    (frameworks, versions) you didn't check.
-5. End with which subagents ran, which were skipped (and why), and the number
-   of refuted candidates.
+5. End with which subagents ran, which were skipped (and why), whether you
+   had to play all roles yourself because no Agent tool was available, and the
+   number of refuted candidates.
 
 ### Subagent output format
 
