@@ -3,7 +3,7 @@
 # requires-python = ">=3.11"
 # ///
 """
-PreToolUse hook: blocks PR-publish commands until /code-review has run this session.
+PreToolUse hook: blocks PR-publish commands until /code-review (or /bms-code-review) has run this session.
 
 Reads the hook's stdin JSON (tool_name, tool_input, transcript_path), and for Bash
 commands that publish/complete/un-draft a PR:
@@ -19,9 +19,9 @@ commands that publish/complete/un-draft a PR:
   gh pr merge
 
 ...it checks the session transcript - plus any subagent transcripts under
-<session-dir>/subagents/ - for a prior Skill(code-review) invocation (matching
+<session-dir>/subagents/ - for a prior Skill(code-review) or Skill(bms-code-review) invocation (matching
 dev-workflow's "Review. Run /code-review on the diff" step). A subagent that ran
-/code-review on the caller's behalf satisfies the gate too. Denies if no such
+/code-review (or /bms-code-review) on the caller's behalf satisfies the gate too. Denies if no such
 invocation is found anywhere in the session.
 
 Matching is done on shell-tokenized words (via shlex), not a raw substring/regex
@@ -38,7 +38,9 @@ import re
 import shlex
 import sys
 
-CODE_REVIEW_SKILL = re.compile(r'"skill"\s*:\s*"code-review(:[^"]*)?"')
+# Accepts the built-in /code-review and BMS's /bms-code-review, optionally plugin-prefixed
+# ("plugin:code-review").
+CODE_REVIEW_SKILL = re.compile(r'"skill"\s*:\s*"(?:[^"]*:)?(?:bms-)?code-review(?::[^"]*)?"')
 
 
 def tokenize(command: str) -> list[str]:
@@ -143,9 +145,9 @@ def main() -> None:
         return
 
     deny(
-        "Blocked: this command publishes/completes a PR, but /code-review has not "
-        "been run yet in this session (directly or via a subagent). Run /code-review "
-        "first, then retry."
+        "Blocked: this command publishes/completes a PR, but neither /code-review nor "
+        "/bms-code-review has been run yet in this session (directly or via a subagent). "
+        "Run one of them first, then retry."
     )
 
 

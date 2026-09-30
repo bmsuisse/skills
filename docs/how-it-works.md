@@ -67,7 +67,7 @@ The `dev-workflow` plugin ships three enforcement hooks:
 
 - **PreToolUse on Edit/Write/NotebookEdit** (deny) — blocks edits outside a `worktree*`/`.worktree*`/`.claude` path, so changes land in an isolated worktree rather than a shared main checkout.
 - **PreToolUse on EnterWorktree** (allow) — auto-approves entering or creating a worktree whose `path`/`name` matches the same `worktree*`/`.worktree*` pattern, so switching into an already-isolated worktree doesn't hit a permission prompt.
-- **PreToolUse on Bash** (deny) — blocks commands that publish or complete a PR (`bdt pr publish`, `bdt pr create --no-draft`, `az repos pr create/update --auto-complete`, `gh pr create`/`ready`/`merge`, etc.) unless `/code-review` has already run earlier in the session — directly or via a subagent.
+- **PreToolUse on Bash** (deny) — blocks commands that publish or complete a PR (`bdt pr publish`, `bdt pr create --no-draft`, `az repos pr create/update --auto-complete`, `gh pr create`/`ready`/`merge`, etc.) unless `/code-review` or `/bms-code-review` has already run earlier in the session — directly or via a subagent.
 
 ## Plugins
 
