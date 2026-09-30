@@ -32,7 +32,7 @@ when the tool genuinely isn't available (say so).
    bug or how it was resolved in source code comments.
    Once a step is done, commit&push. Commit early, commit often.
    see `references/unrelated-bugs.md` if you spot a bug outside the current task's scope.
-5. **Review.** Run `/bms-code-review --quick` (or, where it isn't available, `/code-review low`) on the diff and address findings. Either satisfies the PR-publish gate.
+5. **Review (mid-work).** Run `/bms-code-review --quick` (or, where it isn't available, `/code-review low`) on the diff after a meaningful chunk and address findings. Cheap, but it only catches the most obvious issues — it is not the pre-publish review.
 6. **Test.** Run a relevant subset of tests (not the full suite — that's CI's
    job) covering what changed.
 7. **Screenshots.** If the change is visual/UI, capture before/after
@@ -40,8 +40,7 @@ when the tool genuinely isn't available (say so).
    Then do a "/design-review" for the screenshots using a subagent and adress findings.
    If working from an issue, also post the screenshots as an update on the issue.
    Do not stop the Web server, ask human to click through changes and verify. once ok for human, proceed.
-8. **Review step 2**
-   If the change was visual or of big impact, do a second round of review using `/bms-code-review --full` (or `/code-review` medium or high, depending on risk). Fix findings (ask if unsure).
+8. **Pre-publish review (always).** Run `/bms-code-review --full` on the whole diff (or, where it isn't available, `/code-review` at medium, or high for risky changes) and fix findings (ask if unsure). This is the review the PR-publish gate is really for; it is required even if the mid-work `--quick` review was clean, and especially for SQL, auth, concurrency or money handling.
 9. **Publish** the PR via `bdt pr publish`, which will trigger CI
 10. **Watch CI.** Run `bdt pr status --wait`. If remote checks fail, fix and
    push — don't just report the failure.
