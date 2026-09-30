@@ -18,15 +18,21 @@ delegating to specialised subagents. You are the orchestrator: gather context,
 spawn subagents **in parallel** (single message, multiple Agent calls), merge
 and de-duplicate their findings, and report one ranked list.
 
-Read [`references/ponytail.md`](references/ponytail.md) first and tell every subagent to read it too
-(pass the file path). It is the yardstick for over-engineering findings.
+Read [`references/ponytail.md`](references/ponytail.md) first. It is the yardstick for
+over-engineering findings. Pass its path only to the Correctness, Backend and
+Frontend subagents; give the others this two-line summary instead: *"Flag code
+that skips a rung: reinvented helper, new dependency for a few lines,
+single-implementation abstraction, speculative config. Never flag validation,
+security or accessibility for removal."*
 
 ## Effort
 
-- `--quick` (default for diffs under ~5 files that touch no SQL/auth): one
+- `--quick` (what `dev-workflow` step 5 uses; also the default for diffs under ~5 files that touch no SQL/auth): one
   single-pass review by you, no fan-out, skip test files, at most 4 findings.
   Still run the static checks.
-- full (default otherwise, or `--full`): everything below.
+- full (default otherwise, or `--full`): everything below. Roughly 10x the
+  token cost of `--quick`, so use it for SQL/auth/large changes and the
+  second review round.
 
 ## 0. Prepare
 
@@ -96,7 +102,8 @@ components/design, and run `/design-review` if screenshots exist.
 ## 3. Verify and report
 
 1. Merge findings and drop duplicates and anything `bdt lint`/`find-injection` already reported.
-2. **Verify pass:** spawn one verifier per remaining finding (in parallel).
+2. **Verify pass:** verify only Blocking and Should-fix candidates (nits skip
+   it). Spawn one verifier per file's candidates, up to 4 findings each (in parallel).
    Each re-reads the code, quotes the offending line, and returns
    `CONFIRMED`, `PLAUSIBLE` or `REFUTED`. Keep the first two; drop REFUTED and
    count them. Subagents pass borderline candidates up instead of dropping them.
