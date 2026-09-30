@@ -30,7 +30,11 @@ Load the `ponytail` skill first and tell every subagent to load it too.
    - **Docs/agent config**: `AGENTS.md`, `CLAUDE.md`, `.claude/`, `skills/`, `README`, `docs/`
 2. Run static checks first; they are cheap and deterministic:
    `bdt lint <changed paths>` (Postgres/psycopg SQL rules, pydantic-model
-   placement, tooling config). Also run the repo's own `ruff`/`ty`/`biome`
+   placement, tooling config) and `bdt find-injection --diff` (SQL built from
+   f-strings/concatenation, eval/exec/shell/unsafe deserialisation, innerHTML/
+   `dangerouslySetInnerHTML`/un-sandboxed iframes, missing or weakened CSP).
+   Its errors are definite findings; its "review" items go to the Security
+   subagent to verify. Also run the repo's own `ruff`/`ty`/`biome`
    if configured. Report their findings verbatim and don't have subagents
    re-derive them.
 3. Give each subagent: the diff, the changed-file list, the relevant
@@ -57,7 +61,7 @@ Spawn only the ones the diff calls for.
 | Subagent | When | Skills / tools to load | Looks for |
 |---|---|---|---|
 | **Duplication** | any code change | [bmsuisse/duplicatecode](https://github.com/bmsuisse/duplicatecode) (run its CLI on the changed paths) | Copy-pasted or near-identical logic, re-implemented helpers that already exist in the repo or in bmsuisse packages (`cross-repo-discovery`) |
-| **Security** | any code change | the injection/auth command from [devtools#54](https://github.com/bmsuisse/devtools/issues/54) once released (`bdt lint --help`); until then manual review | SQL/command injection, unsafe deserialisation, secrets, missing input validation. **If auth-related code or routes changed** (or new endpoints were added): verify every route is authenticated and authorised (`fastapi-azure-auth`) |
+| **Security** | any code change | `bdt find-injection --diff` output (devtools#54), `fastapi-azure-auth` | Verify each "review" item `find-injection` listed (real risk or false positive?), plus what a static tool can't see: missing input validation, secrets. **If auth-related code or routes changed** (or new endpoints were added): verify every route is authenticated and authorised |
 | **Correctness** | any code change | `coding-guidelines-*` for the language | Does the implementation do what the issue/PR says? Edge cases: empty/None/duplicates, timezones, off-by-one, concurrency, transactions, error paths, pagination, idempotency |
 | **Agent docs & skills** | always | — | Were `AGENTS.md`/`CLAUDE.md` and friends followed? Do they need updating because of this change? Point out relevant skills from `bmsuisse/skills` (e.g. `pgdevkit` for Postgres/test data, `testing-strategy`, `fastapi-guideline`, `tanstack-best-practices`) — pick by changed files |
 | **Performance** | SQL/DB or backend data access changed | `sql-optimization`, `coding-guidelines-sql` | Work that should be one SQL statement but is a Python loop / N+1; missing indexes; unbounded results. **Are table sizes known?** If not, query them via the database MCP or ask the user before signing off — never guess |
