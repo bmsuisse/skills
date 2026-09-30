@@ -64,10 +64,15 @@ One subagent answers: is the work placed in the right layer?
 Also check **altitude**: special cases layered onto shared infrastructure
 (e.g. `if prospect … else customer …` sprawl) — name the more general change.
 
-If it finds a **big issue** (wrong layering, logic duplicated across layers,
-data model that fights the feature): **stop**. Report only that and tell the
-user the change must be redone; don't spend effort on line-level review.
-Otherwise continue.
+**Stop only for a redo-level problem:** the change is in the wrong layer as a
+whole, business logic is duplicated across layers, or the data model fights
+the feature, so most line-level findings would be void once it is redone.
+Report just that and tell the user the change must be redone.
+
+Anything fixable in place (a bug, a missing constraint or lock, business logic
+that belongs in one SQL statement, missing auth) is **not** a stop: put the
+gate finding at the top of the report and continue with the parallel reviews.
+When unsure, continue.
 
 ## 2. Parallel reviews
 
