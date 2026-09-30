@@ -21,10 +21,20 @@ and de-duplicate their findings, and report one ranked list.
 Read [`references/ponytail.md`](references/ponytail.md) first and tell every subagent to read it too
 (pass the file path). It is the yardstick for over-engineering findings.
 
+## Effort
+
+- `--quick` (default for diffs under ~5 files that touch no SQL/auth): one
+  single-pass review by you, no fan-out, skip test files, at most 4 findings.
+  Still run the static checks.
+- full (default otherwise, or `--full`): everything below.
+
 ## 0. Prepare
 
 1. Determine the diff: `git diff $(git merge-base HEAD origin/main)...HEAD`
-   (or `gh pr diff <n>`). List changed files and classify them:
+   (or `gh pr diff <n>`). If empty, also try `git diff HEAD`; if that is empty
+   too, say so and stop — never invent findings. Save the diff to a file and
+   give every subagent its path, a 2–3 line description of the feature, and
+   issue-specific "look specifically for" bullets. List changed files and classify them:
    - **SQL/DB**: `*.sql`, migrations, `*.test_data.json`, files calling `.execute(`
    - **Backend**: `*.py` outside tests
    - **Frontend**: `*.ts`, `*.tsx`, `*.vue`, `*.css` and `package.json`
@@ -50,6 +60,9 @@ One subagent answers: is the work placed in the right layer?
 - Do in **backend** (Python) the business logic that isn't cleanly declarative.
 - Do in **frontend** only what must be there (presentation, interaction, local UI state).
 
+Also check **altitude**: special cases layered onto shared infrastructure
+(e.g. `if prospect … else customer …` sprawl) — name the more general change.
+
 If it finds a **big issue** (wrong layering, logic duplicated across layers,
 data model that fights the feature): **stop**. Report only that and tell the
 user the change must be redone; don't spend effort on line-level review.
@@ -63,7 +76,7 @@ Spawn only the ones the diff calls for.
 |---|---|---|---|
 | **Duplication** | any code change | [bmsuisse/duplicatecode](https://github.com/bmsuisse/duplicatecode) (run its CLI on the changed paths) | Copy-pasted or near-identical logic, re-implemented helpers that already exist in the repo or in bmsuisse packages (`cross-repo-discovery`) |
 | **Security** | any code change | `bdt find-injection --diff` output (devtools#54), `fastapi-azure-auth` | Verify each "review" item `find-injection` listed (real risk or false positive?), plus what a static tool can't see: missing input validation, secrets. **If auth-related code or routes changed** (or new endpoints were added): verify every route is authenticated and authorised |
-| **Correctness** | any code change | `coding-guidelines-*` for the language | Does the implementation do what the issue/PR says? Edge cases: empty/None/duplicates, timezones, off-by-one, concurrency, transactions, error paths, pagination, idempotency |
+| **Correctness** | any code change | `coding-guidelines-*` for the language | Does the implementation do what the issue/PR says? Read the whole enclosing function (bugs in untouched lines of a touched function are in scope). Hunk checklist: inverted conditions, off-by-one, falsy-zero, missing `await`, swallowed `except`, copy-paste wrong variable, mutual exclusion of optional FKs. **Removed-behavior audit:** for every deleted/replaced guard, validation or test, name the invariant and where it is re-established. **Cross-file trace:** grep callers of each changed function; check new preconditions and return shapes. **Concurrency:** check-then-act races, lock order (deadlocks), idempotency under concurrent retry, uniqueness enforced by a constraint rather than a read. **Numerics:** money as `Decimal`/numeric never float, NaN/Infinity, precision, ties in ORDER BY (add a unique tiebreaker for OFFSET paging). Where cheap, reproduce with a tiny script or `pytest -k` before reporting |
 | **Agent docs & skills** | always | — | Were `AGENTS.md`/`CLAUDE.md` and friends followed? Do they need updating because of this change? Point out relevant skills from `bmsuisse/skills` (e.g. `pgdevkit` for Postgres/test data, `testing-strategy`, `fastapi-guideline`, `tanstack-best-practices`) — pick by changed files |
 | **Performance** | SQL/DB or backend data access changed | `sql-optimization`, `coding-guidelines-sql` | Work that should be one SQL statement but is a Python loop / N+1; missing indexes; unbounded results. **Are table sizes known?** If not, query them via the database MCP or ask the user before signing off — never guess |
 | **SQL/Database** | SQL/DB files changed | `coding-guidelines-sql`, `sql-optimization`, `pgdevkit` | Naming, constraints, migration safety (locks, backfills, reversibility), test-data sidecars |
@@ -74,18 +87,31 @@ For a **large** frontend change (many files or new screens), give the Frontend
 subagent its own sub-fan-out: one for data fetching/state (TanStack), one for
 components/design, and run `/design-review` if screenshots exist.
 
-## 3. Report
+## 3. Verify and report
 
-Merge findings, drop duplicates and anything `bdt lint` already reported,
-and rank by severity. Verify each finding against the code before reporting;
-drop speculation. Group as **Blocking / Should fix / Nit**, each with
-`file:line`, the problem, and a concrete fix. End with which subagents ran
-and which were skipped (and why).
+1. Merge findings and drop duplicates and anything `bdt lint`/`find-injection` already reported.
+2. **Verify pass:** spawn one verifier per remaining finding (in parallel).
+   Each re-reads the code, quotes the offending line, and returns
+   `CONFIRMED`, `PLAUSIBLE` or `REFUTED`. Keep the first two; drop REFUTED and
+   count them. Subagents pass borderline candidates up instead of dropping them.
+3. **Rank and cap** at about 8 findings, correctness/security/data-loss first.
+   Group as **Blocking / Should fix / Nit**. *Blocking* is reserved for
+   verified bugs, security issues and data loss/corruption. Perf concerns and
+   missing work outside the task's stated scope are at most *Should fix*
+   unless demonstrated (e.g. by table sizes or a reproduction). Findings that
+   would exceed the cap go into a one-line "also noticed" list.
+4. Each finding: `file:line`, the problem, a concrete `failure_scenario`
+   (input/state → wrong result), and a fix. When citing a convention, quote
+   the exact rule and its source file. Don't assert facts about the repo
+   (frameworks, versions) you didn't check.
+5. End with which subagents ran, which were skipped (and why), and the number
+   of refuted candidates.
 
 ### Subagent output format
 
-Return findings only, as `severity | file:line | problem | suggested fix`,
-plus a one-line "nothing found" if clean. No praise, no restating the diff.
+Return findings only, as `severity | file:line | problem | failure_scenario | suggested fix`,
+plus a one-line "nothing found" if clean. A finding without a concrete
+failure_scenario is dropped. No praise, no restating the diff.
 
 ## Options
 
