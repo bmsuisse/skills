@@ -1,0 +1,6 @@
+{
+  "name": "bdt-status",
+  "version": "0.1.0",
+  "description": "Shows the current branch's PR and the issue it closes above the prompt, with the build state (uses `bdt pr info`)",
+  "author": { "name": "BMS" }
+}

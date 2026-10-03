@@ -58,6 +58,7 @@ Skills are now active. Type `/` to see available slash commands.
 | `bms` | Master skill + all core standards | All standards via `/bms` |
 | `caveman` | caveman, caveman-review, caveman-commit | Token-efficient comms |
 | `azure-deploy` | azure-deploy | Azure deployments |
+| `bdt-status` | (a Claude Code *mod*, no skills; needs Claude Code ≥ 2.1.287 and `bdt` ≥ 0.30.0) shows `PR #69 ✗ failing · closes #68` above the prompt, from `bdt pr info --json` | Seeing the PR, its issue and the build state without leaving the session |
 | `azure-diagnostics` | azure-diagnostics | Azure diagnostics |
 | `dev-workflow` | dev-workflow (+ hooks: worktree-only edits, auto-approved worktree entry, PR-publish gate requiring `/code-review` or `/bms-code-review`; plus `bms-code-review` and `bms-plan-review`) | Enforcing the team's worktree → draft PR → review → publish flow |
 
