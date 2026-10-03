@@ -136,6 +136,11 @@
       }
     },
     {
+      "name": "bdt-status",
+      "description": "Claude Code mod (needs Claude Code >= 2.1.287 and bmsdna-devtools >= 0.30.0): shows the current branch's PR and the issue it closes above the prompt, with the build state, from `bdt pr info --json`.",
+      "source": "./mods/bdt-status"
+    },
+    {
       "name": "azure-diagnostics",
       "description": "Systematic diagnosis and remediation for Azure production issues using AppLens, Monitor, and resource health. Covers Container Apps, Function Apps, and AKS clusters.",
       "source": {
