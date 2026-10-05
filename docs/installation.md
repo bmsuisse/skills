@@ -47,6 +47,10 @@ Or via the Claude Code command palette:
 
 Skills are now active. Type `/` to see available slash commands.
 
+### Troubleshooting: "its source doesn't match its extraKnownMarketplaces entry"
+
+`/plugin marketplace add bmsuisse/skills` registers a plain `github` source. If your `extraKnownMarketplaces` entry adds extra fields (`ref`, `sparsePaths`), the sources differ and Claude Code refuses the add. Use exactly the entry shown above (only `source` and `repo`), or skip the `add` command, since the settings entry already declares the marketplace.
+
 ### Plugin reference
 
 | Plugin | Skills | Use for |
