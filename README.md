@@ -80,8 +80,7 @@ Add to `~/.claude/settings.json` to install all plugins:
     "bmsuisse-skills": {
       "source": {
         "source": "github",
-        "repo": "bmsuisse/skills",
-        "ref": "main"
+        "repo": "bmsuisse/skills"
       }
     }
   },
