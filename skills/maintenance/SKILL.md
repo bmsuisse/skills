@@ -20,7 +20,7 @@ Work in a worktree and commit after each step (`/dev-workflow`). Use `uv` and `b
 ## Rule for bump and audit: never lock
 
 No `==` pins, `<` caps, `overrides`/`resolutions`/`override-dependencies`/`constraint-dependencies`,
-`exclude-newer` or `--exact` to dodge an upgrade. Existing pins stay; mention stale-looking ones in the PR.
+`exclude-newer` or `--exact` to dodge an upgrade. Existing pins stay (except one blocking an audit fix); mention stale-looking ones in the PR.
 Can't upgrade? Leave the package where it is, `bdt issue create --title "..."`, link it in the PR.
 
 Deterministic checks belong in `bdt` (devtools); this skill keeps the rules and the judgment.
