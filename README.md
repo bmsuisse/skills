@@ -52,6 +52,7 @@
 | [kendo-ui-react](./skills/kendo-ui-react/) | KendoReact component library patterns and best practices for React developers. Trigger whenever the user works with K… |
 | [kendo-ui-vue](./skills/kendo-ui-vue/) | Use this skill whenever the user is working with Kendo UI for Vue — including the Data Grid, DropDownList, ComboBox,… |
 | [kull-generic-backend](./skills/kull-generic-backend/) | Kull.GenericBackend — an ASP.NET Core middleware (Kull-AG/kull-generic-backend, NuGet package Kull.GenericBackend) th… |
+| [maintenance](./skills/maintenance/) | Periodic repo upkeep for BMS Python (uv) and JS/TS (bun) repos, as one skill with a mode argument: `dead-code` (find/… |
 | [nicegui](./skills/nicegui/) | Build Python web UIs with NiceGUI — covering layout, widgets, data binding, routing, and the AgGrid data grid. Use th… |
 | [playwright-python](./skills/playwright-python/) | Browser automation and visual verification with Playwright in Python. Use this whenever the user wants to drive a bro… |
 | [prek](./skills/prek/) | Set up code formatting and pre-commit hooks using prek (fast Rust-based alternative to pre-commit) with prek.toml con… |
