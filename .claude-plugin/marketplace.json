@@ -98,6 +98,12 @@
       ]
     },
     {
+      "name": "maintenance",
+      "description": "Repo maintenance skills: dead code analysis, dependency bumps, and dependency vulnerability audits (bun/uv)",
+      "source": "./",
+      "skills": ["./dead-code-analysis", "./bump-dependencies", "./audit-dependencies"]
+    },
+    {
       "name": "dev-workflow",
       "description": "Enforces the team dev workflow: worktree-first edits, auto-approved entry into worktree-shaped dirs, and a gate that blocks bdt/az/gh commands which publish or complete a PR until /code-review or /bms-code-review has run. Also ships the bms-code-review and bms-plan-review skills.",
       "source": "./",

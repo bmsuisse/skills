@@ -19,12 +19,14 @@
 | Skill | Description |
 |---|---|
 | [aiochannel-python](./skills/aiochannel-python/) | Correct patterns for channel-based asyncio concurrency in Python using the aiochannel library. Use this skill wheneve… |
+| [audit-dependencies](./skills/audit-dependencies/) | Check a BMS repo's dependencies for known vulnerabilities with `bun audit` and `uv audit`, and fix them by upgrading,… |
 | [autoresearch](./skills/autoresearch/) | Autonomous iterative optimization loop for Python, SQL, ML, and Spark/Databricks. Define a measurable goal; the skill… |
 | [azure-cost](./skills/azure-cost/) | Query, analyze, and reduce Azure spending via the Cost Management REST API and Azure CLI. Covers cost breakdowns by s… |
 | [bms](./skills/bms/) | Master skill for the bmsuisse platform — routes to the relevant skills based on sub-command. Always enables caveman c… |
 | [bms-code-review](./skills/bms-code-review/) | BMS code review that fans out one focused subagent per concern (architecture, duplication, security, correctness, age… |
 | [bms-frontend-design](./skills/bms-frontend-design/) | The BMS visual identity for internal web apps, built on the shared `@bmsuisse/ui` (sidebar/nav, form, dialog, and oth… |
 | [bms-plan-review](./skills/bms-plan-review/) | Review an implementation plan before any code is written: checks it against BMS conventions and the existing skills (… |
+| [bump-dependencies](./skills/bump-dependencies/) | Bump Python (uv) and JS/TS (bun) dependencies in a BMS repo in small verified steps, without pinning or locking versi… |
 | [clockify](./skills/clockify/) | Query and log time entries in Clockify via its REST API — check a timesheet, look up the workspace/user/project, crea… |
 | [code-comments](./skills/code-comments/) | Write and review code comments so they earn their place instead of adding noise. Use this whenever writing new code (… |
 | [codeunit-analyzer](./skills/codeunit-analyzer/) | Comprehensive C-AL performance analyzer for Classic Microsoft Dynamics NAV (Navision). Targets Classic NAV anti-patte… |
@@ -35,6 +37,7 @@
 | [data-modeling-dimensional](./skills/data-modeling-dimensional/) | Dimensional data modeling guide for the Fabricks platform — covers the full pipeline from staging through raw, transf… |
 | [databricks-cli](./skills/databricks-cli/) | Databricks CLI operations: auth, profiles, data exploration, bundles, and notebook execution. Use this skill for ANY… |
 | [databricks-sql-autotuner](./skills/databricks-sql-autotuner/) | Databricks SQL query optimizer and error fixer: analyzes a slow or broken SQL query, rewrites it for speed using SQL-… |
+| [dead-code-analysis](./skills/dead-code-analysis/) | Find and remove dead code in a Python and/or React/TypeScript repo: unused code, unreferenced .sql files, backend rou… |
 | [design-review](./skills/design-review/) | Review a web app or page for visual design quality — layout, spacing, typography, colour/contrast, visual hierarchy,… |
 | [deslop](./skills/deslop/) | Remove AI slop from code and pull requests. Use this skill whenever the user wants to clean up AI-generated code, rev… |
 | [dev-workflow](./skills/dev-workflow/) | End-to-end workflow for non-trivial coding tasks: worktree, draft PR early, implement, review, test, publish. Trigger… |
