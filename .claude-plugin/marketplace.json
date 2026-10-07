@@ -99,9 +99,9 @@
     },
     {
       "name": "maintenance",
-      "description": "Repo maintenance skills: dead code analysis, dependency bumps, and dependency vulnerability audits (bun/uv)",
+      "description": "Repo maintenance: dead code analysis, dependency bumps, and dependency vulnerability audits (bun/uv), via /maintenance <mode>",
       "source": "./",
-      "skills": ["./dead-code-analysis", "./bump-dependencies", "./audit-dependencies"]
+      "skills": ["./maintenance"]
     },
     {
       "name": "dev-workflow",
