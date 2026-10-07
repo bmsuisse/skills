@@ -7,7 +7,8 @@ description: >
   dependencies), `audit` (`bun audit` / `uv audit` vulnerability fixes), or `all`.
   Use for "maintenance", "find dead code", "remove unused code", "bump
   dependencies", "update packages", "bun audit", "uv audit", "vulnerable
-  dependency", "CVE", "Dependabot alert". Invoke as `/maintenance <mode>`.
+  dependency", "CVE", "Dependabot alert". Invoke as `/maintenance <mode>`. Repo-wide upkeep, not for
+  reviewing a pending diff (deslop, security-review).
 ---
 
 # Maintenance
@@ -21,6 +22,8 @@ Work in a worktree and commit after each step (`/dev-workflow`). Use `uv` and `b
 No `==` pins, `<` caps, `overrides`/`resolutions`/`override-dependencies`/`constraint-dependencies`,
 `exclude-newer` or `--exact` to dodge an upgrade. Existing pins stay; mention stale-looking ones in the PR.
 Can't upgrade? Leave the package where it is, `bdt issue create --title "..."`, link it in the PR.
+
+Deterministic checks belong in `bdt` (devtools); this skill keeps the rules and the judgment.
 
 ## Modes
 

@@ -12,8 +12,8 @@ Tools only *suggest*. Verify each candidate before deleting.
 | TS unused imports/vars | `bun x @biomejs/biome lint .` |
 
 - `bdt dead-code` runs only what `[tool.bdt.dead_code]` configures (`sql_roots`, `[[tool.bdt.dead_code.apps]]`), exit 2 if
-  nothing. Configure it, don't skip it: [README](https://github.com/bmsuisse/devtools#bdt-dead-code). Update bdt first
-  (`uv tool upgrade bmsdna-devtools`). Adopting `routes` on a big repo: `--update-baseline`, commit it, don't mass-delete.
+  nothing. Configure it, don't skip it: [README](https://github.com/bmsuisse/devtools#bdt-dead-code). Needs bdt >= 0.31.0 (`uv tool upgrade bmsdna-devtools`); older versions lack the command.
+  Adopting `routes` on a big repo: `--update-baseline`, commit it, don't mass-delete.
 - vulture is noisy: whitelist framework-reached names in `vulture_whitelist.py`. knip reporting half the repo
   means entry points are missing: add `knip.json`. `--production` ignores test-only usage.
 
