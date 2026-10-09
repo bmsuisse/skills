@@ -60,6 +60,17 @@
       ]
     },
     {
+      "name": "clean-code",
+      "description": "Clean code: readability principles, deep-module architecture review, and dead-code / stale-dependency audits",
+      "source": "./",
+      "skills": [
+        "./clean-code",
+        "./codebase-design",
+        "./dead-code-audit",
+        "./improve-codebase-architecture"
+      ]
+    },
+    {
       "name": "ui",
       "description": "UI skills: data tables, visual design/QA review, and writing style",
       "source": "./",
