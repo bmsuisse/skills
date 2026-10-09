@@ -7,8 +7,9 @@ are cheap to check by machine, so make them gates.
 ## File size
 
 `scripts/check_file_size.py` (copy into the repo's `scripts/`). Limits per
-extension, tests 1.5x, generated and lock files skipped, warning above 600 lines
-so growth is visible before it blocks. Edit the `LIMITS` table to match the repo.
+extension, tests 1.5x (`test_*`, `*_test.py`, `conftest.py`, `*.spec.ts`, files under `tests/`),
+generated and lock files skipped, a warning at 75% of the limit so growth is
+visible before it blocks. Edit the `LIMITS` table to match the repo.
 
 prek hook (see the `prek` skill for the surrounding file):
 
@@ -23,7 +24,9 @@ hooks = [
 Adopting it in an existing repo: run `python3 scripts/check_file_size.py $(git ls-files)` once.
 Files that already exceed a limit fail forever, so either raise that extension's
 limit to just above the current maximum and ratchet it down over time, or list
-the legacy files in a temporary `SKIP` set with a comment. Do not split a file
+the legacy files in a temporary `SKIP` set with a comment. Markdown has the
+lowest limit (500) and long `SKILL.md`/docs files hit it: raise or exempt those
+with a comment instead of splitting arbitrarily. Do not split a file
 only to satisfy the number: extract a cohesive module (one reason to change) and
 move its tests with it.
 
@@ -39,9 +42,16 @@ uvx duplicatecode fragments <dir>                   # copied blocks inside diffe
 git diff origin/main | uvx duplicatecode diff --repo .   # does this PR re-implement something that exists?
 ```
 
-CI step: run the `scan` line above; a non-zero exit fails the job. Start with the
-`diff` check on pull requests (only new code can fail it), and turn on the
-repo-wide `scan --fail-on-found` once the existing groups are fixed or excluded.
+Start with the `diff` check on pull requests (only new code can fail it). CI needs
+the base branch and enough history for a merge-base:
+
+```sh
+git fetch origin main   # or checkout with fetch-depth: 0
+git diff origin/main...HEAD | uvx duplicatecode diff --repo .
+```
+
+Turn on the repo-wide `scan --fail-on-found` only once the existing groups are
+fixed or excluded, otherwise it fails on pre-existing duplicates immediately.
 
 Reading a report:
 

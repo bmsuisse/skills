@@ -130,7 +130,7 @@ Before merging, run the duplicate gate below.
 - **Keep files small.** Split by reason to change first; line limits are only
   the backstop that catches growth. BMS limits per file: `.py`/`.sql` 1200,
   `.ts` 600, `.tsx`/`.vue` 900, `.md` 500, `.sh` 100 (tests get 1.5x), with a
-  warning above 600. A file near its limit is a signal to extract a cohesive
+  warning at 75% of the limit. A file near its limit is a signal to extract a cohesive
   module, not to reformat. Generated code is exempt.
 - No grab-bag `utils`/`helpers`/`common` dumping grounds; put helpers next to
   the code that uses them, or name the module for what it provides.
