@@ -29,7 +29,7 @@ replace the generic patterns below for the endpoints/UI they cover:
     const [state, setState] = useState<GridState>({ page: 0, pageSize: 20, sort: [], filters: [] })
     const { data } = useQuery({
       queryKey: ['users', state],
-      queryFn: () => fetchUsers(state), // or the generated getUsersOptions({ query: toApiParams(state) }).queryFn
+      queryFn: ({ signal }) => fetchUsers(state, signal), // forward `signal` (see Cancelling superseded requests); or the generated getUsersOptions({ query: toApiParams(state) }).queryFn
     })
 
     return (
@@ -210,6 +210,36 @@ Place boundaries granularly so one failing section does not break the entire pag
 Use `select` to transform data outside the component, `useQueries` for dynamic
 parallel queries, and `placeholderData: keepPreviousData` for pagination. Full
 examples: [references/performance-and-errors.md](references/performance-and-errors.md#performance).
+
+---
+
+### Cancelling superseded requests (HIGH)
+
+When the query key changes while a request is still in flight (debounced search-as-you-type, grid filter/sort/page changes, switching rows), the old request is useless. TanStack Query hands every `queryFn` an `AbortSignal` and aborts it when the key is no longer observed — **but only if the `queryFn` actually passes `signal` to the HTTP call.** A `queryFn` that ignores it never aborts: the request runs to the end and burns a backend connection. Our pgdevkit backends (`fetch_all`, `PostgresJsonResponse`) cancel the running Postgres query as soon as the client connection closes, so aborting on the client frees the database too.
+
+```tsx
+// ✅ generated options already forward it — prefer them
+useQuery(searchCustomersOptions({ query: { q: debouncedQ } }))
+
+// ✅ hand-written: take `signal` from the context and pass it on
+useQuery({
+  queryKey: ['customer-search', debouncedQ],
+  queryFn: async ({ signal }) => {
+    const { data } = await searchCustomers({ query: { q: debouncedQ }, signal, throwOnError: true })
+    return data
+  },
+  enabled: debouncedQ.length >= 2,
+})
+
+// ❌ never aborts, old searches keep running on the server
+queryFn: async () => (await searchCustomers({ query: { q: debouncedQ }, throwOnError: true })).data
+```
+
+- Helpers called from a `queryFn` (`fetchUsers(state)`, the `search(query)` prop of async comboboxes, `api.getX()` wrappers) take an optional `signal?: AbortSignal` and forward it to `fetch`/the SDK call. Don't drop it in a wrapper.
+- Debounce the *key* (`useDebounce(q)`), not the fetch: the debounced value goes into `queryKey` and the abort comes for free. Don't hand-roll `AbortController` + `useEffect` for data that can live in `useQuery`.
+- An aborted query is not an error: TanStack drops it silently. Never surface `AbortError`/`CancelledError` as a toast or log entry from your own `try/catch`.
+- Never abort writes. Mutations don't receive a signal; keep it that way (a half-finished POST is worse than a slow one).
+- Pair with `placeholderData: keepPreviousData` (or `(prev) => prev`) so the list doesn't flash empty between keys.
 
 ---
 
@@ -468,6 +498,7 @@ const mutation = useMutation({
 | `select` with an unstable function reference | Wrap selector in `useCallback` |
 | Transforming query data in component body | Move transformation into `select` |
 | Calling `useQuery` in a loop | Use `useQueries` for dynamic parallel queries |
+| `queryFn` that doesn't pass `signal` to the request (superseded searches/filters keep running server-side) | `queryFn: ({ signal }) => sdkCall({ ..., signal })`, see [Cancelling superseded requests](#cancelling-superseded-requests-high) |
 | Hand-written `fetch()`/`queryFn` for an endpoint that has an OpenAPI schema | Use the generated client's `xOptions()` (see [In this codebase](#in-this-codebase-bms-stack)) |
 | Hand-rolled `useReactTable` sort/filter/pagination state | Use `@bmsuisse/datagrid`'s `<DataGrid>` |
 
