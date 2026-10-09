@@ -25,8 +25,10 @@
 | [bms-code-review](./skills/bms-code-review/) | BMS code review that fans out one focused subagent per concern (architecture, duplication, security, correctness, age… |
 | [bms-frontend-design](./skills/bms-frontend-design/) | The BMS visual identity for internal web apps, built on the shared `@bmsuisse/ui` (sidebar/nav, form, dialog, and oth… |
 | [bms-plan-review](./skills/bms-plan-review/) | Review an implementation plan before any code is written: checks it against BMS conventions and the existing skills (… |
+| [clean-code](./skills/clean-code/) | Language-agnostic, pragmatic clean-code principles for writing and refactoring code at BMS: naming, function size and… |
 | [clockify](./skills/clockify/) | Query and log time entries in Clockify via its REST API — check a timesheet, look up the workspace/user/project, crea… |
 | [code-comments](./skills/code-comments/) | Write and review code comments so they earn their place instead of adding noise. Use this whenever writing new code (… |
+| [codebase-design](./skills/codebase-design/) | Shared vocabulary and principles for designing deep modules (module, interface, depth, seam, adapter, leverage, local… |
 | [codeunit-analyzer](./skills/codeunit-analyzer/) | Comprehensive C-AL performance analyzer for Classic Microsoft Dynamics NAV (Navision). Targets Classic NAV anti-patte… |
 | [coding-guidelines-python](./skills/coding-guidelines-python/) | Apply and enforce Python-specific coding standards. Use alongside coding-guidelines for any Python file — covers typi… |
 | [coding-guidelines-sql](./skills/coding-guidelines-sql/) | SQL and data warehouse coding guidelines for the BME data platform. Use whenever writing, reviewing, or refactoring S… |
@@ -35,6 +37,7 @@
 | [data-modeling-dimensional](./skills/data-modeling-dimensional/) | Dimensional data modeling guide for the Fabricks platform — covers the full pipeline from staging through raw, transf… |
 | [databricks-cli](./skills/databricks-cli/) | Databricks CLI operations: auth, profiles, data exploration, bundles, and notebook execution. Use this skill for ANY… |
 | [databricks-sql-autotuner](./skills/databricks-sql-autotuner/) | Databricks SQL query optimizer and error fixer: analyzes a slow or broken SQL query, rewrites it for speed using SQL-… |
+| [dead-code-audit](./skills/dead-code-audit/) | Find unused functions, classes, exports, files, stale or unused dependencies, outdated and vulnerable packages, and c… |
 | [design-review](./skills/design-review/) | Review a web app or page for visual design quality — layout, spacing, typography, colour/contrast, visual hierarchy,… |
 | [deslop](./skills/deslop/) | Remove AI slop from code and pull requests. Use this skill whenever the user wants to clean up AI-generated code, rev… |
 | [dev-workflow](./skills/dev-workflow/) | End-to-end workflow for non-trivial coding tasks: worktree, draft PR early, implement, review, test, publish. Trigger… |
@@ -46,6 +49,7 @@
 | [fabricks-sql-analyzer](./skills/fabricks-sql-analyzer/) | Analyzes all SQL files in the Fabricks.Runtime repository, builds a dependency DAG, runs performance heuristics, and… |
 | [fastapi-azure-auth](./skills/fastapi-azure-auth/) | Azure Entra ID SSO for FastAPI using cookie-based sessions (MSAL, /login → /callback → session). Trigger on: Azure AD… |
 | [fastapi-guideline](./skills/fastapi-guideline/) | Use this skill whenever working with FastAPI — building APIs, adding routes, structuring projects, streaming response… |
+| [improve-codebase-architecture](./skills/improve-codebase-architecture/) | Scan a codebase for architectural friction and propose "deepening" refactors that turn many shallow modules into fewe… |
 | [init-app-stack](./skills/init-app-stack/) | Use this skill whenever the user wants to bootstrap, scaffold, or initialize a new full-stack app with a Vite + React… |
 | [inter-without-ai-slop](./skills/inter-without-ai-slop/) | Use Inter as a UI typeface in data-dense B2B apps (dashboards, tables, cockpits) without triggering the "generic AI d… |
 | [kendo-ui-angular](./skills/kendo-ui-angular/) | Use this skill whenever the user is working with Kendo UI for Angular — including the Data Grid, TreeList, TreeView,… |
