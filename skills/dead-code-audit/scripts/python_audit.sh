@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# Usage: python_audit.sh [path=.] [min-confidence=80]
+# Usage: python_audit.sh [project-dir=.] [min-confidence=80]
 # Read-only dead-code and dependency audit for a Python project (run from the project root).
 # Needs: uv. Everything else runs through uvx / uv run, nothing is installed permanently.
 here=$(cd "$(dirname "$0")" && pwd); . "$here/common.sh"
 path=${1:-.}; conf=${2:-80}
+cd "$path" || exit 1; path=.   # run every tool in the target project so vulture, deptry and uv all see the same root
 have uv || { echo "uv not found: https://docs.astral.sh/uv/"; exit 1; }
 
 # Optional whitelist of known false positives (framework entry points, dunder hooks, public API).

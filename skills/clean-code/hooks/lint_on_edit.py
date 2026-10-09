@@ -51,28 +51,29 @@ def lint(file: Path) -> str:
         ruff = tool(root, "ruff") or (["uv", "run", "--frozen", "ruff"] if shutil.which("uv") else None)
         if not ruff:
             return ""
-        code, out = run([*ruff, "check", "--fix", "--output-format", "concise", str(file)], root)
-        return out if code != 0 else ""
+        code, out = run([*ruff, "check", "--fix", "--force-exclude", "--output-format", "concise", str(file)], root)
+        return out if code == 1 else ""  # 1 = violations; 2 = ruff/config error, which must not block edits
     if file.suffix in JS:
         root = find_up(file.parent, ("biome.json", "biome.jsonc"))
         biome = root and tool(root, "biome")
         if not biome:
             return ""
-        code, out = run([*biome, "check", "--write", "--colors=off", str(file)], root)
-        return out if code != 0 else ""
+        code, out = run([*biome, "check", "--write", "--colors=off", "--no-errors-on-unmatched", str(file)], root)
+        return out if code == 1 else ""
     return ""
 
 
 def main() -> int:
     try:
-        file = Path(json.load(sys.stdin).get("tool_input", {}).get("file_path", ""))
+        raw = json.load(sys.stdin).get("tool_input", {}).get("file_path", "")
     except (json.JSONDecodeError, AttributeError):
         return 0
-    if not file.is_file():
+    file = Path(raw).resolve() if raw else None  # resolve: subprocesses run from the project root, not our cwd
+    if not file or not file.is_file():
         return 0
     try:
         problems = lint(file)
-    except (OSError, subprocess.TimeoutExpired):
+    except (OSError, ValueError, subprocess.TimeoutExpired):  # ValueError: unreadable/non-UTF-8 config
         return 0  # ponytail: a broken or slow linter must not block editing
     if problems:
         print(f"Lint errors remain in {file.name}. Fix them (targeted `# noqa: CODE  # reason` only if justified):\n{problems}", file=sys.stderr)

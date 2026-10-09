@@ -64,3 +64,10 @@ def test_other_file_types_and_missing_files_are_noops(project):
     md.write_text("hi")
     assert run_hook(md, env).returncode == 0
     assert run_hook(project / "gone.py", env).returncode == 0
+
+
+def test_linter_failure_never_blocks(project):
+    f = project / "a.py"
+    f.write_text("x = 1\n")
+    r = run_hook(f, fake_ruff(project, 2, "error: invalid config"))
+    assert (r.returncode, r.stderr) == (0, "")

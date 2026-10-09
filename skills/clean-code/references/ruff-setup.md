@@ -143,7 +143,10 @@ Three layers, cheapest first, same config in all of them:
    It runs `ruff check --fix` on `.py` files (and `biome check --write` on
    TS/JS/Vue when a `biome.json` exists), fixes what it can silently, and exits
    2 with the remaining violations on stderr so Claude sees them. It does nothing
-   when the repo has no ruff/biome config or the tool is missing. Avoid the
+   when the repo has no ruff/biome config or the tool is missing, and only blocks
+   on real violations (ruff/biome exit 1), never on linter or config failures.
+   Trust note: it runs the project's own `ruff`/`biome` (`.venv`, `node_modules`,
+   `uv run`), so install it only in repos you trust, as with any hook or lint script. Avoid the
    common one-liner variant that ends in `2>/dev/null; true`: it discards the
    violations, so Claude never learns what is still broken.
 2. **Pre-commit** via `prek` (`ruff-check --fix`, `ruff-format`, optionally a
