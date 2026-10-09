@@ -103,6 +103,10 @@ Errors are part of the contract, not an afterthought.
 
 ## Abstraction and duplication
 
+**No duplication, but don't abstract too early.** Before writing something new,
+check that it does not already exist (grep, `duplicatecode diff` on your change).
+Before merging, run the duplicate gate below.
+
 - **Rule of three.** Tolerate duplication twice; abstract on the third. The
   wrong abstraction is more expensive than copy-paste because every caller
   bends around it.
@@ -123,8 +127,11 @@ Errors are part of the contract, not an afterthought.
   to understand one function.
 - Dependencies point inward: business logic does not import framework, DB, or
   HTTP details; the edges adapt to it.
-- Split a file when it has more than one reason to change, not at an arbitrary
-  line count.
+- **Keep files small.** Split by reason to change first; line limits are only
+  the backstop that catches growth. BMS limits per file: `.py`/`.sql` 1200,
+  `.ts` 600, `.tsx`/`.vue` 900, `.md` 500, `.sh` 100 (tests get 1.5x), with a
+  warning at 75% of the limit. A file near its limit is a signal to extract a cohesive
+  module, not to reformat. Generated code is exempt.
 - No grab-bag `utils`/`helpers`/`common` dumping grounds; put helpers next to
   the code that uses them, or name the module for what it provides.
 
@@ -160,6 +167,19 @@ rationale, how to introduce it into a legacy codebase without one giant PR, and
 the complexity check. Hook wiring is in the `prek` skill. When reviewing or
 setting up a Python repo and `pyproject.toml` has no explicit ruff `select`,
 suggest this. Frontend equivalents: Biome and `tsc` (`coding-guidelines-typescript`).
+
+### Gates for size and duplication
+
+Both are mechanical, so enforce them instead of relying on review:
+
+- **File size**: `scripts/check_file_size.py` (stdlib, edit the `LIMITS` table):
+  a prek local hook with `pass_filenames = true`, same as OneSales' `check-files`.
+- **Duplication**: `uvx duplicatecode scan . --skip-tests --fail-on-found` in CI
+  (offline, no embeddings), and `git diff origin/main | uvx duplicatecode diff --repo .`
+  to catch a PR that re-implements existing code.
+
+Hook entries, thresholds for adopting them in an existing repo, and how to read
+duplicate reports are in [references/size-and-duplication.md](references/size-and-duplication.md).
 
 ## Smells that signal a problem
 
