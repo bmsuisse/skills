@@ -240,6 +240,9 @@ queryFn: async () => (await searchCustomers({ query: { q: debouncedQ }, throwOnE
 - An aborted query is not an error: TanStack drops it silently. Never surface `AbortError`/`CancelledError` as a toast or log entry from your own `try/catch`.
 - Never abort writes. Mutations don't receive a signal; keep it that way (a half-finished POST is worse than a slow one).
 - Pair with `placeholderData: keepPreviousData` (or `(prev) => prev`) so the list doesn't flash empty between keys.
+- **Shared keys and imperative fetches:** a `queryFn` that consumes `signal` is cancelled (`revert`) when its last *observer* unsubscribes, and that rejects every `queryClient.fetchQuery`/`prefetchQuery` promise joined to it with `CancelledError` (StrictMode's subscribe/unsubscribe in dev triggers it). For a key that is also fetched imperatively (boot-time hydrators, prewarming on hover), don't consume the signal in its `queryFn`, or retry once on `isCancelledError`. A `fetchQuery` that has no observers never aborts on its own: use `queryClient.cancelQueries` if you want that, and catch `CancelledError` in its callers.
+- **Effects that fetch by hand** (`useEffect` + debounce + SDK call, with only a `cancelled` flag) don't abort anything: prefer `useQuery` with the debounced value in the key; if you must, keep one `AbortController` per effect run, pass its `signal`, `abort()` in the cleanup and ignore `AbortError` (the generated client throws it with `throwOnError`).
+- Request replays (a 401 interceptor that re-sends after login) must keep the original request's `signal`, or aborted requests come back to life.
 
 ---
 
