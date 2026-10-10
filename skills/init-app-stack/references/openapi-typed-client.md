@@ -64,6 +64,8 @@ import { getUser } from '@/lib/generated/sdk.gen'
 const { data } = await getUser({ path: { user_id: 42 }, throwOnError: true })
 ```
 
+The generated `xOptions()` already pass TanStack Query's `AbortSignal` to the SDK call, so a changed key (debounced search, grid filter) aborts the superseded request and our pgdevkit backends cancel the Postgres query. If you must hand-write a `queryFn`, do it yourself: `queryFn: ({ signal }) => getUser({ ..., signal, throwOnError: true })` (see tanstack-best-practices, "Cancelling superseded requests").
+
 Pull a bare type when you need one without a request:
 
 ```ts
