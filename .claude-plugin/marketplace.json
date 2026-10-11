@@ -109,6 +109,12 @@
       ]
     },
     {
+      "name": "dev-cleanup",
+      "description": "Free disk space on a dev workstation: overview of podman/docker, package-manager caches, app caches, stale git worktrees and old node_modules/.venv, then clean what the user picks",
+      "source": "./",
+      "skills": ["./dev-cleanup"]
+    },
+    {
       "name": "maintenance",
       "description": "Repo maintenance: dead code analysis, dependency bumps, and dependency vulnerability audits (bun/uv), via /maintenance <mode>",
       "source": "./",
