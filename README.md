@@ -40,6 +40,7 @@
 | [dead-code-audit](./skills/dead-code-audit/) | Find unused functions, classes, exports, files, stale or unused dependencies, outdated and vulnerable packages, and c… |
 | [design-review](./skills/design-review/) | Review a web app or page for visual design quality — layout, spacing, typography, colour/contrast, visual hierarchy,… |
 | [deslop](./skills/deslop/) | Remove AI slop from code and pull requests. Use this skill whenever the user wants to clean up AI-generated code, rev… |
+| [dev-cleanup](./skills/dev-cleanup/) | Free disk space on a developer workstation: scan podman/docker storage, uv/npm/bun/pnpm/pip/cargo/gradle caches, app… |
 | [dev-workflow](./skills/dev-workflow/) | End-to-end workflow for non-trivial coding tasks: worktree, draft PR early, implement, review, test, publish. Trigger… |
 | [duckdb](./skills/duckdb/) | Guide for working with DuckDB — CLI usage, SQL execution, reading files (CSV, Parquet, JSON, Excel), extensions (http… |
 | [ducklake](./skills/ducklake/) | Guide for working with DuckLake — the open lakehouse format and DuckDB extension that pairs a SQL catalog (metadata,… |
