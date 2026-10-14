@@ -43,7 +43,7 @@ when the tool genuinely isn't available (say so).
    Then do a "/design-review" for the screenshots using a subagent and adress findings.
    If working from an issue, also post the screenshots as an update on the issue.
    Do not stop the Web server, ask human to click through changes and verify. once ok for human, proceed.
-8. **Pre-publish review (always).** Run `/bms-code-review --full` on the whole diff (or, where it isn't available, `/code-review` at medium, or high for risky changes) and fix findings (ask if unsure). This is the review the PR-publish gate is really for; it is required even if the mid-work `--quick` review was clean, and especially for SQL, auth, concurrency or money handling.
+8. **Pre-publish review (always).** Run `/bms-code-review --full` on the whole diff (or, where it isn't available, `/code-review` at medium, or high for risky changes) and fix findings (ask if unsure). A finished review by another agent also satisfies the gate: `codex exec -C <dir> -s read-only "Use the bms-code-review skill (--full) on the diff ..."` (foreground with nothing piped or chained after it that could hide a failure, i.e. no `| tee`, `; echo` or `|| true`; or backgrounded with `&` and `-o <file>`), or `codex review`; see `bms-code-review`, "Running it through codex". This is the review the PR-publish gate is really for; it is required even if the mid-work `--quick` review was clean, and especially for SQL, auth, concurrency or money handling.
 9. **Publish** the PR via `bdt pr publish`, which will trigger CI
 10. **Watch CI.** Run `bdt pr status --wait`. If remote checks fail, fix and
    push — don't just report the failure. `bdt pr info` gives the PR link,
