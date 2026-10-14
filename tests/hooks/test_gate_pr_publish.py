@@ -385,3 +385,90 @@ def test_malformed_transcript_lines_do_not_break_the_check(tmp_path):
     assert run_hook(path) is None
     path.write_text("\n".join(odd))
     assert_denied(run_hook(path))
+
+
+# --- sessions run in Codex ---------------------------------------------------------------------------------------
+
+
+def codex_rollout(tmp_path: Path, *rows: dict) -> Path:
+    meta = {"type": "session_meta", "payload": {"originator": "codex_exec"}}
+    path = tmp_path / "rollout.jsonl"
+    path.write_text("\n".join(json.dumps(r) for r in [meta, *rows]))
+    return path
+
+
+def codex_command(command: str, exit_code: int = 0, started_ms: int = 1_000) -> dict:
+    item = {
+        "type": "CommandExecution",
+        "command": ["/bin/bash", "-lc", command],
+        "cwd": "file:///work/wt",
+        "status": "completed",
+        "exit_code": exit_code,
+    }
+    return {
+        "type": "event_msg",
+        "payload": {"type": "item_completed", "item": item, "started_at_ms": started_ms},
+    }
+
+
+def codex_skill_message(name: str, role: str = "user") -> dict:
+    text = f"<skill>\n<name>{name}</name>\n<path>/x/SKILL.md</path>\n---\nname: x\n---\n</skill>"
+    payload = {"type": "message", "role": role, "content": [{"type": "input_text", "text": text}]}
+    return {"type": "response_item", "payload": payload}
+
+
+@pytest.mark.parametrize("name", ["bms-code-review", "dev-workflow:bms-code-review", "code-review"])
+def test_codex_allows_after_explicitly_invoked_review_skill(tmp_path, name):
+    assert run_hook(codex_rollout(tmp_path, codex_skill_message(name))) is None
+
+
+@pytest.mark.parametrize("name", ["bms-plan-review", "dev-workflow:design-review"])
+def test_codex_denies_after_other_review_skill(tmp_path, name):
+    assert_denied(run_hook(codex_rollout(tmp_path, codex_skill_message(name))))
+
+
+def test_codex_denies_a_review_skill_text_in_a_non_user_message(tmp_path):
+    assert_denied(run_hook(codex_rollout(tmp_path, codex_skill_message("bms-code-review", role="assistant"))))
+
+
+def test_codex_allows_after_the_model_read_the_review_skill_file(tmp_path):
+    cmd = "cat /home/u/.codex/plugins/cache/bmsuisse-skills/dev-workflow/local/skills/bms-code-review/SKILL.md"
+    assert run_hook(codex_rollout(tmp_path, codex_command(cmd))) is None
+
+
+def test_codex_denies_a_failed_read_of_the_review_skill_file(tmp_path):
+    assert_denied(run_hook(codex_rollout(tmp_path, codex_command("cat skills/bms-code-review/SKILL.md", exit_code=1))))
+
+
+def test_codex_allows_after_the_builtin_review_mode(tmp_path):
+    row = {"type": "event_msg", "payload": {"type": "exited_review_mode"}}
+    assert run_hook(codex_rollout(tmp_path, row)) is None
+
+
+def test_codex_allows_after_a_finished_nested_codex_review(tmp_path):
+    assert run_hook(codex_rollout(tmp_path, codex_command(f'codex exec -s read-only "{REVIEW_PROMPT}"'))) is None
+
+
+def test_codex_denies_a_failed_nested_codex_review(tmp_path):
+    cmd = f'codex exec -s read-only "{REVIEW_PROMPT}"'
+    assert_denied(run_hook(codex_rollout(tmp_path, codex_command(cmd, exit_code=1))))
+
+
+def test_codex_denies_a_nested_codex_review_whose_failure_the_exit_code_would_hide(tmp_path):
+    assert_denied(run_hook(codex_rollout(tmp_path, codex_command(f'codex exec "{REVIEW_PROMPT}" | tee /tmp/o.md'))))
+
+
+def test_codex_allows_backgrounded_nested_review_with_fresh_output_file(tmp_path):
+    out = tmp_path / "out.md"
+    out.write_text("findings")
+    cmd = f'nohup codex exec -o {out} "{REVIEW_PROMPT}" > /dev/null 2>&1 &'
+    assert run_hook(codex_rollout(tmp_path, codex_command(cmd, started_ms=1_000))) is None
+
+
+def test_codex_denies_backgrounded_nested_review_without_output_file(tmp_path):
+    cmd = f'nohup codex exec -o {tmp_path / "missing.md"} "{REVIEW_PROMPT}" > /dev/null 2>&1 &'
+    assert_denied(run_hook(codex_rollout(tmp_path, codex_command(cmd))))
+
+
+def test_codex_denies_without_any_review(tmp_path):
+    assert_denied(run_hook(codex_rollout(tmp_path, codex_command("git status"))))

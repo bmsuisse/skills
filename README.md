@@ -209,7 +209,7 @@ codex plugin marketplace add bmsuisse/skills
 codex plugin add coding@bmsuisse-skills
 ```
 
-Only the skills carry over, not the Claude Code hooks, agents or the `bdt-status` mod.
+Skills carry over, and so do the `dev-workflow` hooks (PR-publish gate, worktree-only edits): trust them once in `/hooks` inside `codex`. Not carried over: the command-remapping hooks, the review agents and the `bdt-status` mod. See `docs/installation.md`.
 `.agents/plugins/marketplace.json` is generated from `.claude-plugin/marketplace.json`: after changing the Claude marketplace run `node scripts/sync-codex.mjs`, CI fails when the two differ.
 
 ### Highly recommended: Caveman mode

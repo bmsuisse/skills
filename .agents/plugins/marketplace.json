@@ -104,7 +104,31 @@
         "./skills/dev-workflow",
         "./skills/bms-code-review",
         "./skills/bms-plan-review"
-      ]
+      ],
+      "hooks": {
+        "hooks": {
+          "PreToolUse": [
+            {
+              "matcher": "Bash",
+              "hooks": [
+                {
+                  "type": "command",
+                  "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/gate-pr-publish.py\""
+                }
+              ]
+            },
+            {
+              "matcher": "apply_patch|Edit|Write",
+              "hooks": [
+                {
+                  "type": "command",
+                  "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/require-worktree-edits.py\""
+                }
+              ]
+            }
+          ]
+        }
+      }
     },
     {
       "name": "azure-diagnostics",

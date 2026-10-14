@@ -9,8 +9,11 @@
  * What carries over, and what does not:
  *  - Plugins that ship skills keep `name`, `description`, `source` and `skills`; Codex reads the same fields.
  *  - Plugins without skills (Claude Code mods such as `bdt-status`) are left out: Codex cannot use them.
- *  - `hooks` and `agents` are dropped. Codex plugin hooks only run after an interactive trust review,
- *    and its subagents are not Claude Code agent files, so the skills are the shared surface.
+ *  - `hooks` carry over in the shape Codex wants (`{ hooks: { <event>: [...] } }`). Matcher groups for tools that only
+ *    exist in Claude Code (EnterWorktree) are dropped, and the file-edit tools (Edit, Write, ...) also match Codex's
+ *    `apply_patch`. The hook scripts themselves handle both agents. Codex runs plugin hooks only after the user has
+ *    reviewed them (`/hooks`), or with `--dangerously-bypass-hook-trust`.
+ *  - `agents` are dropped: Codex subagents are not Claude Code agent files.
  *  - `{ source: "github", repo }` becomes `{ source: "url", url }`, the only form Codex resolves for GitHub repos.
  */
 
@@ -27,6 +30,29 @@ function toCodexSource(source) {
   return source;
 }
 
+const CLAUDE_ONLY_TOOLS = new Set(["EnterWorktree", "NotebookEdit", "MultiEdit"]);
+const EDIT_TOOLS = new Set(["Edit", "Write"]);
+
+/** Codex matcher for a Claude Code one: Claude-only tools are removed, edit tools gain `apply_patch`. */
+function toCodexMatcher(matcher) {
+  if (!matcher) return matcher;
+  const tools = matcher.split("|");
+  const kept = tools.filter((tool) => !CLAUDE_ONLY_TOOLS.has(tool));
+  if (kept.some((tool) => EDIT_TOOLS.has(tool))) kept.unshift("apply_patch");
+  return kept.join("|");
+}
+
+function toCodexHooks(hooks) {
+  const events = {};
+  for (const [event, groups] of Object.entries(hooks ?? {})) {
+    const kept = groups
+      .map((group) => ({ ...group, matcher: toCodexMatcher(group.matcher) }))
+      .filter((group) => group.matcher !== "");
+    if (kept.length > 0) events[event] = kept;
+  }
+  return Object.keys(events).length > 0 ? { hooks: events } : undefined;
+}
+
 /** A plugin is usable from Codex when it ships skills itself or is fetched from another repo. */
 function isCodexPlugin(plugin) {
   return typeof plugin.source !== "string" || (plugin.skills?.length ?? 0) > 0;
@@ -38,6 +64,8 @@ function buildCodexMarketplace(claude) {
     plugins: claude.plugins.filter(isCodexPlugin).map((plugin) => {
       const entry = { name: plugin.name, description: plugin.description, source: toCodexSource(plugin.source) };
       if (plugin.skills) entry.skills = plugin.skills;
+      const hooks = toCodexHooks(plugin.hooks);
+      if (hooks) entry.hooks = hooks;
       return entry;
     }),
   };

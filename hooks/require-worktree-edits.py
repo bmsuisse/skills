@@ -3,7 +3,7 @@
 # requires-python = ">=3.11"
 # ///
 """
-PreToolUse hook: blocks Edit/Write/NotebookEdit outside a worktree or .claude dir.
+PreToolUse hook: blocks Edit/Write/NotebookEdit (Claude Code) and apply_patch (Codex) outside a worktree or .claude dir.
 
 Enforces dev-workflow's "Worktree" step: real code changes should land inside a
 git worktree (or, on VCS-agnostic setups, a directory whose name starts with
@@ -27,6 +27,9 @@ import os
 import re
 import subprocess
 import sys
+
+# Codex edits files with apply_patch: tool_input.command holds the patch, whose headers name the files it touches.
+PATCH_FILE_HEADER = re.compile(r"^\*\*\* (?:Add File|Update File|Delete File|Move to): (.+?)\s*$", re.MULTILINE)
 
 ALLOWED_PATH = re.compile(r"(^|/)(\.?worktree[^/]*|\.claude)(/|$)")
 ALLOWED_PREFIX = re.compile(r"^/tmp(/|$)")
@@ -96,17 +99,21 @@ def path_exempt_from_gate(path: str) -> bool:
     return not remotes.stdout.strip()
 
 
-def main() -> None:
-    try:
-        data = json.load(sys.stdin)
-    except (json.JSONDecodeError, ValueError):
-        return
+def edited_paths(data: dict) -> list[str]:
+    tool_input = data.get("tool_input")
+    if not isinstance(tool_input, dict):
+        return []
+    path = tool_input.get("file_path") or tool_input.get("notebook_path")
+    if path:
+        return [str(path)]
+    patch = tool_input.get("command")
+    if data.get("tool_name") != "apply_patch" or not isinstance(patch, str):
+        return []
+    cwd = str(data.get("cwd") or os.getcwd())
+    return [p if os.path.isabs(p) else os.path.join(cwd, p) for p in PATCH_FILE_HEADER.findall(patch)]
 
-    tool_input = data.get("tool_input", {})
-    path = tool_input.get("file_path") or tool_input.get("notebook_path") or ""
-    if not path:
-        return
 
+def check_path(path: str) -> None:
     normalized = path.replace("\\", "/")
     if ALLOWED_PATH.search(normalized) or ALLOWED_PREFIX.search(normalized) or ALLOWED_WINDOWS_TEMP.search(normalized):
         return
@@ -115,6 +122,17 @@ def main() -> None:
         return
 
     deny(f"Blocked: edits are only allowed inside a worktree*/.worktree*/.claude directory, or /tmp (path: {path})")
+
+
+def main() -> None:
+    try:
+        data = json.load(sys.stdin)
+    except (json.JSONDecodeError, ValueError):
+        return
+    if not isinstance(data, dict):
+        return
+    for path in edited_paths(data):
+        check_path(path)
 
 
 if __name__ == "__main__":

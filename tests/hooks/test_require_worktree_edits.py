@@ -161,3 +161,53 @@ def test_no_op_when_no_file_path_given(tmp_path: Path) -> None:
         timeout=10,
     )
     assert result.stdout.strip() == ""
+
+
+# ---------------------------------------------------------------------------
+# Codex: edits arrive as apply_patch, the patch text names the files
+# ---------------------------------------------------------------------------
+
+
+def run_apply_patch(patch: str, cwd: Path) -> dict | None:
+    payload = json.dumps({"tool_name": "apply_patch", "cwd": str(cwd), "tool_input": {"command": patch}})
+    result = subprocess.run([sys.executable, str(HOOK)], input=payload, capture_output=True, text=True, timeout=10)
+    return json.loads(result.stdout) if result.stdout.strip() else None
+
+
+def patch_of(*headers: str) -> str:
+    return "*** Begin Patch\n" + "".join(f"*** {h}\n+x\n" for h in headers) + "*** End Patch"
+
+
+def test_apply_patch_blocked_for_relative_path_in_shared_checkout(repo_dir: Path) -> None:
+    init_git_repo(repo_dir, with_remote=True)
+    assert is_denied(run_apply_patch(patch_of("Add File: foo.py"), repo_dir))
+
+
+def test_apply_patch_blocked_when_any_file_is_outside_a_worktree(repo_dir: Path) -> None:
+    init_git_repo(repo_dir, with_remote=True)
+    patch = patch_of("Update File: .worktrees/x/a.py", "Delete File: b.py")
+    assert is_denied(run_apply_patch(patch, repo_dir))
+
+
+def test_apply_patch_blocked_for_move_target_outside_a_worktree(repo_dir: Path) -> None:
+    init_git_repo(repo_dir, with_remote=True)
+    patch = "*** Begin Patch\n*** Update File: .worktrees/x/a.py\n*** Move to: b.py\n@@\n-x\n+y\n*** End Patch"
+    assert is_denied(run_apply_patch(patch, repo_dir))
+
+
+def test_apply_patch_allowed_inside_a_worktree(repo_dir: Path) -> None:
+    init_git_repo(repo_dir, with_remote=True)
+    assert not is_denied(
+        run_apply_patch(patch_of("Add File: .worktrees/x/a.py", "Update File: .worktrees/x/b.py"), repo_dir)
+    )
+
+
+def test_apply_patch_allowed_when_the_session_cwd_is_a_worktree(repo_dir: Path) -> None:
+    init_git_repo(repo_dir, with_remote=True)
+    worktree = repo_dir / ".worktrees" / "x"
+    worktree.mkdir(parents=True)
+    assert not is_denied(run_apply_patch(patch_of("Add File: a.py"), worktree))
+
+
+def test_apply_patch_allowed_when_not_a_git_repo(repo_dir: Path) -> None:
+    assert not is_denied(run_apply_patch(patch_of("Add File: foo.py"), repo_dir))
