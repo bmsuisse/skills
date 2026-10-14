@@ -4,9 +4,10 @@
  *
  * Checks:
  *  - Every skill folder contains a SKILL.md
- *  - Required frontmatter fields: name, description, plugin
+ *  - Required frontmatter fields: name, description
  *  - `name` matches the folder name (lowercase-hyphens)
- *  - `plugin` is a known plugin from marketplace.json
+ *  - `plugin` is optional, but if set it must be a known plugin from marketplace.json and
+ *    one of the plugins that list the skill (a skill may be listed in several plugins)
  */
 
 import { readFileSync, readdirSync, statSync } from "fs";
@@ -48,11 +49,11 @@ function getSkillFolders() {
 
 function loadKnownPlugins() {
   const marketplace = JSON.parse(readFileSync(marketplacePath, "utf8"));
-  const pluginMap = {}; // skillName → pluginName
+  const pluginMap = {}; // skillName → pluginNames that list it
   for (const plugin of marketplace.plugins ?? []) {
     for (const skillPath of plugin.skills ?? []) {
       const skillName = basename(skillPath);
-      pluginMap[skillName] = plugin.name;
+      (pluginMap[skillName] ??= []).push(plugin.name);
     }
   }
   return { pluginNames: marketplace.plugins.map((p) => p.name), pluginMap };
@@ -88,7 +89,7 @@ for (const folder of folders) {
   const issues = [];
 
   // Required fields
-  for (const field of ["name", "description", "plugin"]) {
+  for (const field of ["name", "description"]) {
     if (!fm[field]) issues.push(`missing required field: ${field}`);
   }
 
@@ -107,16 +108,16 @@ for (const folder of folders) {
     issues.push(`plugin "${fm.plugin}" is not in marketplace.json (known: ${pluginNames.join(", ")})`);
   }
 
-  // plugin should match marketplace.json mapping (cross-check)
-  const expectedPlugin = pluginMap[folder];
-  if (fm.plugin && expectedPlugin && fm.plugin !== expectedPlugin) {
+  // plugin must be one of the plugins that list this skill in marketplace.json
+  const expectedPlugins = pluginMap[folder];
+  if (fm.plugin && expectedPlugins && !expectedPlugins.includes(fm.plugin)) {
     issues.push(
-      `plugin "${fm.plugin}" doesn't match marketplace.json entry "${expectedPlugin}"`,
+      `plugin "${fm.plugin}" doesn't match marketplace.json (listed in: ${expectedPlugins.join(", ")})`,
     );
   }
 
   // Skill not listed in marketplace.json at all
-  if (!expectedPlugin && !DEPRECATED_SKILLS.has(folder)) {
+  if (!expectedPlugins && !DEPRECATED_SKILLS.has(folder)) {
     console.warn(`⚠️   ${folder}: not listed in marketplace.json`);
     warnings++;
   }
@@ -127,7 +128,7 @@ for (const folder of folders) {
     }
     errors++;
   } else {
-    console.log(`✅  ${folder} (plugin: ${fm.plugin})`);
+    console.log(`✅  ${folder} (plugin: ${fm.plugin ?? "-"})`);
   }
 }
 

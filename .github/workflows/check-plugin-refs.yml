@@ -1,8 +1,8 @@
 ---
-name: Check plugin references
+name: Check plugins and skills
 on:
   pull_request:
-    paths: [.claude-plugin/**, skills/**, agents/**, hooks/**, mods/**, scripts/check-plugin-refs.mjs]
+    paths: [.claude-plugin/**, skills/**, agents/**, hooks/**, mods/**, scripts/check-plugin-refs.mjs, scripts/validate-skills.mjs]
 permissions:
   contents: read
 jobs:
@@ -11,3 +11,4 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: node scripts/check-plugin-refs.mjs
+      - run: node scripts/validate-skills.mjs

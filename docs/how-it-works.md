@@ -91,5 +91,5 @@ After installation, skills land here:
 
 1. Create `skills/<skill-name>/SKILL.md`
 2. Add it to the relevant plugin in `.claude-plugin/marketplace.json` as `./skills/<skill-name>`
-3. Run `node scripts/check-plugin-refs.mjs` (`npm run plugins:check`) to confirm every skill, agent and hook script a plugin references exists
+3. Run `npm run skill:validate` and `npm run plugins:check` to confirm every skill, agent and hook script a plugin references exists
 4. Open a PR — CI auto-updates the skills table in README
