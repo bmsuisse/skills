@@ -1,5 +1,6 @@
 {
   "scripts": {
+    "plugins:check": "node scripts/check-plugin-refs.mjs",
     "skill:validate": "node scripts/validate-skills.mjs",
     "skill:list": "node scripts/validate-skills.mjs 2>/dev/null | grep '^✅'"
   },
