@@ -7,7 +7,7 @@ description: >
   SQL/backend/frontend reviews) depending on what changed. Use instead of, or in addition to, the generic
   `/code-review` for any BMS repo diff or PR — "bms code review", "review my
   changes", step 5/8 of `dev-workflow`. Satisfies the PR-publish gate like
-  `/code-review`.
+  `/code-review`; a finished `codex` run of it does too (see "Running it through codex").
 ---
 
 # BMS code review
@@ -144,6 +144,27 @@ components.
 Return findings only, as `severity | file:line | problem | failure_scenario | suggested fix`,
 plus a one-line "nothing found" if clean. A finding without a concrete
 failure_scenario is dropped. No praise, no restating the diff.
+
+## Running it through codex
+
+A second opinion from a different agent: the local OpenAI `codex` CLI can run this
+skill (it finds `bms-code-review` in `~/.agents/skills`). The PR-publish gate accepts
+a codex review that ran in this session and **finished**:
+
+```bash
+# foreground: counts once the command exits 0
+codex exec -C <worktree> -s read-only --skip-git-repo-check \
+  "Use the bms-code-review skill (full mode, --full) on the diff against origin/main. Review only: do not modify files or commit."
+
+# background (long reviews): ALWAYS pass -o, the output file is the proof that it finished
+nohup codex exec -C <worktree> -s read-only -o /tmp/codex-review.md "Use the bms-code-review skill (--full) on ..." > /tmp/codex-review.log 2>&1 &
+# ... then wait for /tmp/codex-review.md to be non-empty and read it
+```
+
+`codex review --base origin/main` works as well. The prompt must mention a code review
+(or the `bms-code-review` skill); a start without a finished run, `codex --version` and
+the word "codex" elsewhere do not count. Merge its findings like any other reviewer's and
+fix them before publishing. If codex cannot spawn subagents it plays the roles itself.
 
 ## Options
 
