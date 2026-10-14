@@ -86,6 +86,19 @@ To scope skills to one project, add `.claude/settings.json` to the project root 
 
 The `init-app-stack` scaffold generates this file automatically with the right plugins for the stack.
 
+## Codex CLI — Plugin
+
+Codex installs the same plugins from `.agents/plugins/marketplace.json`, which is generated from `.claude-plugin/marketplace.json` by `scripts/sync-codex.mjs`.
+
+```bash
+codex plugin marketplace add bmsuisse/skills
+codex plugin add coding@bmsuisse-skills
+codex plugin add bms@bmsuisse-skills
+codex plugin list                      # see all plugins and what is installed
+```
+
+Only the skills carry over. Claude-only parts stay behind: the hooks and review agents of `dev-workflow`, the PreToolUse command remapping, and the `bdt-status` mod.
+
 ## skills CLI — Cursor, Copilot, Codex, others
 
 ### Prerequisites
