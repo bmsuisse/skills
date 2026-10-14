@@ -357,7 +357,7 @@ def output_file_written(path: str, cwd: str, started: float | None) -> bool:
     full = path if os.path.isabs(path) else os.path.join(cwd, path)
     try:
         st = os.stat(full)
-    except OSError:
+    except (OSError, ValueError):  # ValueError: embedded NUL byte
         return False
     return st.st_size > 0 and st.st_mtime >= started
 
