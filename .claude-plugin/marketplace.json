@@ -34,29 +34,27 @@
       "description": "Programming skills: Python, TypeScript, FastAPI, Postgres, coding guidelines, and more",
       "source": "./",
       "skills": [
-        "./autoresearch",
-        "./bms-frontend-design",
-        "./coding-guidelines-python",
-        "./coding-guidelines-typescript",
-        "./code-comments",
-        "./cross-repo-discovery",
-        "./deslop",
-        "./fastapi-guideline",
-        "./init-app-stack",
-        "./sql-optimization",
-        "./tanstack-best-practices",
-        "./tanstack-react-best-practices",
-        "./fastapi-azure-auth",
-        "./duckdb",
-        "./ducklake",
-        "./playwright-python",
-        "./testing-strategy",
-        "./prek",
-        "./procrastinate",
-        "./aiochannel-python",
-        "./python-autotuner",
-        "./app-usage-report",
-        "./clockify"
+        "./skills/autoresearch",
+        "./skills/bms-frontend-design",
+        "./skills/coding-guidelines-python",
+        "./skills/coding-guidelines-typescript",
+        "./skills/code-comments",
+        "./skills/cross-repo-discovery",
+        "./skills/deslop",
+        "./skills/fastapi-guideline",
+        "./skills/init-app-stack",
+        "./skills/sql-optimization",
+        "./skills/tanstack-best-practices",
+        "./skills/fastapi-azure-auth",
+        "./skills/duckdb",
+        "./skills/ducklake",
+        "./skills/playwright-python",
+        "./skills/testing-strategy",
+        "./skills/prek",
+        "./skills/procrastinate",
+        "./skills/aiochannel-python",
+        "./skills/python-autotuner",
+        "./skills/clockify"
       ]
     },
     {
@@ -64,10 +62,10 @@
       "description": "Clean code: readability principles, deep-module architecture review, and dead-code / stale-dependency audits",
       "source": "./",
       "skills": [
-        "./clean-code",
-        "./codebase-design",
-        "./dead-code-audit",
-        "./improve-codebase-architecture"
+        "./skills/clean-code",
+        "./skills/codebase-design",
+        "./skills/dead-code-audit",
+        "./skills/improve-codebase-architecture"
       ]
     },
     {
@@ -75,9 +73,9 @@
       "description": "UI skills: data tables, visual design/QA review, and writing style",
       "source": "./",
       "skills": [
-        "./rich-data-tables",
-        "./inter-without-ai-slop",
-        "./design-review"
+        "./skills/rich-data-tables",
+        "./skills/inter-without-ai-slop",
+        "./skills/design-review"
       ]
     },
 
@@ -85,16 +83,16 @@
       "name": "onetrade",
       "description": "OneTrade Coding",
       "source": "./",
-      "skills": ["./codeunit-analyzer", "./kull-generic-backend"]
+      "skills": ["./skills/codeunit-analyzer", "./skills/kull-generic-backend"]
     },
     {
       "name": "databricks",
       "description": "Databricks skills: CLI operations, Spark Connect local execution, and cluster management",
       "source": "./",
       "skills": [
-        "./databricks-cli",
-        "./spark-connect",
-        "./databricks-sql-autotuner"
+        "./skills/databricks-cli",
+        "./skills/spark-connect",
+        "./skills/databricks-sql-autotuner"
       ]
     },
     {
@@ -102,29 +100,29 @@
       "description": "Fabricks data skills: SQL analysis, domain glossary, and DevOps issue triage/resolution",
       "source": "./",
       "skills": [
-        "./fabricks-glossary",
-        "./fabricks-sql-analyzer",
-        "./fabricks-devops-issues",
-        "./fabricks-devops-issues-resolver"
+        "./skills/fabricks-glossary",
+        "./skills/fabricks-sql-analyzer",
+        "./skills/fabricks-devops-issues",
+        "./skills/fabricks-devops-issues-resolver"
       ]
     },
     {
       "name": "dev-cleanup",
       "description": "Free disk space on a dev workstation: overview of podman/docker, package-manager caches, app caches, stale git worktrees and old node_modules/.venv, then clean what the user picks",
       "source": "./",
-      "skills": ["./dev-cleanup"]
+      "skills": ["./skills/dev-cleanup"]
     },
     {
       "name": "maintenance",
       "description": "Repo maintenance: dead code analysis, dependency bumps, and dependency vulnerability audits (bun/uv), via /maintenance <mode>",
       "source": "./",
-      "skills": ["./maintenance"]
+      "skills": ["./skills/maintenance"]
     },
     {
       "name": "dev-workflow",
       "description": "Enforces the team dev workflow: worktree-first edits, auto-approved entry into worktree-shaped dirs, and a gate that blocks bdt/az/gh commands which publish or complete a PR until /code-review or /bms-code-review has run. Also ships the bms-code-review and bms-plan-review skills.",
       "source": "./",
-      "skills": ["./dev-workflow", "./bms-code-review", "./bms-plan-review"],
+      "skills": ["./skills/dev-workflow", "./skills/bms-code-review", "./skills/bms-plan-review"],
       "agents": ["./agents/bms-review-core.md", "./agents/bms-review-standard.md", "./agents/bms-review-light.md"],
       "hooks": {
         "PreToolUse": [
@@ -193,20 +191,20 @@
       "name": "writing",
       "description": "Writing skills: Documentation, technical writing, and content creation",
       "source": "./",
-      "skills": ["./remove-ai-writing", "./scientific-revision"]
+      "skills": ["./skills/remove-ai-writing", "./skills/scientific-revision"]
     },
     {
       "name": "bms",
       "description": "BMsuisse master skill — /bms activates all core coding guidelines at once. Sub-commands: /bms sql, /bms python, /bms data. Always enables caveman communication style.",
       "source": "./",
       "skills": [
-        "./bms",
-        "./coding-guidelines-sql",
-        "./coding-guidelines-python",
-        "./coding-guidelines-typescript",
-        "./sql-optimization",
-        "./data-modeling-dimensional",
-        "./fabricks-glossary"
+        "./skills/bms",
+        "./skills/coding-guidelines-sql",
+        "./skills/coding-guidelines-python",
+        "./skills/coding-guidelines-typescript",
+        "./skills/sql-optimization",
+        "./skills/data-modeling-dimensional",
+        "./skills/fabricks-glossary"
       ]
     }
   ]
