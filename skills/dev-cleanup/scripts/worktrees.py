@@ -2,10 +2,11 @@
 """Read-only report of git worktrees under a root: size, dirty, unpushed, locked, active, age.
 Deletes nothing. Verdict `safe` = clean, nothing unpushed, not locked, no process inside, idle >= --idle-hours.
 
-Usage: worktrees.py [ROOT=~/DevOps] [--idle-hours 24] [--json] [--depth 2]
+Usage: worktrees.py [ROOT=$AZDO_WORK_DIR|$BMS_WORK_DIR|~/projects] [--idle-hours 24] [--json] [--depth 2]
 Remove a `safe` row with:  git -C <main_repo> worktree remove <path>   (branch stays; never --force).
 """
 import argparse
+import os
 import json
 import subprocess
 import sys
@@ -76,7 +77,7 @@ def inspect(wt: dict, cwds: list[str], idle_hours: float) -> dict:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("root", nargs="?", default="~/DevOps")
+    ap.add_argument("root", nargs="?", default=os.environ.get("AZDO_WORK_DIR") or os.environ.get("BMS_WORK_DIR") or "~/projects")
     ap.add_argument("--idle-hours", type=float, default=24)
     ap.add_argument("--depth", type=int, default=2)
     ap.add_argument("--json", action="store_true")

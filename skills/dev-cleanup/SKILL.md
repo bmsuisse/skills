@@ -6,8 +6,9 @@ description: >
   caches, app caches in ~/Library/Caches, stale git worktrees and old node_modules/.venv, show an overview
   with sizes and risk, and let the user pick what to clean. Use for "clean up my machine", "disk is full",
   "free up space", "clear caches", "podman prune", "uv cache", "stale worktrees", "remove old worktrees",
-  "what is eating my disk", "need more disk space", even if the user names only one of these. Never deletes
-  before the user has seen the overview and chosen.
+  "what is eating my disk", "need more disk space", "orphaned test databases", "drop old pgdevkit DBs", even
+  if the user names only one of these. Uses `bdt cleanup` for merged worktrees and their pgdevkit test DBs.
+  Never deletes before the user has seen the overview and chosen.
 ---
 
 # Dev workstation cleanup
@@ -15,29 +16,47 @@ description: >
 Flow is always **scan, show overview, user picks, delete only the picks, report freed space**. Deleting is the
 easy part; the value is a trustworthy overview, because worktrees and images can hold work the user cares about.
 
+Worktrees and their Postgres test databases go through **`bdt cleanup`** (bmsdna-devtools,
+`uv tool install bmsdna-devtools`; check with `bdt cleanup --help`). It knows which worktrees are fully merged and
+drops the pgdevkit test DB(s) that belong to them, which `git worktree remove` alone leaves behind. Everything
+else (caches, podman, stale envs, unmerged worktrees) stays with the scripts below.
+
 ## 1. Scan (read-only, run in parallel, in the background if slow)
 
 ```bash
 S=<this skill dir>/scripts
+# repo root = the work dir `bdt find-repo` uses, so every tool scans the same tree
+ROOT="${AZDO_WORK_DIR:-${BMS_WORK_DIR:-$HOME/projects}}"
 python3 $S/scan.py                    # caches, podman/docker, app caches: size + risk + clean command
-python3 $S/worktrees.py ~/DevOps      # every git worktree: size, dirty, unpushed, locked, active, idle
-python3 $S/stale_envs.py ~/DevOps     # node_modules/.venv/target untouched for 30d+
+bdt cleanup worktrees "$ROOT"        # DRY RUN: worktrees fully merged into origin/main|test (+ their test DBs)
+bdt cleanup orphaned-dbs "$ROOT"     # DRY RUN: pgdevkit test DBs whose worktree is already gone
+python3 $S/worktrees.py "$ROOT"      # every git worktree: size, dirty, unpushed, locked, active, idle
+python3 $S/stale_envs.py "$ROOT"     # node_modules/.venv/target untouched for 30d+
 df -h ~ | tail -1                     # record free space before
 ```
 
-`du` over large trees takes minutes; start all three at once and say so, rather than going silent. Add `--json`
-(scan, worktrees) when you need to filter. Change the root if the user keeps repos elsewhere.
+Both `bdt cleanup` commands only print what they would remove until `--yes` is passed, so running them in the
+scan step is safe. They need the Postgres of the pgdevkit test container reachable (`localhost:54322` by
+default, `--pg-host/--pg-port/--pg-user` or `PGHOST/PGPORT/PGUSER` to change); if it is down, say so and fall
+back to `worktrees.py` for the worktree rows.
+
+`du` over large trees takes minutes; start them all at once and say so, rather than going silent. Add `--json`
+(scan, worktrees) when you need to filter. `ROOT` follows `AZDO_WORK_DIR`/`BMS_WORK_DIR` (same as `bdt find-repo`, default `~/projects`); change it only if the user keeps repos elsewhere.
 
 ## 2. Present one overview, then ask
 
-Merge the output into a single table sorted by size, grouped by risk, so the user decides in one reply:
+Merge the output into a single table (one row per repo for `bdt cleanup` results, with the worktree count and
+whether test DBs go with them) sorted by size, grouped by risk, so the user decides in one reply:
 
 | # | What | Size | Risk | Action |
 |---|------|------|------|--------|
 
-- **Safe by default**: package-manager caches, app caches, Playwright browsers, worktrees marked `safe`.
+- **Safe by default**: package-manager caches, app caches, Playwright browsers, worktrees listed by
+  `bdt cleanup worktrees` (merged), orphaned test DBs from `bdt cleanup orphaned-dbs` that are not flagged
+  "caution".
 - **Needs a decision**: podman/docker (`prune -a` removes every image not in use), HuggingFace models, volumes,
-  worktrees marked `review: ...` (list the reason: dirty, N unpushed, locked, active, recently touched).
+  worktrees marked `review: ...` by `worktrees.py` (list the reason: dirty, N unpushed, locked, active, recently
+  touched), orphaned DBs flagged as a possible standing reference DB (`--include-caution`, verify first).
 - **Never offer**: worktrees with uncommitted changes or unpushed commits; locked ones; ones with an active
   process (that is another Claude session working there). Show them, but only as "kept, because ...".
 
@@ -52,10 +71,24 @@ scan finds more, or fewer, than they expect), so one yes on the concrete list is
 
 Run the `clean` command shown by `scan.py` for each picked row. Specifics that matter:
 
-- **Worktrees**: `git -C <repo> worktree remove <path>`, never `--force`, never `rm -rf` (that leaves dangling
-  metadata). Branches stay, so the work is recoverable. Finish with `git -C <repo> worktree prune`. For 50+
-  removals write the list to a file and loop in the background; each removal is slow because of node_modules.
-  Re-run `worktrees.py` first if the overview is older than a few minutes: a session may have started since.
+- **Merged worktrees + their test DBs**: `bdt cleanup worktrees <ROOT> --yes` after the user confirmed the
+  dry-run list. It removes every merged worktree under the root, so re-run the dry run right before `--yes` if the
+  overview is older than a few minutes, and drop entries the user did not pick by running it on a narrower
+  `<ROOT>` (one repo) instead. Add `--keep-dbs` if the user wants to keep the databases. A worktree you just
+  created from `origin/main` with no commits yet also counts as "merged", so never run it from, or on a root
+  containing, the worktree you are working in unless the user wants that one gone too.
+- **Orphaned test DBs**: `bdt cleanup orphaned-dbs <ROOT> --yes`. Leave out `--include-caution` unless the user
+  checked the flagged DBs. A non-local `--pg-host` makes bdt ask for a typed `yes` that no flag bypasses; leave
+  that prompt to the user, never work around it.
+- **One specific worktree** (user names it, merged or not): from inside it, `bdt cleanup worktree --confirm`
+  (add `--keep-db` to keep its DB); it refuses main/test, locked and dirty worktrees. `bdt cleanup db --confirm`
+  drops only that worktree's test DB(s) and keeps the worktree.
+- **Unmerged worktrees** (only the ones `worktrees.py` marks `safe`, after the user picked them):
+  `bdt cleanup worktree --confirm` from inside each, or `git -C <repo> worktree remove <path>` if bdt is not
+  installed, never `--force`, never `rm -rf` (that leaves dangling metadata and the test DB). Branches stay, so
+  the work is recoverable. Finish with `git -C <repo> worktree prune`. For 50+ removals write the list to a file
+  and loop in the background; each removal is slow because of node_modules. Re-run `worktrees.py` first if the
+  overview is older than a few minutes: a session may have started since.
 - **Podman**: the 60 GB the folder shows is the VM's raw disk file, which only grows. Compare it with
   `podman system df` (the real content, often under 10 GB) and say so in the overview, because `prune -a` alone
   frees only the reclaimable part and the Mac's free space barely moves. Space comes back via
@@ -71,5 +104,5 @@ removal failed, say which and leave it; do not escalate to `--force` without ask
 
 ## Ideas worth suggesting after (only mention, do not do)
 
-`docker`/`podman` auto-prune cron, `git worktree` cleanup as a habit after merging a PR, moving
+`docker`/`podman` auto-prune cron, `bdt cleanup worktree --confirm` as a habit right after a PR merges, moving
 `UV_CACHE_DIR`/podman machine disk to an external drive.

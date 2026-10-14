@@ -2,7 +2,7 @@
 """Read-only: find big node_modules / .venv / target dirs in projects untouched for N days.
 Deletable because they regenerate (`bun install`, `uv sync`, `cargo build`).
 
-Usage: stale_envs.py [ROOT=~/DevOps] [--days 30] [--min-mb 100]
+Usage: stale_envs.py [ROOT=$AZDO_WORK_DIR|$BMS_WORK_DIR|~/projects] [--days 30] [--min-mb 100]
 """
 import argparse
 import os
@@ -15,7 +15,7 @@ NAMES = {"node_modules", ".venv", "target", ".next", ".turbo"}
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("root", nargs="?", default="~/DevOps")
+    ap.add_argument("root", nargs="?", default=os.environ.get("AZDO_WORK_DIR") or os.environ.get("BMS_WORK_DIR") or "~/projects")
     ap.add_argument("--days", type=float, default=30)
     ap.add_argument("--min-mb", type=float, default=100)
     a = ap.parse_args()

@@ -14,12 +14,12 @@
     },
     {
       "id": 2,
-      "prompt": "we have tons of stale worktrees in ~/DevOps, get rid of them but only if nobody is working in them",
-      "expected_output": "Runs worktrees.py, lists safe vs review worktrees with reasons, removes only safe ones with `git worktree remove` (no --force) after confirmation.",
+      "prompt": "we have tons of stale worktrees in the work dir, get rid of them but only if nobody is working in them",
+      "expected_output": "Runs `bdt cleanup worktrees` (dry run) plus worktrees.py, lists merged vs review worktrees with reasons, removes only confirmed ones via `bdt cleanup worktrees --yes` or `git worktree remove` (no --force) after confirmation.",
       "assertions": [
         "Runs scripts/worktrees.py or checks dirty, unpushed, locked and active-process status for each worktree",
         "Does not select a worktree that is dirty, has unpushed commits, is locked or has an active process",
-        "Uses `git worktree remove` without --force and never `rm -rf` on a worktree",
+        "Uses `bdt cleanup` (or `git worktree remove` without --force when bdt is missing) and never `rm -rf` on a worktree",
         "Confirms with the user before the first removal"
       ]
     },
@@ -42,6 +42,27 @@
         "Cleans package-manager caches using their own commands (uv cache clean, npm cache clean --force)",
         "Does not run podman system prune -a or remove dirty/unpushed worktrees under 'safe only' authorization",
         "Final report lists what was skipped and why"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "we have loads of old pgdevkit test databases in postgres from worktrees I deleted, drop them",
+      "expected_output": "Runs `bdt cleanup orphaned-dbs <root>` as a dry run, shows the list (caution-flagged ones separate), asks for confirmation, then re-runs with --yes without --include-caution.",
+      "assertions": [
+        "Runs `bdt cleanup orphaned-dbs` without --yes first and shows the output to the user",
+        "Asks for confirmation on the concrete list before running with --yes",
+        "Does not pass --include-caution unless the user agreed to the flagged DBs",
+        "Does not drop databases with raw psql DROP DATABASE"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "clean up merged worktrees in the work dir and their databases",
+      "expected_output": "Runs `bdt cleanup worktrees the work dir` as dry run, presents the list per repo, confirms, then runs with --yes (no --keep-dbs).",
+      "assertions": [
+        "Runs `bdt cleanup worktrees` without --yes first",
+        "Presents the list and asks before running with --yes",
+        "Does not hand-roll `git worktree remove` loops when bdt is available"
       ]
     }
   ]
