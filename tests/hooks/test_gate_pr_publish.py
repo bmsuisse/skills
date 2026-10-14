@@ -116,7 +116,7 @@ def codex_foreground(tmp_path: Path, command: str, **result) -> Path:
         "codex exec - <<'EOF'\nPlease do a code review of the diff.\nEOF",
         f'PROMPT="{REVIEW_PROMPT}"; codex exec -s read-only "$PROMPT"',
         f'export P="{REVIEW_PROMPT}"\ncd /work/wt && codex exec "${{P}}"',
-        f'A="Use the bms-code-review skill"; B="$A on the diff"; codex exec "$B"',
+        'A="Use the bms-code-review skill"; B="$A on the diff"; codex exec "$B"',
     ],
 )
 def test_allows_after_completed_foreground_codex_review(tmp_path, command):
