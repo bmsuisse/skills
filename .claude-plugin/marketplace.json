@@ -54,7 +54,9 @@
         "./skills/procrastinate",
         "./skills/aiochannel-python",
         "./skills/python-autotuner",
-        "./skills/clockify"
+        "./skills/clockify",
+        "./skills/nicegui",
+        "./skills/azure-cost"
       ]
     },
     {
@@ -75,7 +77,10 @@
       "skills": [
         "./skills/rich-data-tables",
         "./skills/inter-without-ai-slop",
-        "./skills/design-review"
+        "./skills/design-review",
+        "./skills/kendo-ui-react",
+        "./skills/kendo-ui-angular",
+        "./skills/kendo-ui-vue"
       ]
     },
 
