@@ -102,12 +102,21 @@ def codex_foreground(tmp_path: Path, command: str, **result) -> Path:
         "codex review",
         "codex review --base main",
         "codex exec review --uncommitted",
-        f'/usr/local/bin/codex exec "{REVIEW_PROMPT}" | tail -40',
+        f'set -o pipefail; /usr/local/bin/codex exec "{REVIEW_PROMPT}" | tail -40',
+        f'set -euo pipefail\ncodex exec "{REVIEW_PROMPT}" 2>&1 | tee /tmp/out.md',
+        f'cd /work/wt && codex exec "{REVIEW_PROMPT}"',
+        f'cd /work/wt && codex exec "{REVIEW_PROMPT}" > /tmp/codex.log 2>&1',
+        f'codex exec "{REVIEW_PROMPT}" && echo review done',
+        f'codex exec "{REVIEW_PROMPT}";',
         f'nohup codex exec "{REVIEW_PROMPT}"',
         f'timeout 900 env CODEX_HOME=/x codex exec "{REVIEW_PROMPT}"',
         f"bash -c 'codex exec \"{REVIEW_PROMPT}\"'",
-        f'echo starting; codex exec -m gpt-5 "{REVIEW_PROMPT}"; echo done',
+        f'echo starting; codex exec -m gpt-5 "{REVIEW_PROMPT}"',
         "echo 'please do a code review' | codex exec -",
+        "codex exec - <<'EOF'\nPlease do a code review of the diff.\nEOF",
+        f'PROMPT="{REVIEW_PROMPT}"; codex exec -s read-only "$PROMPT"',
+        f'export P="{REVIEW_PROMPT}"\ncd /work/wt && codex exec "${{P}}"',
+        f'A="Use the bms-code-review skill"; B="$A on the diff"; codex exec "$B"',
     ],
 )
 def test_allows_after_completed_foreground_codex_review(tmp_path, command):
@@ -122,7 +131,7 @@ def test_allows_codex_review_run_by_a_subagent(tmp_path):
     assert run_hook(transcript) is None
 
 
-def background_start(tmp_path: Path, out: Path | None, timestamp: str | None = None) -> Path:
+def background_start(tmp_path: Path, out: Path | None, timestamp: str | None = "2020-01-01T00:00:00Z") -> Path:
     """The shape of a real run: `nohup codex exec ... -o $S/x.md > log 2>&1 &`, tool_result only says "started"."""
     o = f"-o $S/{out.name} " if out else ""
     command = (
@@ -153,6 +162,14 @@ def test_denies_background_codex_review_with_stale_output_file(tmp_path):
     out = tmp_path / "codex-review.md"
     out.write_text("an older review")
     assert_denied(run_hook(background_start(tmp_path, out, timestamp="2999-01-01T00:00:00Z")))
+
+
+@pytest.mark.parametrize("timestamp", [None, "", "not a date"])
+def test_denies_background_codex_review_without_a_valid_call_timestamp(tmp_path, timestamp):
+    # "newer than the call" cannot be told, so an existing non-empty file proves nothing
+    out = tmp_path / "codex-review.md"
+    out.write_text("## Should fix\n- nothing\n")
+    assert_denied(run_hook(background_start(tmp_path, out, timestamp=timestamp)))
 
 
 def test_denies_background_codex_review_without_output_file(tmp_path):
@@ -228,3 +245,143 @@ def test_denies_codex_review_in_a_non_bash_tool(tmp_path):
     row = bash_call("codex review")
     row["message"]["content"][0]["name"] = "Write"
     assert_denied(run_hook(transcript_rows(tmp_path, row, bash_result())))
+
+
+# --- completion proof: the -o file only counts for shell-backgrounded runs -----------------------------------------
+
+
+def test_denies_failed_foreground_codex_review_that_left_an_output_file(tmp_path):
+    out = tmp_path / "report.md"
+    out.write_text("## partial output of a run that then failed\n")
+    command = f"codex review -o {out} --base main"
+    transcript = transcript_rows(
+        tmp_path,
+        bash_call(command, timestamp="2020-01-01T00:00:00Z"),
+        bash_result(text="Exit code 1", is_error=True),
+    )
+    assert_denied(run_hook(transcript))
+
+
+@pytest.mark.parametrize("status", ["failed", "killed", None])
+def test_denies_run_in_background_codex_review_with_output_file_but_no_completion(tmp_path, status):
+    out = tmp_path / "report.md"
+    out.write_text("## partial output\n")
+    rows = [
+        bash_call(f'codex exec -o {out} "{REVIEW_PROMPT}"', background=True, timestamp="2020-01-01T00:00:00Z"),
+        bash_result(text="Command running in background with ID: b1"),
+    ]
+    if status:
+        rows.append(task_notification("toolu_1", status))
+    assert_denied(run_hook(transcript_rows(tmp_path, *rows)))
+
+
+def test_denies_foreground_codex_review_with_output_file_but_no_tool_result(tmp_path):
+    out = tmp_path / "report.md"
+    out.write_text("## partial output\n")
+    call = bash_call(f'codex exec -o {out} "{REVIEW_PROMPT}"', timestamp="2020-01-01T00:00:00Z")
+    assert_denied(run_hook(transcript_rows(tmp_path, call)))
+
+
+def test_allows_shell_backgrounded_codex_review_with_fresh_output_file_in_a_run_in_background_call(tmp_path):
+    out = tmp_path / "report.md"
+    out.write_text("## Should fix\n- nothing\n")
+    command = f'nohup codex exec -o {out} "{REVIEW_PROMPT}" > {tmp_path}/log 2>&1 &'
+    call = bash_call(command, background=True, timestamp="2020-01-01T00:00:00Z")
+    assert run_hook(transcript_rows(tmp_path, call, bash_result(text="started"))) is None
+
+
+@pytest.mark.parametrize("redirect", ["&>/dev/null", ">/dev/null 2>&1", "> /dev/null 2>&1"])
+def test_recognizes_shell_backgrounding_after_redirections(tmp_path, redirect):
+    out = tmp_path / "report.md"
+    out.write_text("## Should fix\n- nothing\n")
+    command = f'codex exec -o {out} "{REVIEW_PROMPT}" {redirect} &'
+    call = bash_call(command, timestamp="2020-01-01T00:00:00Z")
+    assert run_hook(transcript_rows(tmp_path, call, bash_result(text="started"))) is None
+
+
+# --- completion proof: the tool result must reflect codex's own exit status -------------------------------------
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "codex review | cat",
+        "codex review --base main 2>&1 | tail -40",
+        f'codex exec "{REVIEW_PROMPT}" | tee out.md',
+        f'codex exec "{REVIEW_PROMPT}" |& tee out.md',
+        f'set +o pipefail; codex exec "{REVIEW_PROMPT}" | tee out.md',
+        f'codex exec "{REVIEW_PROMPT}"; echo done',
+        f'codex exec "{REVIEW_PROMPT}"\necho done',
+        f'codex exec "{REVIEW_PROMPT}" || true',
+        f'codex exec "{REVIEW_PROMPT}" && echo ok || echo failed',
+        f'true || codex exec "{REVIEW_PROMPT}"',
+        f'(codex exec "{REVIEW_PROMPT}"; echo done)',
+        f"bash -c 'codex exec \"{REVIEW_PROMPT}\" | tee out.md'",
+        f"bash -c 'codex exec \"{REVIEW_PROMPT}\"; echo done'",
+        f"bash -c 'codex exec \"{REVIEW_PROMPT}\"' || true",
+    ],
+)
+def test_denies_codex_review_whose_failure_the_tool_result_would_hide(tmp_path, command):
+    # the Bash result is the status of the whole command line: `| cat` / `; echo done` / `|| true` exit 0 anyway
+    assert_denied(run_hook(codex_foreground(tmp_path, command)))
+    background = transcript_rows(
+        tmp_path,
+        bash_call(command, background=True),
+        bash_result(text="Command running in background"),
+        task_notification("toolu_1", "completed"),
+        name="background.jsonl",
+    )
+    assert_denied(run_hook(background))
+
+
+def test_pipefail_inside_bash_c_counts_for_that_shell_only(tmp_path):
+    ok = f"bash -c 'set -o pipefail; codex exec \"{REVIEW_PROMPT}\" | tee out.md'"
+    assert run_hook(codex_foreground(tmp_path, ok)) is None
+    outer = f"set -o pipefail; bash -c 'codex exec \"{REVIEW_PROMPT}\" | tee out.md'"
+    assert_denied(run_hook(codex_foreground(tmp_path, outer)))
+
+
+def test_denies_a_failed_foreground_run_even_when_the_codex_call_decides_the_status(tmp_path):
+    command = f'cd /work/wt && codex exec "{REVIEW_PROMPT}"'
+    assert_denied(run_hook(codex_foreground(tmp_path, command, text="Exit code 1", is_error=True)))
+
+
+# --- the prompt may come from a variable assigned in the same command --------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        'codex exec "$UNSET"',
+        'PROMPT="fix the failing test"; codex exec "$PROMPT"',
+        f'codex exec "$PROMPT"; PROMPT="{REVIEW_PROMPT}"',  # assigned too late
+        f'PROMPT="{REVIEW_PROMPT}" codex exec "$PROMPT"',  # a prefix assignment is not visible to its own arguments
+        f'PROMPT="{REVIEW_PROMPT}"; codex exec "$OTHER"',
+        # an unresolved variable is not rescued by a mention of "code review" elsewhere in the command
+        f'codex exec "$UNSET" # {REVIEW_PROMPT}',
+    ],
+)
+def test_denies_codex_exec_whose_prompt_is_not_a_resolvable_review_request(tmp_path, command):
+    assert_denied(run_hook(codex_foreground(tmp_path, command)))
+
+
+# --- robustness ----------------------------------------------------------------------------------------------------
+
+
+def test_malformed_transcript_lines_do_not_break_the_check(tmp_path):
+    good = [bash_call("codex review"), bash_result()]
+    odd = [
+        "not json {codex",
+        json.dumps([1, 2, "codex"]),
+        json.dumps(
+            {"message": {"content": [{"type": "tool_use", "name": "Bash", "id": ["x"], "input": "codex review"}]}}
+        ),
+        json.dumps({"message": {"content": [{"type": "tool_result", "tool_use_id": ["codex"], "is_error": True}]}}),
+        json.dumps({"message": "codex tool_result", "type": "queue-operation", "content": 5}),
+        json.dumps(bash_call("codex review", tool_id="toolu_9", timestamp=12345)),
+    ]
+    path = tmp_path / "session.jsonl"
+    path.write_text("\n".join([*odd, *(json.dumps(r) for r in good)]))
+    assert run_hook(path) is None
+    path.write_text("\n".join(odd))
+    assert_denied(run_hook(path))
