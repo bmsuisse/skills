@@ -25,11 +25,13 @@ else (caches, podman, stale envs, unmerged worktrees) stays with the scripts bel
 
 ```bash
 S=<this skill dir>/scripts
+# repo root = the work dir `bdt find-repo` uses, so every tool scans the same tree
+ROOT="${AZDO_WORK_DIR:-${BMS_WORK_DIR:-$HOME/projects}}"
 python3 $S/scan.py                    # caches, podman/docker, app caches: size + risk + clean command
-bdt cleanup worktrees ~/DevOps        # DRY RUN: worktrees fully merged into origin/main|test (+ their test DBs)
-bdt cleanup orphaned-dbs ~/DevOps     # DRY RUN: pgdevkit test DBs whose worktree is already gone
-python3 $S/worktrees.py ~/DevOps      # every git worktree: size, dirty, unpushed, locked, active, idle
-python3 $S/stale_envs.py ~/DevOps     # node_modules/.venv/target untouched for 30d+
+bdt cleanup worktrees "$ROOT"        # DRY RUN: worktrees fully merged into origin/main|test (+ their test DBs)
+bdt cleanup orphaned-dbs "$ROOT"     # DRY RUN: pgdevkit test DBs whose worktree is already gone
+python3 $S/worktrees.py "$ROOT"      # every git worktree: size, dirty, unpushed, locked, active, idle
+python3 $S/stale_envs.py "$ROOT"     # node_modules/.venv/target untouched for 30d+
 df -h ~ | tail -1                     # record free space before
 ```
 
@@ -39,7 +41,7 @@ default, `--pg-host/--pg-port/--pg-user` or `PGHOST/PGPORT/PGUSER` to change); i
 back to `worktrees.py` for the worktree rows.
 
 `du` over large trees takes minutes; start them all at once and say so, rather than going silent. Add `--json`
-(scan, worktrees) when you need to filter. Change the root if the user keeps repos elsewhere.
+(scan, worktrees) when you need to filter. `ROOT` follows `AZDO_WORK_DIR`/`BMS_WORK_DIR` (same as `bdt find-repo`, default `~/projects`); change it only if the user keeps repos elsewhere.
 
 ## 2. Present one overview, then ask
 
@@ -69,13 +71,13 @@ scan finds more, or fewer, than they expect), so one yes on the concrete list is
 
 Run the `clean` command shown by `scan.py` for each picked row. Specifics that matter:
 
-- **Merged worktrees + their test DBs**: `bdt cleanup worktrees <root> --yes` after the user confirmed the
+- **Merged worktrees + their test DBs**: `bdt cleanup worktrees <ROOT> --yes` after the user confirmed the
   dry-run list. It removes every merged worktree under the root, so re-run the dry run right before `--yes` if the
   overview is older than a few minutes, and drop entries the user did not pick by running it on a narrower
-  `<root>` (one repo) instead. Add `--keep-dbs` if the user wants to keep the databases. A worktree you just
+  `<ROOT>` (one repo) instead. Add `--keep-dbs` if the user wants to keep the databases. A worktree you just
   created from `origin/main` with no commits yet also counts as "merged", so never run it from, or on a root
   containing, the worktree you are working in unless the user wants that one gone too.
-- **Orphaned test DBs**: `bdt cleanup orphaned-dbs <root> --yes`. Leave out `--include-caution` unless the user
+- **Orphaned test DBs**: `bdt cleanup orphaned-dbs <ROOT> --yes`. Leave out `--include-caution` unless the user
   checked the flagged DBs. A non-local `--pg-host` makes bdt ask for a typed `yes` that no flag bypasses; leave
   that prompt to the user, never work around it.
 - **One specific worktree** (user names it, merged or not): from inside it, `bdt cleanup worktree --confirm`

@@ -14,7 +14,7 @@
     },
     {
       "id": 2,
-      "prompt": "we have tons of stale worktrees in ~/DevOps, get rid of them but only if nobody is working in them",
+      "prompt": "we have tons of stale worktrees in the work dir, get rid of them but only if nobody is working in them",
       "expected_output": "Runs `bdt cleanup worktrees` (dry run) plus worktrees.py, lists merged vs review worktrees with reasons, removes only confirmed ones via `bdt cleanup worktrees --yes` or `git worktree remove` (no --force) after confirmation.",
       "assertions": [
         "Runs scripts/worktrees.py or checks dirty, unpushed, locked and active-process status for each worktree",
@@ -57,8 +57,8 @@
     },
     {
       "id": 6,
-      "prompt": "clean up merged worktrees in ~/DevOps and their databases",
-      "expected_output": "Runs `bdt cleanup worktrees ~/DevOps` as dry run, presents the list per repo, confirms, then runs with --yes (no --keep-dbs).",
+      "prompt": "clean up merged worktrees in the work dir and their databases",
+      "expected_output": "Runs `bdt cleanup worktrees the work dir` as dry run, presents the list per repo, confirms, then runs with --yes (no --keep-dbs).",
       "assertions": [
         "Runs `bdt cleanup worktrees` without --yes first",
         "Presents the list and asks before running with --yes",
