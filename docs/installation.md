@@ -86,6 +86,23 @@ To scope skills to one project, add `.claude/settings.json` to the project root 
 
 The `init-app-stack` scaffold generates this file automatically with the right plugins for the stack.
 
+## Codex CLI — Plugin
+
+Codex installs the same plugins from `.agents/plugins/marketplace.json`, which is generated from `.claude-plugin/marketplace.json` by `scripts/sync-codex.mjs`.
+
+```bash
+codex plugin marketplace add bmsuisse/skills
+codex plugin add coding@bmsuisse-skills
+codex plugin add bms@bmsuisse-skills
+codex plugin list                      # see all plugins and what is installed
+```
+
+Skills carry over from every plugin. The `dev-workflow` hooks work in Codex too: the PR-publish gate and the worktree-only edit check (applied to `apply_patch`). Not carried over: the `PreToolUse` command remapping, the review agents (Codex subagents are a different format), the `EnterWorktree` auto-approve (Codex has no such tool), and the `bdt-status` mod.
+
+Codex only runs plugin hooks you have reviewed. After installing `dev-workflow`, start `codex` once and trust its hooks in `/hooks`. Without that, they are silently skipped (`codex --dangerously-bypass-hook-trust` skips the review for one run).
+
+In a Codex session the PR-publish gate accepts as review: an explicit `$bms-code-review` / `$code-review` skill, a shell command that read that skill's `SKILL.md`, a finished Codex `/review`, or a finished `codex exec` / `codex review` code review (same rules as for Claude Code).
+
 ## skills CLI — Cursor, Copilot, Codex, others
 
 ### Prerequisites

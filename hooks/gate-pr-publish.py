@@ -54,6 +54,12 @@ fails when something can mask it, so the run is conservatively NOT accepted:
 For such runs use `-o` plus `&`, or drop the tail. The prompt of `codex exec` may come from a variable assigned
 earlier in the same command (`P="...code review..."; codex exec "$P"`); unresolved variables do not count.
 
+Codex sessions (transcript = a Codex rollout, whose first row is `session_meta`) use the same publish-command check but
+their own evidence, since Codex has no Skill tool and logs shell commands as `CommandExecution` events. A review
+counts when the rollout shows an explicitly invoked `$bms-code-review`/`$code-review` skill (a `<skill>` message), a
+shell command that read that skill's SKILL.md (cat, sed, ...), a finished Codex `/review` (`exited_review_mode`), or a `codex exec`/
+`codex review` code review run from the session's shell that exited 0 (same rules as above).
+
 Matching is done on shell-tokenized words (via shlex), not a raw substring/regex
 search over the whole command string. This means a phrase like "bdt pr publish"
 sitting inside a quoted --description, commit message, or grep pattern is a single
@@ -433,9 +439,96 @@ def scan_row(row: object, calls: dict, errors: dict[str, bool], notifications: d
             errors[str(block["tool_use_id"])] = bool(block.get("is_error"))
 
 
+# --- Codex sessions ---------------------------------------------------------------------------------------------
+
+# `$bms-code-review` typed in Codex injects `<skill><name>plugin:bms-code-review</name>...` as a user message.
+CODEX_SKILL_MESSAGE = re.compile(r"<skill>\s*<name>(?:[^<:]*:)?(?:bms-)?code-review</name>")
+# Codex loads a skill the model picked itself by reading its SKILL.md in the shell.
+CODEX_SKILL_FILE = re.compile(r"skills/(?:bms-)?code-review/SKILL\.md")
+
+
+def is_codex_transcript(path: str) -> bool:
+    try:
+        with open(path, "r", errors="ignore") as fh:
+            first = json.loads(fh.readline())
+    except (OSError, ValueError):
+        return False
+    return isinstance(first, dict) and first.get("type") == "session_meta"
+
+
+def shell_command_of(argv: object) -> str:
+    """The script of a `bash -lc "<script>"` argv, else the argv joined."""
+    if not isinstance(argv, list):
+        return str(argv or "")
+    words = [str(w) for w in argv]
+    if len(words) >= 3 and os.path.basename(words[0]) in SHELLS and words[1] in ("-c", "-lc", "-cl"):
+        return words[2]
+    return shlex.join(words)
+
+
+FILE_READERS = {"cat", "sed", "head", "tail", "less", "more", "bat", "nl", "awk", "type", "get-content", "gc"}
+
+
+def reads_review_skill(command: str) -> bool:
+    """True when a simple command of `command` is a file reader (cat, sed, ...) given the review skill's SKILL.md."""
+    return any(
+        os.path.basename(words[0]).lower() in FILE_READERS and any(CODEX_SKILL_FILE.search(w) for w in words[1:])
+        for words, _ in split_simple_commands(command)
+        if words
+    )
+
+
+def codex_row_shows_review(row: dict) -> bool:
+    payload = row.get("payload")
+    if not isinstance(payload, dict):
+        return False
+    kind = payload.get("type")
+    if row.get("type") == "event_msg" and kind == "exited_review_mode":
+        return True
+    if row.get("type") == "response_item" and kind == "message" and payload.get("role") == "user":
+        return any(
+            CODEX_SKILL_MESSAGE.search(str(block.get("text", "")))
+            for block in payload.get("content") or []
+            if isinstance(block, dict)
+        )
+    item = payload.get("item")
+    if not (row.get("type") == "event_msg" and kind == "item_completed" and isinstance(item, dict)):
+        return False
+    if item.get("type") != "CommandExecution" or item.get("exit_code") != 0:
+        return False
+    command = shell_command_of(item.get("command"))
+    if reads_review_skill(command):
+        return True
+    started = item.get("started_at_ms") or payload.get("started_at_ms")
+    cwd = str(item.get("cwd") or "").removeprefix("file://") or os.getcwd()
+    return any(
+        review_finished(review, False, None, False, cwd, started / 1000 if isinstance(started, (int, float)) else None)
+        for review in codex_reviews_in_command(command)
+    )
+
+
+def codex_session_review_ran(path: str) -> bool:
+    try:
+        with open(path, "r", errors="ignore") as fh:
+            for line in fh:
+                if not any(k in line for k in ("code-review", "code_review", "codex", "review_mode")):
+                    continue
+                try:
+                    row = json.loads(line)
+                except ValueError:
+                    continue
+                if isinstance(row, dict) and codex_row_shows_review(row):
+                    return True
+    except OSError:
+        pass
+    return False
+
+
 def code_review_ran(transcript_path: str) -> bool:
     if not transcript_path or not os.path.exists(transcript_path):
         return False
+    if is_codex_transcript(transcript_path):
+        return codex_session_review_ran(transcript_path)
 
     files = [transcript_path]
     if transcript_path.endswith(".jsonl"):
