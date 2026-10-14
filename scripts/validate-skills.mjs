@@ -18,6 +18,9 @@ const root = join(__dir, "..");
 const skillsDir = join(root, "skills");
 const marketplacePath = join(root, ".claude-plugin", "marketplace.json");
 
+// Deprecated skills stay in skills/ but are intentionally not shipped by any plugin.
+const DEPRECATED_SKILLS = new Set(["nicegui", "kendo-ui-angular", "kendo-ui-react", "kendo-ui-vue"]);
+
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 function parseFrontmatter(content) {
@@ -113,7 +116,7 @@ for (const folder of folders) {
   }
 
   // Skill not listed in marketplace.json at all
-  if (!expectedPlugin) {
+  if (!expectedPlugin && !DEPRECATED_SKILLS.has(folder)) {
     console.warn(`⚠️   ${folder}: not listed in marketplace.json`);
     warnings++;
   }
