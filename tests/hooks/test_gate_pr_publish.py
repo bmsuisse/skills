@@ -472,3 +472,27 @@ def test_codex_denies_backgrounded_nested_review_without_output_file(tmp_path):
 
 def test_codex_denies_without_any_review(tmp_path):
     assert_denied(run_hook(codex_rollout(tmp_path, codex_command("git status"))))
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "sed -n '1,200p' /x/dev-workflow/local/skills/bms-code-review/SKILL.md",
+        "cd /x && head -50 skills/code-review/SKILL.md",
+        "cat skills/bms-code-review/SKILL.md | head -20",
+    ],
+)
+def test_codex_allows_common_ways_to_read_the_review_skill(tmp_path, command):
+    assert run_hook(codex_rollout(tmp_path, codex_command(command))) is None
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "echo skills/bms-code-review/SKILL.md",
+        "ls skills/bms-code-review/SKILL.md",
+        "git commit -m 'read skills/bms-code-review/SKILL.md'",
+    ],
+)
+def test_codex_denies_commands_that_only_mention_the_review_skill_file(tmp_path, command):
+    assert_denied(run_hook(codex_rollout(tmp_path, codex_command(command))))

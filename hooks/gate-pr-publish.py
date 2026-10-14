@@ -57,7 +57,7 @@ earlier in the same command (`P="...code review..."; codex exec "$P"`); unresolv
 Codex sessions (transcript = a Codex rollout, whose first row is `session_meta`) use the same publish-command check but
 their own evidence, since Codex has no Skill tool and logs shell commands as `CommandExecution` events. A review
 counts when the rollout shows an explicitly invoked `$bms-code-review`/`$code-review` skill (a `<skill>` message), a
-shell command that read that skill's SKILL.md, a finished Codex `/review` (`exited_review_mode`), or a `codex exec`/
+shell command that read that skill's SKILL.md (cat, sed, ...), a finished Codex `/review` (`exited_review_mode`), or a `codex exec`/
 `codex review` code review run from the session's shell that exited 0 (same rules as above).
 
 Matching is done on shell-tokenized words (via shlex), not a raw substring/regex
@@ -466,6 +466,18 @@ def shell_command_of(argv: object) -> str:
     return shlex.join(words)
 
 
+FILE_READERS = {"cat", "sed", "head", "tail", "less", "more", "bat", "nl", "awk", "type", "get-content", "gc"}
+
+
+def reads_review_skill(command: str) -> bool:
+    """True when a simple command of `command` is a file reader (cat, sed, ...) given the review skill's SKILL.md."""
+    return any(
+        os.path.basename(words[0]).lower() in FILE_READERS and any(CODEX_SKILL_FILE.search(w) for w in words[1:])
+        for words, _ in split_simple_commands(command)
+        if words
+    )
+
+
 def codex_row_shows_review(row: dict) -> bool:
     payload = row.get("payload")
     if not isinstance(payload, dict):
@@ -485,7 +497,7 @@ def codex_row_shows_review(row: dict) -> bool:
     if item.get("type") != "CommandExecution" or item.get("exit_code") != 0:
         return False
     command = shell_command_of(item.get("command"))
-    if CODEX_SKILL_FILE.search(command):
+    if reads_review_skill(command):
         return True
     started = item.get("started_at_ms") or payload.get("started_at_ms")
     cwd = str(item.get("cwd") or "").removeprefix("file://") or os.getcwd()

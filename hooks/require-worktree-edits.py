@@ -115,6 +115,8 @@ def edited_paths(data: dict) -> list[str]:
 
 def check_path(path: str) -> None:
     normalized = path.replace("\\", "/")
+    if "/../" in f"/{normalized}/":  # `worktree-x/../README.md` must not pass for being under worktree-x
+        normalized = os.path.normpath(normalized).replace("\\", "/")
     if ALLOWED_PATH.search(normalized) or ALLOWED_PREFIX.search(normalized) or ALLOWED_WINDOWS_TEMP.search(normalized):
         return
 

@@ -211,3 +211,18 @@ def test_apply_patch_allowed_when_the_session_cwd_is_a_worktree(repo_dir: Path) 
 
 def test_apply_patch_allowed_when_not_a_git_repo(repo_dir: Path) -> None:
     assert not is_denied(run_apply_patch(patch_of("Add File: foo.py"), repo_dir))
+
+
+def test_apply_patch_blocked_when_dot_dot_leaves_the_worktree(repo_dir: Path) -> None:
+    init_git_repo(repo_dir, with_remote=True)
+    assert is_denied(run_apply_patch(patch_of("Update File: worktree-x/../README.md"), repo_dir))
+
+
+def test_blocks_dot_dot_that_leaves_the_worktree_in_a_file_path(repo_dir: Path) -> None:
+    init_git_repo(repo_dir, with_remote=True)
+    assert is_denied(run_hook(str(repo_dir / "worktree-x" / ".." / "README.md"), repo_dir))
+
+
+def test_allows_dot_dot_that_stays_inside_the_worktree(repo_dir: Path) -> None:
+    init_git_repo(repo_dir, with_remote=True)
+    assert not is_denied(run_hook(str(repo_dir / "worktree-x" / "a" / ".." / "b.py"), repo_dir))
