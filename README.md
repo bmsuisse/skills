@@ -50,6 +50,7 @@
 | [fabricks-sql-analyzer](./skills/fabricks-sql-analyzer/) | Analyzes all SQL files in the Fabricks.Runtime repository, builds a dependency DAG, runs performance heuristics, and… |
 | [fastapi-azure-auth](./skills/fastapi-azure-auth/) | Azure Entra ID SSO for FastAPI using cookie-based sessions (MSAL, /login → /callback → session). Trigger on: Azure AD… |
 | [fastapi-guideline](./skills/fastapi-guideline/) | Use this skill whenever working with FastAPI — building APIs, adding routes, structuring projects, streaming response… |
+| [history-lessons](./skills/history-lessons/) | Mine a mature repo's git history (reverts, commits that state a root cause, refactors, repeatedly-fixed files, option… |
 | [improve-codebase-architecture](./skills/improve-codebase-architecture/) | Scan a codebase for architectural friction and propose "deepening" refactors that turn many shallow modules into fewe… |
 | [init-app-stack](./skills/init-app-stack/) | Use this skill whenever the user wants to bootstrap, scaffold, or initialize a new full-stack app with a Vite + React… |
 | [inter-without-ai-slop](./skills/inter-without-ai-slop/) | Use Inter as a UI typeface in data-dense B2B apps (dashboards, tables, cockpits) without triggering the "generic AI d… |
