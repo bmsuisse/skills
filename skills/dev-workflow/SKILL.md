@@ -45,10 +45,11 @@ when the tool genuinely isn't available (say so).
    Do not stop the Web server, ask human to click through changes and verify. once ok for human, proceed.
 8. **Pre-publish review (always).** Run `/bms-code-review --full` on the whole diff (or, where it isn't available, `/code-review` at medium, or high for risky changes) and fix findings (ask if unsure). A finished review by another agent also satisfies the gate: `codex exec -C <dir> -s read-only "Use the bms-code-review skill (--full) on the diff ..."` (foreground with nothing piped or chained after it that could hide a failure, i.e. no `| tee`, `; echo` or `|| true`; or backgrounded with `&` and `-o <file>`), or `codex review`; see `bms-code-review`, "Running it through codex". This is the review the PR-publish gate is really for; it is required even if the mid-work `--quick` review was clean, and especially for SQL, auth, concurrency or money handling.
 9. **Publish** the PR via `bdt pr publish`, which will trigger CI
-10. **Watch CI.** Run `bdt pr status --wait`. If remote checks fail, fix and
-   push — don't just report the failure. `bdt pr info` gives the PR link,
-   build state and closed issues in one quick call (the `bdt-status` plugin
-   shows the same above the prompt).
+10. **Watch CI.** Dispatch the `bms-ci-watch` agent (foreground, worktree path in the prompt): it runs
+    `bdt pr status --wait` cheaply and answers `RESULT: green|red|needs-approval|still-running`. Don't poll in
+    your own thread (`sleep`, `Monitor`, build API): every poll re-reads your whole context. If checks fail,
+    fix, push and dispatch again. Without agents (codex), run `bdt pr status --wait --timeout 540` yourself and
+    re-run it on exit 4 (still running). `bdt pr info` gives the PR link, build state and closed issues.
 11. If working from an issue, update it with a summary and implementation
    screenshots once the PR is up.
 12. **Clean up.** Never merge the PR yourself — wait for a human to approve
