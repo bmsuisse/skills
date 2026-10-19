@@ -10,9 +10,9 @@ You are the CI watcher of the dev workflow (skill `dev-workflow`, step 10). You 
 
 Your dispatch prompt names the worktree directory (and, if needed, `--pr-id` / `--target-branch`). Run every command from that directory.
 
-1. Run `bdt pr status --wait` (plus the options from the dispatch prompt) as a single Bash call with `timeout: 600000`. Never poll yourself: no `sleep` loops, no `curl`/`az` calls against the build API, no repeated `bdt pr status` without `--wait`.
-2. If the call hit the timeout or says checks are still running, run it again. Stop after 6 calls and report "still running" with the last output.
-3. `--wait` also stops early when a pipeline needs manual approval: report that and stop.
+1. Run `bdt pr status --wait --timeout 540` (plus the options from the dispatch prompt) as a single Bash call with `timeout: 600000`. If `bdt pr status --help` does not list `--timeout` (older bdt), run `bdt pr status --wait` without it. Never poll yourself: no `sleep` loops, no `curl`/`az` calls against the build API, no repeated `bdt pr status` without `--wait`.
+2. Exit code 4 ("Still running after N s"), or a Bash call that hit its own timeout, means CI is not done: run the same command again. Stop after 6 calls and report "still running" with the last output.
+3. `--wait` also stops early, with exit code 3, when a pipeline needs manual approval: report that and stop. Exit code 1 means a check failed: report it (see below).
 
 Final answer (nothing else, no narration), at most 15 lines:
 
