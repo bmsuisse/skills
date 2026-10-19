@@ -49,8 +49,7 @@ when the tool genuinely isn't available (say so).
     `bdt pr status --wait` cheaply and answers `RESULT: green|red|needs-approval|still-running`. Don't poll in
     your own thread (`sleep`, `Monitor`, build API): every poll re-reads your whole context. If checks fail,
     fix, push and dispatch again. Without agents (codex), run `bdt pr status --wait --timeout 540` yourself and
-    re-run it on exit 4 (still running). `bdt pr info` gives
-    the PR link, build state and closed issues.
+    re-run it on exit 4 (still running). `bdt pr info` gives the PR link, build state and closed issues.
 11. If working from an issue, update it with a summary and implementation
    screenshots once the PR is up.
 12. **Clean up.** Never merge the PR yourself — wait for a human to approve
