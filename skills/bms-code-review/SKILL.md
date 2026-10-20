@@ -52,7 +52,8 @@ report writing (you) stay at your own effort.
 
 ## 0. Prepare
 
-1. Determine the diff: `git diff $(git merge-base HEAD origin/main)...HEAD`
+1. Determine the diff against the repo's default branch (`BASE=$(git symbolic-ref --short refs/remotes/origin/HEAD)`,
+   e.g. `origin/dev` or `origin/main`): `git diff $(git merge-base HEAD $BASE)...HEAD`
    (or `gh pr diff <n>`). If empty, also try `git diff HEAD`; if that is empty
    too, the branch may already be merged: review the merge commit's parents
    (`git diff <merge>^1 <merge>^2`) or say so and stop — never invent findings. Save the diff to a file and
@@ -154,7 +155,7 @@ a codex review that ran in this session and **finished**:
 ```bash
 # foreground: counts once the command exits 0, so keep codex the LAST command of the line
 codex exec -C <worktree> -s read-only --skip-git-repo-check \
-  "Use the bms-code-review skill (full mode, --full) on the diff against origin/main. Review only: do not modify files or commit."
+  "Use the bms-code-review skill (full mode, --full) on the diff against origin/<default branch>. Review only: do not modify files or commit."
 
 # background (long reviews): ALWAYS pass -o and end the command with `&`; the output file is the
 # proof that it finished (a failed run can leave partial output, but only `&` runs are judged by it)
@@ -162,7 +163,10 @@ nohup codex exec -C <worktree> -s read-only -o /tmp/codex-review.md "Use the bms
 # ... then wait for /tmp/codex-review.md to be non-empty and read it
 ```
 
-`codex review --base origin/main` works as well.
+`codex review --base origin/<default branch>` works as well. Write the real base into the prompt
+(`git symbolic-ref --short refs/remotes/origin/HEAD`: `origin/dev` in repos whose default is `dev`); a wrong base
+reviews the wrong diff. In a repo with a git submodule (e.g. `database/`) the parent diff only shows the pointer
+bump, so tell codex to also review `git -C <submodule> diff origin/<its default branch>...HEAD`.
 
 Caveats, because the gate only sees the exit status of the whole Bash command:
 
