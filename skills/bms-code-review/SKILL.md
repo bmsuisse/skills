@@ -182,5 +182,5 @@ fix them before publishing. If codex cannot spawn subagents it plays the roles i
 
 ## Options
 
-- `--comment`: post the merged findings as PR comments (`bdt pr comment --file`).
+- `--comment`: post the merged findings as PR comments (`bdt pr comment --message-file`).
 - `--fix`: apply the Blocking and Should-fix findings afterwards; ask if unsure.

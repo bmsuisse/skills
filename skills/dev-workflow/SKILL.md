@@ -26,7 +26,7 @@ when the tool genuinely isn't available (say so).
    on, and does nothing if the issue's newest comment already is such a claim.
    Don't hand-write a session comment. If you were launched by `bdt issue do N`,
    the issue is already taken (with this session) — don't run it again.
-3. **Implementation Plan**: If your task is more complex, you do an implementation plan first, and you also upload it to PR (using `bdt pr comment --file FILE`). You should usually start with Database, then Backend, then Frontend.
+3. **Implementation Plan**: If your task is more complex, you do an implementation plan first, and you also upload it to PR (using `bdt pr comment --message-file FILE`). You should usually start with Database, then Backend, then Frontend.
    Then run `/bms-plan-review` on the plan and address its findings before implementing.
 4. **Implement** the task. If you find or fix a bug along the way, create an
    issue for it (`bdt issue create --title "..."` — prints just the issue
@@ -40,7 +40,10 @@ when the tool genuinely isn't available (say so).
    job) covering what changed.
 7. **Screenshots.** If the change is visual/UI, capture before/after
    screenshots and attach them to the PR. Do screenshots for mobile and desktop.
-   Then do a "/design-review" for the screenshots using a subagent and adress findings.
+   Dispatch the `bms-design-review` agent (foreground; worktree path, app URL, pages and PR id in the prompt): it
+   captures, runs `/design-review` and attaches in its own small context and returns only findings as text. Don't run
+   the browser loop (navigate, resize, screenshot, retry) in your own thread: each turn re-reads your whole context.
+   Address the findings and re-dispatch to re-check. Where agents aren't available, capture and run `/design-review` yourself.
    If working from an issue, also post the screenshots as an update on the issue.
    Do not stop the Web server, ask human to click through changes and verify. once ok for human, proceed.
 8. **Pre-publish review (always).** Run `/bms-code-review --full` on the whole diff (or, where it isn't available, `/code-review` at medium, or high for risky changes) and fix findings (ask if unsure). A finished review by another agent also satisfies the gate: `codex exec -C <dir> -s read-only "Use the bms-code-review skill (--full) on the diff ..."` (foreground with nothing piped or chained after it that could hide a failure, i.e. no `| tee`, `; echo` or `|| true`; or backgrounded with `&` and `-o <file>`), or `codex review`; see `bms-code-review`, "Running it through codex". This is the review the PR-publish gate is really for; it is required even if the mid-work `--quick` review was clean, and especially for SQL, auth, concurrency or money handling.
