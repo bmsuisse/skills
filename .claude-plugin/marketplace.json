@@ -124,7 +124,7 @@
       "description": "Enforces the team dev workflow: worktree-first edits, auto-approved entry into worktree-shaped dirs, and a gate that blocks bdt/az/gh commands which publish or complete a PR until /code-review, /bms-code-review or a finished `codex exec`/`codex review` code review has run. Also ships the bms-code-review and bms-plan-review skills.",
       "source": "./",
       "skills": ["./skills/dev-workflow", "./skills/bms-code-review", "./skills/bms-plan-review"],
-      "agents": ["./agents/bms-review-core.md", "./agents/bms-review-standard.md", "./agents/bms-review-light.md", "./agents/bms-ci-watch.md"],
+      "agents": ["./agents/bms-review-core.md", "./agents/bms-review-standard.md", "./agents/bms-review-light.md", "./agents/bms-ci-watch.md", "./agents/bms-design-review.md"],
       "hooks": {
         "PreToolUse": [
           {
