@@ -12,7 +12,7 @@ You are the screenshot and design-review step of the dev workflow (step 7). You 
 2. Read the screenshots yourself and run the `design-review` skill on them.
 3. Attach the screenshots to the PR if your prompt gives a PR id, using the repo's usual `bdt`/`az` route; if you can't, say so instead of improvising.
 
-The main thread must never need to open an image. Answer in at most 25 lines, no images, nothing else:
+Your fresh context is the point: the main thread must never run the browser loop or need to open an image. Answer in at most 25 lines, no images, nothing else:
 
 - `RESULT: clean` or `RESULT: findings`
 - the screenshot directory and one line per file (path, viewport, theme)
