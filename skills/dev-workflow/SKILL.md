@@ -26,7 +26,7 @@ when the tool genuinely isn't available (say so).
    on, and does nothing if the issue's newest comment already is such a claim.
    Don't hand-write a session comment. If you were launched by `bdt issue do N`,
    the issue is already taken (with this session) — don't run it again.
-3. **Implementation Plan**: If your task is more complex, you do an implementation plan first, and you also upload it to PR (using `bdt pr comment --file FILE`). You should usually start with Database, then Backend, then Frontend.
+3. **Implementation Plan**: If your task is more complex, you do an implementation plan first, and you also upload it to PR (using `bdt pr comment --message-file FILE`). You should usually start with Database, then Backend, then Frontend.
    Then run `/bms-plan-review` on the plan and address its findings before implementing.
 4. **Implement** the task. If you find or fix a bug along the way, create an
    issue for it (`bdt issue create --title "..."` — prints just the issue
