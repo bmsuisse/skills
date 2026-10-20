@@ -43,7 +43,7 @@ when the tool genuinely isn't available (say so).
    Dispatch the `bms-design-review` agent (foreground; worktree path, app URL, pages and PR id in the prompt): it
    captures, runs `/design-review` and attaches in its own small context and returns only findings as text. Don't run
    the browser loop (navigate, resize, screenshot, retry) in your own thread: each turn re-reads your whole context.
-   Address the findings and re-dispatch to re-check. Without agents (codex), capture and run `/design-review` yourself.
+   Address the findings and re-dispatch to re-check. Where agents aren't available, capture and run `/design-review` yourself.
    If working from an issue, also post the screenshots as an update on the issue.
    Do not stop the Web server, ask human to click through changes and verify. once ok for human, proceed.
 8. **Pre-publish review (always).** Run `/bms-code-review --full` on the whole diff (or, where it isn't available, `/code-review` at medium, or high for risky changes) and fix findings (ask if unsure). A finished review by another agent also satisfies the gate: `codex exec -C <dir> -s read-only "Use the bms-code-review skill (--full) on the diff ..."` (foreground with nothing piped or chained after it that could hide a failure, i.e. no `| tee`, `; echo` or `|| true`; or backgrounded with `&` and `-o <file>`), or `codex review`; see `bms-code-review`, "Running it through codex". This is the review the PR-publish gate is really for; it is required even if the mid-work `--quick` review was clean, and especially for SQL, auth, concurrency or money handling.
