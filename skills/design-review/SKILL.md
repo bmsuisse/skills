@@ -56,8 +56,7 @@ what the app says about itself and review against that:
 - `PRODUCT.md` / `DESIGN_GUIDELINES.md` at the repo root (principles,
   anti-references, tone) and the app's own `index.css` tokens.
 - Whether the app ships dark mode at all. If the tokens only define a light
-  theme (e.g. Akeneo editor, "matching OneSales"), don't report missing dark
-  mode as a finding — skip the dark captures.
+  theme, don't report missing dark mode as a finding — skip the dark captures.
 - Brand colour discipline: the accent belongs on primary actions, active nav
   and the focus ring. Hover/selected surfaces stay neutral — a red hover on
   every dropdown or select item is a finding.
@@ -105,7 +104,7 @@ what the app says about itself and review against that:
 |-------|------|-----|
 | **Primary action** | One clear CTA per page, visually dominant | Three equally styled buttons competing for attention |
 | **Squint test** | Squinting at the page, the most important element stands out | Everything is the same visual weight — nothing draws the eye |
-| **Quiet until needed** | Row actions, edit affordances and secondary controls appear on hover/click; data is louder than chrome | Always-open inputs, permanent icon rows, chrome competing with the data |
+| **Quiet until needed** | Row actions, edit affordances and secondary controls appear on hover/focus/click, and stay reachable on touch (always visible or behind a tap target) — never hover-only on a mobile-supported app; data is louder than chrome | Always-open inputs, permanent icon rows, chrome competing with the data, actions that exist only on `:hover` |
 | **Progressive disclosure** | Most important info visible, details available on interaction | Everything shown at once — overwhelming |
 | **Grouping** | Related items are visually grouped (proximity, borders, backgrounds) | Related items scattered, unrelated items touching |
 | **Negative space** | Intentional empty space that frames content | Empty space that looks accidental (uneven, trapped white space) |
@@ -132,7 +131,7 @@ what the app says about itself and review against that:
 | **Transitions** | Subtle transitions on hover/focus (150-200ms ease) | No transitions (jarring) or slow transitions (laggy) |
 | **Loading indicators** | Skeleton screens or spinners during async operations | Content pops in without warning, layout shifts |
 | **Keyboard reachability** | Every clickable row/card is a real button/link or has `role` + `tabIndex` + key handler | Clickable `li`/`div` that can't be tabbed to or activated with Enter/Space |
-| **Stays in context** | Prev/next or inline navigation lets the user move through a list without returning to it; collapsed states keep a tooltip and persist | User must go back to the grid for every next item; collapsed icon rail with no labels |
+| **Stays in context** | Prev/next or inline navigation lets the user move through a list without returning to it; collapsed states keep a label (tooltip on desktop; on mobile the nav is a sheet/drawer, not a tooltip-only rail) and persist | User must go back to the grid for every next item; collapsed icon rail with no labels or touch alternative |
 | **State stability** | Focus and entered values survive re-renders, navigation away/back, and background refetches | Input loses focus mid-typing, layout jumps when data reloads |
 | **Disabled states** | Disabled elements are visually muted, cursor changes | Disabled buttons look clickable, no cursor change |
 
@@ -144,7 +143,7 @@ what the app says about itself and review against that:
 | **Image scaling** | Images fill containers proportionally | Images stretched, cropped badly, or overflowing |
 | **Table responsiveness** | Horizontal scroll on mobile, or stack to cards | Table wider than screen with no way to see columns |
 | **Touch targets** | At least 44x44px on mobile | Tiny links, close buttons, checkboxes |
-| **Desktop-first apps** | Still checked at a narrow width: breadcrumbs, headings and toolbars wrap sensibly | Centred/wrapped text in buttons, clipped breadcrumbs at ~390px |
+| **Narrow-width pass** | Desktop-only apps: breadcrumbs, headings and toolbars at least wrap sensibly. Apps that support mobile: held to every row in this section | Centred/wrapped text in buttons, clipped breadcrumbs at ~390px |
 | **Tablet** | Layout works at 768px (not just desktop and phone) | Layout breaks at tablet widths, awkward gaps |
 
 If reviewing a BMS internal app, also check against the concrete values in
