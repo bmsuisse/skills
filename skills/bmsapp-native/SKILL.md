@@ -8,14 +8,17 @@ description: >
   widgets, Live Activities, approvals, push notifications (APNs), sign-in with
   the app's Entra token, route/reminder/contact/phone call on the iPhone,
   native forms and native content screens (iOS sheets with fields, photo/scan/
-  signature, tables, maps) opened from the page. Covers `@bmsuisse/app-native`
+  signature, tables, maps) opened from the page, scanning text or several
+  barcodes with the iPhone camera. Covers `@bmsuisse/app-native`
   (npm, frontend) and `bmsdna-app-native` (Python, backend). Use instead of hand-writing
   `window.BMSNative` / `window.webkit.messageHandlers` calls or copying
   APNs/widget code into the project. Triggers: "in the app", "native
-  bridge", "BMSNative", "push to the app", "widget on the dashboard", "Live
-  Activity", "approvals in the app", "iOS app", "Entra token", "sign-in in the
-  app", "navigate to", "reminder on the iPhone", "native form", "showForm",
-  "showContent", "native sheet".
+  bridge", "BMSNative", "push to the app", "silent push", "critical alert",
+  "widget on the dashboard", "Live Activity", "Dynamic Island", "approvals in
+  the app", "iOS app", "Entra token", "sign-in in the app", "navigate to",
+  "reminder on the iPhone", "native form", "showForm", "showContent", "native
+  sheet", "scan barcode", "scanText", "scanBarcodes", "goods receipt", "bottom
+  bar", "action button", "setChrome".
 ---
 
 # bmsapp-native — connecting web apps and backends to the BMS app
@@ -62,6 +65,48 @@ are linked below as `docs/<name>.md` of that repo (they are not shipped with the
    without the capability. Never rely on a field or block type being known by an
    older app. Use `onSubmit` so the backend can reject with field errors. Guide:
    [`docs/native-surfaces-guide.md`](https://github.com/bmsuisse/bmsapp-native/blob/main/docs/native-surfaces-guide.md).
+
+10. **Push always carries `webapp_id`** (the web app's `id` in the app), plus
+    `path` for the deep link. Without it the notification lands as "Unknown app"
+    and silent pushes are ignored. Clean up dead tokens with
+    `PERMANENTLY_INVALID_TOKEN_REASONS`, but keep the device record: the
+    `device_id` survives a reinstall.
+11. **Widgets: the feed is the source**, the bridge only updates while the page
+    is open. Every delivery (feed, push, `setWidgets`) replaces **all** widgets,
+    so send the complete list with stable `id`s. Action buttons run in the
+    backend: check what `context.user` may do, the payload is client input.
+    Guide: [`docs/dashboard-widgets-guide.md`](https://github.com/bmsuisse/bmsapp-native/blob/main/docs/dashboard-widgets-guide.md).
+12. **Live Activities are for a process with a start and an end** (at most 8
+    hours, about 4 KB, no images), not for permanent information (that is a
+    widget). Keep the *latest* token per activity from `create_live_activity_router`,
+    and never make it the only place a status can be seen: browsers and old
+    apps answer `unavailable`.
+13. **Approvals: the backend decides.** `get_approvals` returns everything still
+    open for `context.user` (it replaces the list), `on_decision` checks that this
+    user may decide this `approval_id`; `user_email` and `biometric` do not count.
+    After a change, `send_approvals_update` (backend) or `refreshApprovals()` (page).
+14. **Scanning** needs `camera`. Keep a way to type the value in (no scanner in a
+    browser or simulator), handle each result once (the promise and `on(...)`
+    both fire), and treat `cancelled` as no error. Guide:
+    [`docs/scan-guide.md`](https://github.com/bmsuisse/bmsapp-native/blob/main/docs/scan-guide.md).
+15. **Chrome (menu, action buttons, bottom bar)** is set per route with
+    `scope: 'route'` and set again on every route change. Everything in it must
+    also be reachable on the page itself, because a browser shows none of it.
+    Guide: [`docs/webapp-chrome-guide.md`](https://github.com/bmsuisse/bmsapp-native/blob/main/docs/webapp-chrome-guide.md).
+16. **Answers, not exceptions.** Calls return `{ ok: false, error }`. Treat
+    `unavailable`, `unknownAction` (app too old) and `capability` as "show the
+    web UI", `cancelled` as "do nothing", `denied` as "tell the user".
+
+## Workflow
+
+1. Decide which side the feature touches (page, backend, or both) and open the
+   matching reference above.
+2. Check that the app team has granted the capability to this web app, and
+   that the backend paths match the app configuration.
+3. Read the guide of the topic before building (table below), then use the
+   package API; if something is missing, the package gets extended.
+4. Test in a browser (fallbacks), then in the app. `sendTestNotification` shows a
+   push without a backend.
 
 ## More guides
 
