@@ -48,6 +48,20 @@ Playwright server — whichever is available) to capture the page/app:
   content gets reviewed too.
 - Also observe scrolling behavior
 
+## Start From the App's Own Design Source
+
+Generic good/bad judgement comes second. Before looking at screenshots, read
+what the app says about itself and review against that:
+
+- `PRODUCT.md` / `DESIGN_GUIDELINES.md` at the repo root (principles,
+  anti-references, tone) and the app's own `index.css` tokens.
+- Whether the app ships dark mode at all. If the tokens only define a light
+  theme (e.g. Akeneo editor, "matching OneSales"), don't report missing dark
+  mode as a finding — skip the dark captures.
+- Brand colour discipline: the accent belongs on primary actions, active nav
+  and the focus ring. Hover/selected surfaces stay neutral — a red hover on
+  every dropdown or select item is a finding.
+
 ## What to Check
 
 ### 1. Layout and Spacing
@@ -59,6 +73,8 @@ Playwright server — whichever is available) to capture the page/app:
 | **Breathing room** | Generous whitespace around content, elements don't feel cramped | Text touching container edges, buttons crowded against inputs |
 | **Grid discipline** | Content follows a clear column grid | Elements placed freely, no underlying structure |
 | **Responsive proportions** | Sidebar/content ratio looks intentional at every width | Sidebar takes 50% on tablet, content is squeezed |
+| **Nested surfaces** | A panel inside a card has its own tint/border so it reads as a distinct box | Card-in-card with identical white backgrounds — layers blur together |
+| **Overflow containment** | Wide grids/tables have a max width and scroll inside their own container | Page itself scrolls sideways at narrow widths because a grid blew out the layout |
 | **Vertical rhythm** | Consistent vertical spacing pattern (e.g. 8px/16px/24px/32px scale) | Random spacing: 13px here, 27px there, 8px somewhere else |
 
 ### 2. Typography
@@ -89,6 +105,7 @@ Playwright server — whichever is available) to capture the page/app:
 |-------|------|-----|
 | **Primary action** | One clear CTA per page, visually dominant | Three equally styled buttons competing for attention |
 | **Squint test** | Squinting at the page, the most important element stands out | Everything is the same visual weight — nothing draws the eye |
+| **Quiet until needed** | Row actions, edit affordances and secondary controls appear on hover/click; data is louder than chrome | Always-open inputs, permanent icon rows, chrome competing with the data |
 | **Progressive disclosure** | Most important info visible, details available on interaction | Everything shown at once — overwhelming |
 | **Grouping** | Related items are visually grouped (proximity, borders, backgrounds) | Related items scattered, unrelated items touching |
 | **Negative space** | Intentional empty space that frames content | Empty space that looks accidental (uneven, trapped white space) |
@@ -101,6 +118,7 @@ Playwright server — whichever is available) to capture the page/app:
 | **Card styles** | All cards have the same border-radius, shadow, padding | Some cards rounded, some sharp, some with shadows, some without |
 | **Form inputs** | All inputs same height, same border style, same focus ring | Mix of heights, border styles, focus behaviours |
 | **Icon style** | One icon family, consistent size and stroke | Mixed icon families, different sizes, some filled some outlined |
+| **Shared packages** | Tables use the shared datagrid, forms/dialogs/nav use the shared UI package | Hand-rolled table, fill/drag or select logic duplicating what the shared package already provides |
 | **Border radius** | Consistent radius scale (e.g. 4px inputs, 8px cards, 12px modals) | Random radius values: 3px, 7px, 10px, 16px |
 | **Shadow** | One or two shadow levels used consistently | Every component has a different shadow depth |
 
@@ -113,6 +131,9 @@ Playwright server — whichever is available) to capture the page/app:
 | **Active states** | Nav items, tabs, sidebar links show current selection | Active item looks the same as inactive |
 | **Transitions** | Subtle transitions on hover/focus (150-200ms ease) | No transitions (jarring) or slow transitions (laggy) |
 | **Loading indicators** | Skeleton screens or spinners during async operations | Content pops in without warning, layout shifts |
+| **Keyboard reachability** | Every clickable row/card is a real button/link or has `role` + `tabIndex` + key handler | Clickable `li`/`div` that can't be tabbed to or activated with Enter/Space |
+| **Stays in context** | Prev/next or inline navigation lets the user move through a list without returning to it; collapsed states keep a tooltip and persist | User must go back to the grid for every next item; collapsed icon rail with no labels |
+| **State stability** | Focus and entered values survive re-renders, navigation away/back, and background refetches | Input loses focus mid-typing, layout jumps when data reloads |
 | **Disabled states** | Disabled elements are visually muted, cursor changes | Disabled buttons look clickable, no cursor change |
 
 ### 7. Responsive Quality
@@ -123,11 +144,20 @@ Playwright server — whichever is available) to capture the page/app:
 | **Image scaling** | Images fill containers proportionally | Images stretched, cropped badly, or overflowing |
 | **Table responsiveness** | Horizontal scroll on mobile, or stack to cards | Table wider than screen with no way to see columns |
 | **Touch targets** | At least 44x44px on mobile | Tiny links, close buttons, checkboxes |
+| **Desktop-first apps** | Still checked at a narrow width: breadcrumbs, headings and toolbars wrap sensibly | Centred/wrapped text in buttons, clipped breadcrumbs at ~390px |
 | **Tablet** | Layout works at 768px (not just desktop and phone) | Layout breaks at tablet widths, awkward gaps |
 
 If reviewing a BMS internal app, also check against the concrete values in
 the `bms-frontend-design` skill (sidebar width, radius scale, brand colours,
 zebra-striping) rather than just generic good/bad judgement.
+
+### 8. Copy and Tone
+
+| Check | Good | Bad |
+|-------|------|-----|
+| **Case** | Sentence case: "New group", "Run simulation" | Title Case Everywhere |
+| **Subtitles** | One sentence stating what + why | Paragraphs, marketing copy |
+| **Empty/error states** | Neutral notes: "No articles mapped yet." | Pep talks, illustrations, emoji |
 
 ## Severity Guide
 
