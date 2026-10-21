@@ -53,8 +53,8 @@ Playwright server — whichever is available) to capture the page/app:
 Generic good/bad judgement comes second. Before looking at screenshots, read
 what the app says about itself and review against that:
 
-- `PRODUCT.md` / `DESIGN_GUIDELINES.md` at the repo root (principles,
-  anti-references, tone) and the app's own `index.css` tokens.
+- `DESIGN_GUIDELINES.md` (tokens, component patterns, what to avoid, tone)
+  if the repo has one, and the app's own `index.css` tokens.
 - Whether the app ships dark mode at all. If the tokens only define a light
   theme, don't report missing dark mode as a finding — skip the dark captures.
 - Brand colour discipline: the accent belongs on primary actions, active nav
