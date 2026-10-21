@@ -10,11 +10,11 @@ import pytest
 HOOK = Path(__file__).resolve().parents[2] / "hooks" / "gate-pr-publish.py"
 
 
-def run_hook(transcript: Path) -> dict | None:
+def run_hook(transcript: Path, command: str = "bdt pr publish") -> dict | None:
     payload = json.dumps(
         {
             "tool_name": "Bash",
-            "tool_input": {"command": "bdt pr publish"},
+            "tool_input": {"command": command},
             "transcript_path": str(transcript),
         }
     )
@@ -385,6 +385,45 @@ def test_malformed_transcript_lines_do_not_break_the_check(tmp_path):
     assert run_hook(path) is None
     path.write_text("\n".join(odd))
     assert_denied(run_hook(path))
+
+
+# --- pre-flight: an unprovable codex review is blocked before it runs, not at publish time ----------------------
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        f'codex exec "{REVIEW_PROMPT}" | tail -40',
+        "codex review --base main 2>&1 | tail -40",
+        f'codex exec "{REVIEW_PROMPT}" | tee out.md',
+        f'codex exec "{REVIEW_PROMPT}"; echo done',
+        f'codex exec "{REVIEW_PROMPT}" || true',
+        f'nohup codex exec "{REVIEW_PROMPT}" > /tmp/codex.log 2>&1 &',
+    ],
+)
+def test_preflight_denies_codex_review_that_could_never_count(tmp_path, command):
+    assert_denied(run_hook(transcript_rows(tmp_path), command))
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        f'codex exec "{REVIEW_PROMPT}"',
+        f'cd /work/wt && codex exec "{REVIEW_PROMPT}" > /tmp/codex.log 2>&1',
+        f'set -o pipefail; codex exec "{REVIEW_PROMPT}" | tail -40',
+        f'nohup codex exec -o /tmp/out.md "{REVIEW_PROMPT}" > /tmp/codex.log 2>&1 &',
+        'codex exec "fix the failing test" | tail -5',  # not a review
+        "codex --version | head -1",
+        "ls | tail",
+    ],
+)
+def test_preflight_allows_provable_or_unrelated_commands(tmp_path, command):
+    assert run_hook(transcript_rows(tmp_path), command) is None
+
+
+def test_preflight_allows_once_a_review_was_already_accepted(tmp_path):
+    path = transcript_rows(tmp_path, bash_call("codex review"), bash_result())
+    assert run_hook(path, "codex review | tail -40") is None
 
 
 # --- sessions run in Codex ---------------------------------------------------------------------------------------

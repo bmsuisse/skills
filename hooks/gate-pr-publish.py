@@ -51,7 +51,9 @@ fails when something can mask it, so the run is conservatively NOT accepted:
   - another command after a `;` or newline (`codex exec ...; echo done`);
   - an `||` in the same and/or list (`codex exec ... || true`, `a || codex exec ...`).
 
-For such runs use `-o` plus `&`, or drop the tail. The prompt of `codex exec` may come from a variable assigned
+For such runs use `-o` plus `&`, or drop the tail. Because they can never count, the hook also denies them up
+front, when the codex review command itself is about to run (unless a review was already accepted this session),
+so the review is not spent for nothing. The prompt of `codex exec` may come from a variable assigned
 earlier in the same command (`P="...code review..."; codex exec "$P"`); unresolved variables do not count.
 
 Codex sessions (transcript = a Codex rollout, whose first row is `session_meta`) use the same publish-command check but
@@ -564,6 +566,14 @@ def deny(reason: str) -> None:
     sys.exit(0)
 
 
+def unprovable_codex_review(command: str) -> bool:
+    """True when `command` runs a codex code review whose completion the gate could never verify later."""
+    return any(
+        review.output_file is None if review.background else not review.status_visible
+        for review in codex_reviews_in_command(command)
+    )
+
+
 def main() -> None:
     try:
         data = json.load(sys.stdin)
@@ -575,6 +585,17 @@ def main() -> None:
 
     command = data.get("tool_input", {}).get("command", "")
     if not is_pr_publish_command(tokenize(command)):
+        # Catch a codex review that could never count (`codex review | tail`, `codex exec ...; echo done`, `... &`
+        # without `-o`) before it runs, instead of at publish time when the review is already spent. Harmless once
+        # a review has been accepted this session.
+        if unprovable_codex_review(command) and not code_review_ran(data.get("transcript_path", "")):
+            deny(
+                "Blocked before it runs: this codex code review would not count for the PR-publish gate, because the "
+                "Bash result would not show whether codex succeeded (a pipe such as `| tail`/`| tee` without "
+                "`set -o pipefail`, a trailing `; echo`, an `|| true`, or a `&` run without `-o <file>`). Re-run it "
+                "with codex as the last command of the line (`codex exec ... > /tmp/review.log 2>&1`, then read the "
+                "log), or `set -o pipefail;` before the pipe, or in the background with `&` and `-o <file>`."
+            )
         return
 
     if code_review_ran(data.get("transcript_path", "")):
