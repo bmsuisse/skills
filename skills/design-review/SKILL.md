@@ -94,7 +94,7 @@ what the app says about itself and review against that:
 | **Semantic colour** | Using design tokens (`bg-primary`, `text-muted-foreground`) | Raw palette colours (`bg-blue-500`, `text-gray-300`) hardcoded |
 | **Contrast ratio** | Text meets WCAG AA (4.5:1 body, 3:1 large text) | Light grey text on white, or dark text on dark backgrounds |
 | **Colour consistency** | Same colour means the same thing everywhere (primary = action) | Blue means "clickable" in one place and "informational" in another |
-| **Dark mode** | All elements visible, borders defined, no invisible text | Elements disappear, text becomes unreadable, images look wrong |
+| **Dark mode** (only if the app ships it) | All elements visible, borders defined, no invisible text | Elements disappear, text becomes unreadable, images look wrong |
 | **Status colours** | Green=success, yellow=warning, red=error consistently | Green used for both success and "active" with different meanings |
 | **Colour overuse** | 2-3 colours + neutrals | Rainbow of colours with no clear hierarchy |
 
@@ -104,8 +104,7 @@ what the app says about itself and review against that:
 |-------|------|-----|
 | **Primary action** | One clear CTA per page, visually dominant | Three equally styled buttons competing for attention |
 | **Squint test** | Squinting at the page, the most important element stands out | Everything is the same visual weight — nothing draws the eye |
-| **Quiet until needed** | Row actions, edit affordances and secondary controls appear on hover/focus/click, and stay reachable on touch (always visible or behind a tap target) — never hover-only on a mobile-supported app; data is louder than chrome | Always-open inputs, permanent icon rows, chrome competing with the data, actions that exist only on `:hover` |
-| **Progressive disclosure** | Most important info visible, details available on interaction | Everything shown at once — overwhelming |
+| **Quiet until needed** | Row actions, edit affordances and secondary controls appear on hover/focus/click, and stay reachable on touch (always visible or behind a tap target) — never hover-only on a mobile-supported app. Most important info visible, details on interaction; data is louder than chrome | Everything shown at once, always-open inputs, permanent icon rows, chrome competing with the data, actions that exist only on `:hover` |
 | **Grouping** | Related items are visually grouped (proximity, borders, backgrounds) | Related items scattered, unrelated items touching |
 | **Negative space** | Intentional empty space that frames content | Empty space that looks accidental (uneven, trapped white space) |
 
@@ -116,9 +115,9 @@ what the app says about itself and review against that:
 | **Button styles** | One primary style, one secondary, one destructive — used consistently | 5 different button styles across the app |
 | **Card styles** | All cards have the same border-radius, shadow, padding | Some cards rounded, some sharp, some with shadows, some without |
 | **Form inputs** | All inputs same height, same border style, same focus ring | Mix of heights, border styles, focus behaviours |
-| **Icon style** | One icon family, consistent size and stroke | Mixed icon families, different sizes, some filled some outlined |
-| **Shared packages** | Tables use the shared datagrid, forms/dialogs/nav use the shared UI package | Hand-rolled table, fill/drag or select logic duplicating what the shared package already provides |
-| **Border radius** | Consistent radius scale (e.g. 4px inputs, 8px cards, 12px modals) | Random radius values: 3px, 7px, 10px, 16px |
+| **Icon style** | One icon family (Heroicons in BMS apps), consistent size and stroke | Mixed icon families, different sizes, some filled some outlined |
+| **Shared packages** | Tables use `@bmsuisse/datagrid` (`DataGrid`/`TreeDataGrid`); sidebar/nav, forms, dialogs, combobox use `@bmsuisse/ui` | Hand-rolled table, fill/drag, select or nav logic duplicating what `@bmsuisse/ui` / `@bmsuisse/datagrid` already provide |
+| **Border radius** | One consistent radius scale from the app's tokens (`--radius`; scale in `bms-frontend-design`) | Random radius values: 3px, 7px, 10px, 16px |
 | **Shadow** | One or two shadow levels used consistently | Every component has a different shadow depth |
 
 ### 6. Interaction Design
@@ -204,7 +203,7 @@ file — that's what a reviewer will actually see.
 
 ## Tips
 
-- Check dark mode AND light mode — most issues appear in one but not the other
+- If the app ships dark mode, check dark AND light — most issues appear in one but not the other
 - The squint test is the fastest way to find hierarchy problems
 - Component inconsistency is the most common issue in dev-built UIs
 - "Looks off" usually means spacing — check margins and padding first
