@@ -1,0 +1,29 @@
+{
+  "skill_name": "bmsapp-native",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Our React web app (runs inside the BMS iOS app) has an \"Approve order\" button. Ask for Face ID before the approval is sent, and make sure it still works in a normal browser.",
+      "expected_output": "Uses biometricConfirm from @bmsuisse/app-native (bun add @bmsuisse/app-native) instead of calling window.BMSNative / window.webkit.messageHandlers by hand or writing a custom nativeBridge.ts. Returns early when confirm.ok is false, then calls the API. Notes that Face ID is UX only: the backend must still check authorization for the approval itself. Relies on the package's browser fallback / guards native-only logic with isNativeApp() or can(...) so the page also works without the app.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Send a push notification to the BMS app on the user's iPhone from our FastAPI backend when an order is approved, and tapping it should open /orders/123.",
+      "expected_output": "Uses bmsdna-app-native (dependency bmsdna-app-native, import bmsdna.app_native) and send_push(device_token=..., title=..., body=..., data={\"path\": \"/orders/123\"}) rather than copying APNs code into the project. Gets the device token through create_ingest_router with an auth_dependency, configures APNs only through the APNS_KEY / APNS_KEY_ID / APNS_TEAM_ID / APNS_BUNDLE_ID / APNS_USE_SANDBOX environment variables, never commits the .p8 key, and cleans up dead tokens using PERMANENTLY_INVALID_TOKEN_REASONS.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Our internal web app is opened inside the BMS app. Sign the user in with the app's Entra token instead of building our own cookie login. The backend is FastAPI.",
+      "expected_output": "Uses create_entra_auth_dependency(EntraTokenVerifier.from_env(), session=SignedSessionCookie(secret=...)) from bmsdna.app_native, with resolve_user mapping the identity to the project's own user. An invalid token answers 401 (never a redirect). Takes the caller from context.user and never from a user_email in the request body. Reads ENTRA_TENANT_ID and ENTRA_AUDIENCE from the environment instead of hard-wiring them, and never forwards, stores or logs the token. On the web side the capability identity is needed and the app adds the token to fetch calls automatically; getAccessToken() is only needed for a WebSocket.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "Replace our \"new customer\" web form by a native iOS form in the BMS app. The backend validates the input and may reject fields.",
+      "expected_output": "Uses showForm from @bmsuisse/app-native behind canShowNativeForms() with an onSubmit callback that posts to the backend and returns { fieldErrors } on a 422 so the app marks the fields, and throws on other errors so the form stays open. Keeps the existing web form as the fallback for browsers, old app builds (unknownAction, treated like unavailable via isNativeSurfaceUnsupported) and web apps without the nativeForms capability. Mentions that camera fields also need the camera capability and that photos/scans arrive as NativeFileRef references.",
+      "files": []
+    }
+  ]
+}
