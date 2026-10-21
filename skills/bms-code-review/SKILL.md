@@ -175,6 +175,7 @@ Caveats, because the gate only sees the exit status of the whole Bash command:
   `codex exec ... || true` exit 0 even when codex failed, so they do **not** count (a pipe is fine with
   `set -o pipefail` earlier in the command; `cd x && codex exec ...` and `codex exec ... && echo ok` are fine).
   Use `-o <file>` and read the file instead of piping the output.
+  The gate's PreToolUse hook denies such a command before it runs, so the review is not spent for nothing.
 - A run backgrounded with `&` (also `run_in_background` combined with `&`) counts only through its `-o`
   file, which must be non-empty and newer than the call; without `-o` it never counts.
 - A prompt kept in a variable works when the variable is assigned in the same command
