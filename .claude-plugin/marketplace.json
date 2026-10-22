@@ -159,7 +159,7 @@
     },
     {
       "name": "bdt-status",
-      "description": "Claude Code mod (needs Claude Code >= 2.1.287 and bmsdna-devtools >= 0.30.0): shows the current branch's PR and the issue it closes above the prompt, with the build state, from `bdt pr info --json`.",
+      "description": "Claude Code mod (needs Claude Code >= 2.1.287 and bmsdna-devtools >= 0.30.0): shows the current branch's open PRs, one row each with title, build state and the issue it closes, above the prompt, from `bdt pr info --json --all` (bmsdna-devtools >= 0.46.0; an older bdt shows just one PR).",
       "source": "./mods/bdt-status"
     },
     {
