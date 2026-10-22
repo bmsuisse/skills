@@ -37,11 +37,15 @@ against the rules below before changing anything.
 
 1. **`dev` is the base for all work.** Branch and worktree off `dev` (`bdt worktree <name>` already defaults
    to it), PR into `dev`. Make `dev` the repository's default branch so tools and humans target it without
-   thinking. `test` and `main` only ever receive promotions (plus fixes to `main`, rule 7).
+   thinking. `test` and `main` only ever receive promotions (plus fixes to `main`, rule 7). The one
+   exception to "branch off `dev`" is a production fix, which branches off `main`.
 2. **`dev`, `test` and `main` all carry a build policy.** Required, blocking, no direct pushes. It matters
    on `test` and `main` even though tests are skipped there: it forces every change through a PR, it still
    runs the build/lint/type-check part of the pipeline, and it gives one place that says "this was verified"
    before a deploy. A branch without the policy is a branch anyone can push untested code into.
+   Deploys to `test` and `main` additionally need **approvers on the pipeline's environment** (a human
+   signs off the deploy itself); that is configured on the environment, not in the YAML or a script —
+   see `references/azure-devops-policies.md`.
 3. **Tests are split by product area, and the PR itself decides which areas run, through labels.** Both
    unit and E2E tests live in per-area folders (`tests/unit/<area>/`, `tests/e2e/<area>/`). Each area has a
    label `test-<area>`, plus `test-full` for broad/cross-cutting changes. The author labels the PR with every
@@ -59,7 +63,8 @@ against the rules below before changing anything.
 6. **Promotion order is `dev` -> `test` -> `main`.** No skipping `test`. Opening the `dev` -> `test` PR is
    what a human does when `test` is needed sooner than the nightly, or to mark a release candidate.
 7. **PRs into `main` are only allowed for fixes.** Two shapes qualify: the promotion `test` -> `main`, and a
-   fix branch (`fix/...` or `hotfix/...`) for something broken in production. A fix branch is *not* covered
+   fix branch (`fix/...` or `hotfix/...`) for something broken in production, **cut from `main`** so it
+   doesn't drag unreleased `dev` work into production. A fix branch is *not* covered
    by rule 4 — its code hasn't been tested anywhere yet — so it runs tests like any other PR, with labels.
    After it merges, merge `main` back into `dev` (a `main` -> `dev` promotion PR, no tests) so the fix
    isn't lost or reverted by the next promotion. Features, refactors and chores never target `main`.
@@ -132,14 +137,16 @@ orders = "test-orders"
    that runs everything and deploys to `test` when green, deploy-only runs for pushes to `test`/`main`, and
    the guard for rule 7.
 4. Policies (`references/azure-devops-policies.md`): build validation on `dev`, `test`, `main` pointing at that
-   pipeline; reviewer minimums; no bypass.
+   pipeline; reviewer minimums; no bypass. Plus approvers on the `Test` and `Production` environments the
+   deploy job uses (documented there; set in the portal).
 5. Task-runner recipes `pr-dev` / `pr-test` / `pr-main` with the default labels above, and a recipe listing
    the available area labels.
 6. Write the model into the repo's `AGENTS.md`/`CLAUDE.md` in a few lines (base branch, labels, fixes-only
    `main`) — agents and new colleagues read that, not this skill.
 7. Verify with a dry run per case: a labeled feature PR into `dev` runs only its areas (unit and E2E); a
    `dev` -> `test` PR skips tests but runs the build; a feature PR into `main` is rejected; a manual run of
-   the scheduled pipeline runs everything and (on green) deploys to `test`.
+   the pipeline on `dev` behaves like the nightly (runs everything and, on green and after approval,
+   deploys to `test`).
 
 ## Gotchas
 

@@ -7,17 +7,18 @@ the merge when it fails. Needs an authenticated `az` with the `azure-devops` ext
 
 ```bash
 az repos show -r <repo> --query defaultBranch -o tsv              # want refs/heads/dev
-az repos policy list -r <repo> --branch dev  -o table             # repeat for test and main
+REPO_ID=$(az repos show -r <repo> --query id -o tsv)
+az repos policy list --repository-id $REPO_ID --branch dev -o table   # repeat for test and main
 az pipelines list --query "[].{id:id,name:name}" -o table         # the definition id to validate with
 ```
 
 Each of `dev`, `test`, `main` should list a **Build** policy (blocking, enabled) and a **Minimum number
-of reviewers** policy. Missing rows are the gaps to close.
+of reviewers** policy. Missing rows are the gaps to close. Also check the two environments (see
+"Environment approvals" below) in the web UI: **Pipelines -> Environments**.
 
 ## Close the gaps
 
 ```bash
-REPO_ID=$(az repos show -r <repo> --query id -o tsv)
 DEF_ID=<pipeline definition id>
 
 az repos update -r <repo> --default-branch dev
@@ -50,3 +51,31 @@ Notes:
 - Merge strategy (`az repos policy merge-strategy create`): squash is fine for feature -> `dev`. Promotions
   (`dev` -> `test` -> `main`) should use a merge commit, not squash, otherwise the branches end up with
   the same content in different commits and every promotion conflicts again. Set it per branch.
+
+## Environment approvals (`test` and `main`)
+
+Branch policies gate what may merge; **environment approvals gate what may deploy**. They are separate
+mechanisms and `test` and `main` need both. The reviewer policy above is the PR approval; this is a
+human saying "yes, deploy it now".
+
+The pipeline's deploy job names an environment (`Test` for `test` and the nightly, `Production` for `main`,
+see `pipeline.md`). Configure the approvals on those environments, once, in the portal:
+
+1. **Pipelines -> Environments -> `Test`** (and `Production`) -> **Approvals and checks** -> **+** ->
+   **Approvals**.
+2. Add the approvers (prefer a group over named people so the list survives people changing teams), set
+   "Requester can approve" according to how strict the bar should be, and set a **timeout** (default is
+   30 days; a day or less keeps stale deploys from piling up).
+3. Optionally add **Branch control** on the environment, allowing only `refs/heads/main` (for
+   `Production`) and `refs/heads/test` / `refs/heads/dev` (for `Test`), so no other branch can ever deploy
+   there even if someone edits the YAML.
+
+This is deliberately not scripted in the setup commands: environments are shared across pipelines and the
+approver groups are a team decision. When adjusting an existing project, read what is there first
+(**Environments -> <name> -> Approvals and checks**) and only add what is missing.
+
+Consequence to decide on, not to ignore: the **nightly** also deploys to `Test`, so with approvals on
+`Test` it pauses at the deploy job until someone approves (and is rejected when the timeout expires).
+That is correct if a human should sign off on every deploy to `test`; if the nightly must run unattended,
+give it its own environment (e.g. `Test-Nightly`, pointing at the same resources, without approvals) and
+keep `Test` with approvals for the `dev` -> `test` promotions.
