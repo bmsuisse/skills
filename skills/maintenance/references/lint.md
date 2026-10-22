@@ -6,6 +6,7 @@ Keeps a Python project on the ruff/ty baseline that `init-app-stack` scaffolds. 
 bmsuisse/skills); read them, don't copy the config from here, so it can't go stale.
 
 **Run per `pyproject.toml` that has Python code** (see [bump.md](bump.md) for finding projects). Do `bump` first.
+**One commit per numbered step** (step 4: one per rule family), pushed as you go, so each can be reviewed or reverted alone.
 
 1. **Dev deps present and latest**: `ruff` and `ty` in the dev group (`uv tree --outdated --depth 1 --all-groups`).
    Missing: `uv add --dev ruff ty`. Behind: `uv lock --upgrade-package ruff --upgrade-package ty`, raise the specifier
@@ -19,7 +20,7 @@ bmsuisse/skills); read them, don't copy the config from here, so it can't go sta
 3. **`prek.toml`** (if used): `ruff-pre-commit` `rev` equals the lock's ruff version; `ty` runs (hook or CI).
 4. **Run both**: `uv run ruff check --fix`, then `uv run ruff format` (fixes can leave code unformatted), then
    `uv run ty check`. Adding newly selected families to an old codebase can flag hundreds of lines: enable one family at a
-   time, autofix and fix the rest by hand in the same commit (prek's `ruff-check` rejects a commit that still has violations).
+   time, autofix and fix the rest by hand in that family's commit (prek's `ruff-check` rejects a commit that still has violations).
    Fix violations, don't `# noqa` or `ty: ignore` them; a rule that truly doesn't fit goes out of `select` deliberately, with the reason in the PR.
    Too big to finish: leave that family out of `select`, `bdt issue create --title "..."`, link it in the PR.
 5. Already on the baseline and clean: say so, no commit. `bdt lint` checks that ruff, ty, pytest and prek are declared.

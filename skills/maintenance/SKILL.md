@@ -16,7 +16,7 @@ description: >
 
 `/maintenance dead-code | bump | lint | audit | all`. No argument: ask which. `all` runs them in the order
 `dead-code`, `bump`, `lint`, `audit` (remove first, so less is upgraded), one commit series per mode.
-Work in a worktree and commit after each step (`/dev-workflow`). Use `uv` and `bun` only, never hand-edit lockfiles.
+Work in a worktree and make a separate commit for each step of a mode (`/dev-workflow`). Use `uv` and `bun` only, never hand-edit lockfiles.
 
 ## Rule for bump, lint (version bumps) and audit: never lock
 
