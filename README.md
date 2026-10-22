@@ -25,6 +25,7 @@
 | [bms-code-review](./skills/bms-code-review/) | BMS code review that fans out one focused subagent per concern (architecture, duplication, security, correctness, age… |
 | [bms-frontend-design](./skills/bms-frontend-design/) | The BMS visual identity for internal web apps, built on the shared `@bmsuisse/ui` (sidebar/nav, form, dialog, and oth… |
 | [bms-plan-review](./skills/bms-plan-review/) | Review an implementation plan before any code is written: checks it against BMS conventions and the existing skills (… |
+| [branching-strategy](./skills/branching-strategy/) | The BMS git branching and CI test-placement model: `dev` is the branch all work is based on, promoted `dev` -> `test`… |
 | [clean-code](./skills/clean-code/) | Language-agnostic, pragmatic clean-code principles for writing and refactoring code at BMS: naming, function size and… |
 | [clockify](./skills/clockify/) | Query and log time entries in Clockify via its REST API — check a timesheet, look up the workspace/user/project, crea… |
 | [code-comments](./skills/code-comments/) | Write and review code comments so they earn their place instead of adding noise. Use this whenever writing new code (… |
