@@ -64,8 +64,8 @@ see `pipeline.md`). Configure the approvals on those environments, once, in the 
 1. **Pipelines -> Environments -> `Test`** (and `Production`) -> **Approvals and checks** -> **+** ->
    **Approvals**.
 2. Add the approvers (prefer a group over named people so the list survives people changing teams), set
-   "Requester can approve" according to how strict the bar should be, and set a **timeout** (default is
-   30 days; a day or less keeps stale deploys from piling up).
+   "Requester can approve" according to how strict the bar should be, and set the **timeout** to
+   **3 days** (the default is 30; three days covers a weekend without letting stale deploys pile up).
 3. Optionally add **Branch control** on the environment, allowing only `refs/heads/main` (for
    `Production`) and `refs/heads/test` / `refs/heads/dev` (for `Test`), so no other branch can ever deploy
    there even if someone edits the YAML.
