@@ -749,7 +749,7 @@ def main() -> None:
                 line-length = 120
                 indent-width = 4
                 target-version = "py314"
-                extend-exclude = ["*.md", ".worktrees"]
+                extend-exclude = ["*.md", ".worktrees", ".claude"]
 
                 [tool.ruff.format]
                 indent-style = "space"
