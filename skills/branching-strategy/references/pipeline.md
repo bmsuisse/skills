@@ -183,7 +183,7 @@ in the environment, not in this YAML).
   dependsOn: [Build, Test, TestE2E]          # skipped test stages count as satisfied
   condition: and(not(failed()), not(canceled()), eq(variables.shouldDeploy, true))
   jobs:
-    - deployment: deploy
+    - deployment: DeployApp
       environment: ${{ variables.environment }}     # Test or Production; approvals live on these
       strategy:
         runOnce:

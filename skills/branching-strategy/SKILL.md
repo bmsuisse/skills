@@ -1,15 +1,7 @@
 ---
 name: branching-strategy
 plugin: dev-workflow
-description: >
-  The BMS git branching and CI test-placement model: `dev` is the branch all work is based on, promoted
-  `dev` -> `test` -> `main`; build policies on all three; unit and E2E tests split by area and selected per PR
-  via `bdt` required labels; a nightly build that runs everything on `dev` and deploys it to `test`; promotion
-  PRs between dev/test/main skip tests; PRs to `main` are fixes only. Use whenever setting up a new repo's
-  branches, pipelines or branch policies, adjusting or auditing an existing project to this model, deciding
-  which branch a PR should target or where a test should run, or when the user mentions "branching strategy",
-  "build policy", "which tests run on a PR", "test labels", "e2e labels", "nightly build", "hotfix",
-  "promote to test/main" or `[tool.bdt.pr.required_labels]` — even if they don't say "branching".
+description: Set up or audit a repo's dev -> test -> main branching, build policies, per-area test labels and nightly deploy.
 ---
 
 # Branching strategy
@@ -45,7 +37,8 @@ against the rules below before changing anything.
    before a deploy. A branch without the policy is a branch anyone can push untested code into.
    Deploys to `test` and `main` additionally need **approvers on the pipeline's environment** (a human
    signs off the deploy itself); that is configured on the environment, not in the YAML or a script —
-   see `references/azure-devops-policies.md`.
+   see `references/azure-devops-policies.md` (which also covers giving the unattended nightly its own
+   approval-free environment, if wanted).
 3. **Tests are split by product area, and the PR itself decides which areas run, through labels.** Both
    unit and E2E tests live in per-area folders (`tests/unit/<area>/`, `tests/e2e/<area>/`). Each area has a
    label `test-<area>`, plus `test-full` for broad/cross-cutting changes. The author labels the PR with every
