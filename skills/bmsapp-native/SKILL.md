@@ -2,23 +2,10 @@
 name: bmsapp-native
 plugin: coding
 description: >
-  Use when a web app or FastAPI backend should talk to the BMS app (iOS shell
-  that hosts BMS web apps): native menu/action buttons/bottom bar, toast,
-  haptics, share, Face ID confirmation, document or barcode scan, dashboard
-  widgets, Live Activities, approvals, push notifications (APNs), sign-in with
-  the app's Entra token, route/reminder/contact/phone call on the iPhone,
-  native forms and native content screens (iOS sheets with fields, photo/scan/
-  signature, tables, maps) opened from the page, scanning text or several
-  barcodes with the iPhone camera. Covers `@bmsuisse/app-native`
-  (npm, frontend) and `bmsdna-app-native` (Python, backend). Use instead of hand-writing
-  `window.BMSNative` / `window.webkit.messageHandlers` calls or copying
-  APNs/widget code into the project. Triggers: "in the app", "native
-  bridge", "BMSNative", "push to the app", "silent push", "critical alert",
-  "widget on the dashboard", "Live Activity", "Dynamic Island", "approvals in
-  the app", "iOS app", "Entra token", "sign-in in the app", "navigate to",
-  "reminder on the iPhone", "native form", "showForm", "showContent", "native
-  sheet", "scan barcode", "scanText", "scanBarcodes", "goods receipt", "bottom
-  bar", "action button", "setChrome".
+  Use when a web app or FastAPI backend should talk to the BMS iOS app
+  (`@bmsuisse/app-native`, `bmsdna-app-native`). Triggers: BMSNative, push to
+  the app, widget, Live Activity, approvals, scan barcode, native form, Entra
+  token.
 ---
 
 # bmsapp-native — connecting web apps and backends to the BMS app
