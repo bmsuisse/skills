@@ -792,6 +792,9 @@ def main() -> None:
                 "sqlalchemy".msg = "No ORM - use pgdevkit (psycopg)."
                 "uvicorn".msg = "Granian is the server."
                 "sse_starlette".msg = "Use fastapi.sse.EventSourceResponse."
+
+                [tool.ty.src]
+                exclude = [".worktrees", ".claude"]
                 """
             )
             pyproject.write_text(content, encoding="utf-8")
