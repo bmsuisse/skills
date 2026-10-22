@@ -1,4 +1,5 @@
-// Shows "PR #69 ✓ · closes #68" (clickable links) in the band above the prompt, from `bdt pr info --json`.
+// Shows one row per open PR of the branch, e.g. "PR #69 feat: mod ✓ passing · closes #68" (clickable links), in the
+// band above the prompt, from `bdt pr info --json --all`. An older `bdt` without `--all` gives its single PR.
 // Needs `bdt` on PATH; with no PR for the current branch (or no bdt) the band is left alone.
 
 const REFRESH_MS = 30_000;
@@ -11,8 +12,12 @@ const BUILD = {
   waiting: { symbol: "⏸", color: "yellow" },
 };
 
-// The last `bdt pr info --json` result, or null when the branch has no PR
-let info = null;
+const MAX_TITLE = 50;
+
+// The last answer: the branch's PRs, `[]` when it has none
+let prs = [];
+// Cleared once `bdt` says it doesn't know `--all`, so an old bdt isn't asked twice per refresh
+let hasAll = true;
 let isRefreshing = false;
 let timer = null;
 
@@ -22,7 +27,7 @@ const LINK = /^https:\/\/(github\.com|dev\.azure\.com)\/[^\s\x00-\x1f]*$/;
 // can't make the band render an arbitrary link
 function validated(i) {
   const isLink = (x) =>
-    typeof x.number === "number" &&
+    typeof x?.number === "number" &&
     typeof x.url === "string" &&
     LINK.test(x.url);
   return isLink(i) && Array.isArray(i.issues) && i.issues.every(isLink)
@@ -30,12 +35,43 @@ function validated(i) {
     : undefined;
 }
 
+// At most `MAX_TITLE` characters, ending in an ellipsis when cut; `bdt` already strips control characters
+function shortTitle(title) {
+  if (typeof title !== "string") return "";
+  const chars = [...title.trim()];
+  return chars.length > MAX_TITLE
+    ? chars
+        .slice(0, MAX_TITLE - 1)
+        .join("")
+        .trimEnd() + "…"
+    : chars.join("");
+}
+
+async function runInfo($, args) {
+  const r = await $.process.run(["bdt", "pr", "info", "--json", ...args]);
+  return { ...r, output: `${r.stdout}\n${r.stderr ?? ""}` };
+}
+
 // `undefined`: couldn't ask (bdt missing or timed out, unusable output) -- keep showing the last answer.
-// `null`: bdt answered that there is no PR for this branch.
-async function readInfo($) {
+// `[]`: bdt answered that there is no PR for this branch.
+async function readPrs($) {
   try {
-    const r = await $.process.run(["bdt", "pr", "info", "--json"]);
-    return r.exitCode === 0 ? validated(JSON.parse(r.stdout)) : null;
+    if (hasAll) {
+      const r = await runInfo($, ["--all"]);
+      if (r.exitCode === 0) {
+        const list = JSON.parse(r.stdout);
+        if (!Array.isArray(list)) return undefined;
+        const valid = list.map(validated);
+        return valid.every(Boolean) ? valid : undefined;
+      }
+      // Unlike without `--all`, a failure is not "no PR": that is `[]` with exit 0
+      if (!/no such option/i.test(r.output)) return undefined;
+      hasAll = false;
+    }
+    const r = await runInfo($, []);
+    if (r.exitCode !== 0) return [];
+    const one = validated(JSON.parse(r.stdout));
+    return one ? [one] : undefined;
   } catch {
     return undefined;
   }
@@ -46,9 +82,9 @@ async function refresh($) {
   if (isRefreshing) return;
   isRefreshing = true;
   try {
-    const next = await readInfo($);
-    if (next !== undefined && JSON.stringify(next) !== JSON.stringify(info)) {
-      info = next;
+    const next = await readPrs($);
+    if (next !== undefined && JSON.stringify(next) !== JSON.stringify(prs)) {
+      prs = next;
       $.ui.invalidate("ui.render");
     }
   } catch {
@@ -76,40 +112,44 @@ export function register(on) {
   on("ui.render", { component: "AbovePrompt" }, async ($, e, next) => {
     // Keep whatever Claude Code or other mods draw in the band
     const theirs = await next(e);
-    if (!info) return theirs;
+    if (prs.length === 0) return theirs;
 
     const { Box, Text, Link } = $.ui.resolve(e);
-    const build = BUILD[info.build];
-    const state = info.draft
-      ? "draft"
-      : info.state === "open"
-        ? ""
-        : info.state;
+    const rows = prs.map((info) => {
+      const build = BUILD[info.build];
+      const state = info.draft
+        ? "draft"
+        : info.state === "open"
+          ? ""
+          : info.state;
+      const title = shortTitle(info.title);
 
-    const line = Box({
-      flexDirection: "row",
-      columnGap: 1,
-      children: [
-        Link({ href: info.url, label: "PR #" + info.number }),
-        ...(build
-          ? [
-              Text({
-                color: build.color,
-                children: [build.symbol + " " + info.build],
-              }),
-            ]
-          : []),
-        ...(state ? [Text({ dimColor: true, children: [state] })] : []),
-        ...info.issues.flatMap((issue) => [
-          Text({ dimColor: true, children: ["· closes"] }),
-          Link({ href: issue.url, label: "#" + issue.number }),
-        ]),
-      ],
+      return Box({
+        flexDirection: "row",
+        columnGap: 1,
+        children: [
+          Link({ href: info.url, label: "PR #" + info.number }),
+          ...(title ? [Text({ children: [title] })] : []),
+          ...(build
+            ? [
+                Text({
+                  color: build.color,
+                  children: [build.symbol + " " + info.build],
+                }),
+              ]
+            : []),
+          ...(state ? [Text({ dimColor: true, children: [state] })] : []),
+          ...info.issues.flatMap((issue) => [
+            Text({ dimColor: true, children: ["· closes"] }),
+            Link({ href: issue.url, label: "#" + issue.number }),
+          ]),
+        ],
+      });
     });
 
     return Box({
       flexDirection: "column",
-      children: theirs ? [line, theirs] : [line],
+      children: theirs ? [...rows, theirs] : rows,
     });
   });
 }

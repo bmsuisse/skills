@@ -62,7 +62,7 @@ Skills are now active. Type `/` to see available slash commands.
 | `bms` | Master skill + all core standards | All standards via `/bms` |
 | `caveman` | caveman, caveman-review, caveman-commit | Token-efficient comms |
 | `azure-deploy` | azure-deploy | Azure deployments |
-| `bdt-status` | (a Claude Code *mod*, no skills; needs Claude Code ≥ 2.1.287 and `bdt` ≥ 0.30.0) shows `PR #69 ✗ failing · closes #68` above the prompt, from `bdt pr info --json` | Seeing the PR, its issue and the build state without leaving the session |
+| `bdt-status` | (a Claude Code *mod*, no skills; needs Claude Code ≥ 2.1.287 and `bdt` ≥ 0.30.0, ≥ 0.46.0 to list several PRs) shows one row per open PR of the branch, e.g. `PR #69 feat: mod ✗ failing · closes #68` (title cut at 50 characters), above the prompt, from `bdt pr info --json --all` | Seeing the PRs, their issues and the build state without leaving the session |
 | `azure-diagnostics` | azure-diagnostics | Azure diagnostics |
 | `dev-workflow` | dev-workflow (+ hooks: worktree-only edits, auto-approved worktree entry, PR-publish gate requiring `/code-review`, `/bms-code-review` or a finished `codex` review (foreground and exiting 0 with nothing masking its status, or backgrounded with `-o <file>`); plus `bms-code-review`, `bms-plan-review` and `branching-strategy`) | Enforcing the team's worktree → draft PR → review → publish flow |
 | `maintenance` | maintenance (`/maintenance dead-code\|bump\|lint\|audit\|all`) | Periodic repo upkeep: dead code, dependency bumps, ruff/ty baseline, `bun audit` / `uv audit` |
