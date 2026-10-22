@@ -22,6 +22,7 @@ const INFO = {
   state: "open",
   draft: false,
   build: "failing",
+  repo: "bmsuisse/devtools",
   issues: [
     { number: 68, url: "https://github.com/bmsuisse/devtools/issues/68" },
   ],
