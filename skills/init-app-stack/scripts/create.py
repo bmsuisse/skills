@@ -1185,6 +1185,9 @@ def main() -> None:
         # pgdevkit — generated concatenation, never hand-edited or committed
         database/**/all.sql
 
+        # git worktrees (bdt worktree / just worktree)
+        .worktrees/
+
         # skillup — companion skills materialized locally; only skills.lock.json is committed
         .claude/skills/
         .agents/skills/
