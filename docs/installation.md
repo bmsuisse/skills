@@ -65,7 +65,7 @@ Skills are now active. Type `/` to see available slash commands.
 | `bdt-status` | (a Claude Code *mod*, no skills; needs Claude Code ≥ 2.1.287 and `bdt` ≥ 0.30.0) shows `PR #69 ✗ failing · closes #68` above the prompt, from `bdt pr info --json` | Seeing the PR, its issue and the build state without leaving the session |
 | `azure-diagnostics` | azure-diagnostics | Azure diagnostics |
 | `dev-workflow` | dev-workflow (+ hooks: worktree-only edits, auto-approved worktree entry, PR-publish gate requiring `/code-review`, `/bms-code-review` or a finished `codex` review (foreground and exiting 0 with nothing masking its status, or backgrounded with `-o <file>`); plus `bms-code-review` and `bms-plan-review`) | Enforcing the team's worktree → draft PR → review → publish flow |
-| `maintenance` | maintenance (`/maintenance dead-code\|bump\|audit\|all`) | Periodic repo upkeep: dead code, dependency bumps, `bun audit` / `uv audit` |
+| `maintenance` | maintenance (`/maintenance dead-code\|bump\|lint\|audit\|all`) | Periodic repo upkeep: dead code, dependency bumps, ruff/ty baseline, `bun audit` / `uv audit` |
 
 ## Per-project setup
 
