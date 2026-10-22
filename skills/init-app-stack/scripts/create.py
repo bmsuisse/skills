@@ -749,7 +749,7 @@ def main() -> None:
                 line-length = 120
                 indent-width = 4
                 target-version = "py314"
-                extend-exclude = ["*.md"]
+                extend-exclude = ["*.md", ".worktrees", ".claude"]
 
                 [tool.ruff.format]
                 indent-style = "space"
@@ -792,6 +792,9 @@ def main() -> None:
                 "sqlalchemy".msg = "No ORM - use pgdevkit (psycopg)."
                 "uvicorn".msg = "Granian is the server."
                 "sse_starlette".msg = "Use fastapi.sse.EventSourceResponse."
+
+                [tool.ty.src]
+                exclude = [".worktrees", ".claude"]
                 """
             )
             pyproject.write_text(content, encoding="utf-8")
@@ -1181,6 +1184,9 @@ def main() -> None:
 
         # pgdevkit — generated concatenation, never hand-edited or committed
         database/**/all.sql
+
+        # git worktrees (bdt worktree / just worktree)
+        .worktrees/
 
         # skillup — companion skills materialized locally; only skills.lock.json is committed
         .claude/skills/
