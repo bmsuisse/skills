@@ -125,7 +125,7 @@ orders = "test-orders"
 1. Branches: create `dev` and `test` from `main` if missing; set `dev` as the default branch.
 2. Test layout: split unit and E2E tests into `tests/unit/<area>/` and `tests/e2e/<area>/`. Add
    `required_labels` (and optionally `scope_labels`) to `pyproject.toml`.
-3. Pipeline (`references/pipeline.md`): `executeTests` rule for promotion PRs, a `Plan` stage that turns PR
+3. Pipeline (`references/pipeline.md`): `UV_NO_BUILD=1` variable, `executeTests` rule for promotion PRs, a `Plan` stage that turns PR
    labels into the area list, unit and E2E stages that run only those areas (pytest with `--maxfail=3` to stop early
    and `--durations=20 --durations-min=1.0` to log the slowest tests), a nightly schedule on `dev`
    that runs everything and deploys to `test` when green, deploy-only runs for pushes to `test`/`main`, and
@@ -158,6 +158,11 @@ orders = "test-orders"
 - **Don't use `--bypass-policy`** to get a promotion through; a red promotion build means the build part is
   broken and should be fixed on `dev`. Fix conflicts on `dev` first and re-promote, rather than resolving
   them only in the promotion PR (the next promotion will conflict again).
+- **uv never builds wheels: set `UV_NO_BUILD=1` as a pipeline variable** (`references/pipeline.md`; the
+  per-command equivalent is `--no-build`). A dependency without a wheel for the pinned Python then fails
+  the build instead of silently compiling from source (slow, needs a toolchain on the agent, not
+  reproducible). Fix it by upgrading to a release that ships a wheel (e.g. a new Python version often needs
+  bumped dependencies) or by dropping the dependency, not by allowing builds.
 - GitHub repos: same model, expressed as branch protection with required status checks on all three
   branches, `pull_request` workflows with `if` conditions mirroring the `executeTests` rule, and
   `on: schedule` on `dev`. `bdt pr` works identically on both hosts.
