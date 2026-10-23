@@ -129,7 +129,7 @@ Needs `jq` on the agent; the build identity can read PR labels on its own repo b
         - script: |
             paths=(); for a in $(areas); do [ -d "tests/unit/$a" ] && paths+=("tests/unit/$a"); done
             [ ${#paths[@]} -eq 0 ] && { echo "No unit tests for the selected areas"; exit 0; }
-            uv run pytest "${paths[@]}"
+            uv run pytest --durations=20 --durations-min=1.0 "${paths[@]}"
           displayName: Unit tests (selected areas)
 
 - stage: TestE2E
@@ -143,12 +143,16 @@ Needs `jq` on the agent; the build identity can read PR labels on its own repo b
         - script: |
             paths=(); for a in $(areas); do [ -d "tests/e2e/$a" ] && paths+=("tests/e2e/$a"); done
             [ ${#paths[@]} -eq 0 ] && { echo "No e2e tests for the selected areas"; exit 0; }
-            uv run pytest "${paths[@]}"
+            uv run pytest --durations=20 --durations-min=1.0 "${paths[@]}"
           displayName: E2E tests (selected areas)
 ```
 
-Use the runner of the stack (`bun test`, `vitest`, ...) the same way. Parallelise across areas (a matrix
-over `$(areas)`) when the suite is slow; the nightly then also finishes quickly.
+`--durations=20 --durations-min=1.0` makes pytest print the 20 slowest tests (setup, call and teardown) at the
+end of every run, leaving out anything under one second so the list stays short on a fast suite. Slow tests
+show up in the build log and the nightly without anyone profiling. Keep it in the pipeline command
+rather than in `addopts`, so local runs stay quiet. Use the runner of the stack (`bun test`, `vitest`, ...) the
+same way. Parallelise across areas (a matrix over `$(areas)`) when the suite is slow; the nightly then also
+finishes quickly.
 
 ## Guard: what may target `main` / `test`
 
