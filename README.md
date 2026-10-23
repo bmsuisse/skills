@@ -25,6 +25,7 @@
 | [bms-code-review](./skills/bms-code-review/) | BMS code review that fans out one focused subagent per concern (architecture, duplication, security, correctness, age… |
 | [bms-frontend-design](./skills/bms-frontend-design/) | The BMS visual identity for internal web apps, built on the shared `@bmsuisse/ui` (sidebar/nav, form, dialog, and oth… |
 | [bms-plan-review](./skills/bms-plan-review/) | Review an implementation plan before any code is written: checks it against BMS conventions and the existing skills (… |
+| [bmsapp-native](./skills/bmsapp-native/) | Use when a web app or FastAPI backend should talk to the BMS iOS app (`@bmsuisse/app-native`, `bmsdna-app-native`). T… |
 | [branching-strategy](./skills/branching-strategy/) | Set up or audit a repo's dev -> test -> main branching, build policies, per-area test labels and nightly deploy. |
 | [clean-code](./skills/clean-code/) | Language-agnostic, pragmatic clean-code principles for writing and refactoring code at BMS: naming, function size and… |
 | [clockify](./skills/clockify/) | Query and log time entries in Clockify via its REST API — check a timesheet, look up the workspace/user/project, crea… |
