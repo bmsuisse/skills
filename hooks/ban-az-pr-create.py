@@ -15,23 +15,56 @@ import re
 import shlex
 import sys
 
-SEGMENT_SPLIT = re.compile(r"&&|\|\||[;&|\n()]")
 ASSIGNMENT = re.compile(r"[A-Za-z_]\w*=")
-WRAPPERS = {"nohup", "setsid", "time", "command", "exec", "env", "sudo"}
+HEREDOC = re.compile(r"(?<!<)<<(?!<)-?\s*(['\"]?)([A-Za-z_]\w*)\1")
+WRAPPERS = {"nohup", "setsid", "time", "command", "exec", "env", "sudo", "timeout", "xargs", "builtin"}
+KEYWORDS = {"if", "then", "else", "elif", "do", "while", "until", "!", "{", "}"}
+SHELL_PUNCT = set(";&|()\n")
 
 
-def tokenize(segment: str) -> list[str]:
+def strip_heredocs(command: str) -> str:
+    """Drop heredoc bodies so their lines are not parsed as shell commands."""
+    out: list[str] = []
+    pending: list[tuple[str, bool]] = []
+    for line in command.split("\n"):
+        if pending:
+            delim, dash = pending[0]
+            if (line.strip() if dash else line) == delim:
+                pending.pop(0)
+            continue
+        out.append(line)
+        pending = [(m.group(2), "<<-" in m.group(0)) for m in HEREDOC.finditer(line)]
+    return "\n".join(out)
+
+
+def split_simple_commands(command: str) -> list[list[str]]:
+    """Split a command line into simple commands, respecting quotes and line continuations."""
+    command = strip_heredocs(command.replace("\\\n", ""))
+    lexer = shlex.shlex(command, posix=True, punctuation_chars=";&|()\n")
+    lexer.whitespace = " \t\r"
+    lexer.whitespace_split = True
     try:
-        return shlex.split(segment, posix=True)
+        tokens = list(lexer)
     except ValueError:
-        return segment.split()
+        tokens = command.split()
+    out: list[list[str]] = [[]]
+    for tok in tokens:
+        if tok and set(tok) <= SHELL_PUNCT:
+            out.append([])
+        else:
+            out[-1].append(tok)
+    return out
 
 
 def is_az_pr_create(command: str) -> bool:
-    for segment in SEGMENT_SPLIT.split(command):
-        tokens = tokenize(segment)
-        while tokens and (ASSIGNMENT.match(tokens[0]) or tokens[0] in WRAPPERS):
+    for tokens in split_simple_commands(command):
+        while tokens and (ASSIGNMENT.match(tokens[0]) or tokens[0] in KEYWORDS):
             tokens = tokens[1:]
+        if not tokens:
+            continue
+        if tokens[0] in WRAPPERS:
+            # wrapper options may take values (`env -u VAR`, `timeout 5`), so look for az anywhere after it
+            tokens = tokens[next((i for i, t in enumerate(tokens) if t == "az"), len(tokens)) :]
         if tokens[:4] == ["az", "repos", "pr", "create"]:
             return True
     return False

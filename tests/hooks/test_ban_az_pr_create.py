@@ -28,6 +28,11 @@ def is_denied(response: dict | None) -> bool:
         "cd repo && az repos pr create --title x",
         "AZURE_DEVOPS_EXT_PAT=x az repos pr create",
         "git push; az repos pr create",
+        "az repos pr \\\ncreate --title x",
+        "env -i az repos pr create",
+        "command -- az repos pr create",
+        "timeout 30 az repos pr create",
+        "if true; then az repos pr create; fi",
     ],
 )
 def test_denies_az_pr_create(command: str) -> None:
@@ -46,6 +51,8 @@ def test_denies_az_pr_create(command: str) -> None:
         "gh pr create --draft",
         'echo "az repos pr create"',
         "grep -r 'az repos pr create' docs",
+        "echo 'example; az repos pr create; done'",
+        "cat <<'EOF'\naz repos pr create\nEOF",
     ],
 )
 def test_allows_other_commands(command: str) -> None:
