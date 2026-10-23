@@ -1,0 +1,89 @@
+{
+  "skill_name": "bmsapp-native",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Our React web app (runs inside the BMS iOS app) has an \"Approve order\" button. Ask for Face ID before the approval is sent, and make sure it still works in a normal browser.",
+      "expected_output": "Uses biometricConfirm from @bmsuisse/app-native (bun add @bmsuisse/app-native) instead of calling window.BMSNative / window.webkit.messageHandlers by hand or writing a custom nativeBridge.ts. Returns early when confirm.ok is false, then calls the API. Notes that Face ID is UX only: the backend must still check authorization for the approval itself. Relies on the package's browser fallback / guards native-only logic with isNativeApp() or can(...) so the page also works without the app.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Send a push notification to the BMS app on the user's iPhone from our FastAPI backend when an order is approved, and tapping it should open /orders/123.",
+      "expected_output": "Uses bmsdna-app-native (dependency bmsdna-app-native, import bmsdna.app_native) and send_push(device_token=..., title=..., body=..., data={\"path\": \"/orders/123\"}) rather than copying APNs code into the project. Gets the device token through create_ingest_router with an auth_dependency, configures APNs only through the APNS_KEY / APNS_KEY_ID / APNS_TEAM_ID / APNS_BUNDLE_ID / APNS_USE_SANDBOX environment variables, never commits the .p8 key, and cleans up dead tokens using PERMANENTLY_INVALID_TOKEN_REASONS.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Our internal web app is opened inside the BMS app. Sign the user in with the app's Entra token instead of building our own cookie login. The backend is FastAPI.",
+      "expected_output": "Uses create_entra_auth_dependency(EntraTokenVerifier.from_env(), session=SignedSessionCookie(secret=...)) from bmsdna.app_native, with resolve_user mapping the identity to the project's own user. An invalid token answers 401 (never a redirect). Takes the caller from context.user and never from a user_email in the request body. Reads ENTRA_TENANT_ID and ENTRA_AUDIENCE from the environment instead of hard-wiring them, and never forwards, stores or logs the token. On the web side the capability identity is needed and the app adds the token to fetch calls automatically; getAccessToken() is only needed for a WebSocket.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "Replace our \"new customer\" web form by a native iOS form in the BMS app. The backend validates the input and may reject fields.",
+      "expected_output": "Uses showForm from @bmsuisse/app-native behind canShowNativeForms() with an onSubmit callback that posts to the backend and returns { fieldErrors } on a 422 so the app marks the fields, and throws on other errors so the form stays open. Keeps the existing web form as the fallback for browsers, old app builds (unknownAction, treated like unavailable via isNativeSurfaceUnsupported) and web apps without the nativeForms capability. Mentions that camera fields also need the camera capability and that photos/scans arrive as NativeFileRef references.",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "Show the number of open orders as a KPI on the dashboard of the BMS app and keep it current when a new order arrives. Our backend is FastAPI.",
+      "expected_output": "Uses create_widget_feed_router(get_widgets=..., auth_dependency=...) from bmsdna.app_native with a KpiWidget/KpiData (Pydantic models, snake_case) and takes the user from context.user. Makes the feed the source of truth and calls send_widget_update(device_token=..., webapp_id=..., widgets=...) when an order arrives. Sends the complete widget list because every delivery replaces all widgets of the web app, and keeps the widget id stable. Mentions that the dashboardWidgets capability and the widget feed path must be set up for the web app in the app, and does not rely on setWidgets from the page alone (it only works while the page is open).",
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "Show the pickup progress of an order on the iPhone lock screen and move it from 'Packed' to 'Ready for pickup' from our FastAPI backend.",
+      "expected_output": "Uses Live Activities: startLiveActivity from the page or send_live_activity_start with LiveActivityAttributes(webapp_id, activity_id, webapp_name, path) for a start without the app, and create_live_activity_router with an on_token_received callback that stores the 'token', 'push_to_start_token' and 'ended' events, always using the latest token of an activity. Updates with send_live_activity_update(push_token=..., state=LiveActivityState(title=..., steps=[...], current_step=...)), uses alert_title only for the important change and priority=5 for unimportant ones, and ends with send_live_activity_end. Notes the limits (about 8 hours, about 4 KB, no images) and that the liveActivities capability is needed, and does not make it the only place the status can be seen. Does not write APNs code by hand.",
+      "files": []
+    },
+    {
+      "id": 7,
+      "prompt": "Managers should approve or reject vacation requests directly in the BMS app without opening our web app. The backend is FastAPI.",
+      "expected_output": "Uses create_approvals_router(get_approvals=..., on_decision=..., auth_dependency=...) with Approval/ApprovalDetail models. get_approvals returns everything still open for context.user (it replaces the list on the device). on_decision checks in the backend that context.user may decide this approval_id, never trusting body.user_email or Face ID, and returns ApprovalDecisionResult(ok=False, message=...) when not allowed, None on success. Calls send_approvals_update(device_token=..., webapp_id=...) when a new request arrives (plus a normal send_push for a visible notification). Mentions the approvals capability and that decisions are not queued offline.",
+      "files": []
+    },
+    {
+      "id": 8,
+      "prompt": "On our goods-receipt page the warehouse staff should scan up to 20 EAN-13 barcodes in a row and read a serial number like AB-1234 from the label.",
+      "expected_output": "Uses scanBarcodes({ formats: ['ean13'], max: 20 }) and scanText({ pattern: ... }) from @bmsuisse/app-native instead of window.webkit.messageHandlers. Uses the resolved result (values / text) and does not process the same result a second time via on('barcodesScanned') or on('textScanned'). Handles error cases: cancelled is not an error, denied/unavailable show the message, and a manual input field remains as the fallback because browsers and simulators have no scanner. Notes that the pattern is an ICU regex matched against the whole line (so 'S/N: AB-1234' needs .*AB-\\d{4}.*) and that the camera capability is required.",
+      "files": []
+    },
+    {
+      "id": 9,
+      "prompt": "On the orders page of our web app, add a 'New order' entry to the native menu of the BMS app and a search button at the top right.",
+      "expected_output": "Uses setChrome from @bmsuisse/app-native with menu items and actionButtons (SF Symbol icons, at most 2 action buttons), guarded by can('customChrome') or isNativeApp(). Uses scope: 'route' and sets it again on every route change (for example in an effect on the pathname). Handles taps with on('menuSelect', ...) and on('actionButtonTap', ...) and removes the listener on unmount, instead of window.onNativeMenuSelect. Keeps equivalent buttons on the page itself because a browser shows no native chrome.",
+      "files": []
+    },
+    {
+      "id": 10,
+      "prompt": "Our FastAPI backend should send a push to the user's iPhone when an order needs approval, with 'Confirm' and 'Reject' buttons, and handle the tap.",
+      "expected_output": "Uses send_push(device_token=..., title=..., body=..., data={'webapp_id': ..., 'path': ..., 'actions': [{'id': 'confirm', 'title': 'Confirm'}, {'id': 'reject', 'title': 'Reject'}]}) and create_notification_action_router(on_action_received=..., auth_dependency=...). Includes webapp_id in the data so the app can assign the push to the web app. Checks in the callback that context.user may act on the order named in action.data (client input). Notes that the buttons appear in the app's notifications tab, not on the lock screen banner. Handles a failed push with PERMANENTLY_INVALID_TOKEN_REASONS without deleting the whole device record, and configures APNs only through environment variables.",
+      "files": []
+    },
+    {
+      "id": 11,
+      "prompt": "On our CRM customer page add a 'Navigate' button, a 'Call' button and a 'Remind me to call back tomorrow at 9:00' button that use the iPhone.",
+      "expected_output": "Uses navigate({ destination: { name, address } }), callPhone({ number }) and addReminder({ title, due: toIsoWithOffset(date) }) from @bmsuisse/app-native. Notes that addReminder (and saveContact) need the deviceApps capability while navigate and callPhone do not. Shows result.message to the user when addReminder answers error 'denied'. Relies on the browser fallbacks (maps in a new tab, tel: link) and does not call window.BMSNative by hand.",
+      "files": []
+    },
+    {
+      "id": 12,
+      "prompt": "Show a customer's details as a native screen in the BMS app, with phone and address and an 'Approve' button that calls our API. If the API refuses, the screen must stay open and show why.",
+      "expected_output": "Uses showContent from @bmsuisse/app-native with a facts block and actions, behind canShowNativeContent(), with an onAction handler that calls the API. Returns nothing on success; on refusal throws or returns { ok: false, message } so the surface stays open. Keeps the existing web UI as the fallback for browsers, old app builds (unknownAction) and a missing nativeContent capability, using isNativeSurfaceUnsupported(result). Does not use window.BMSNative directly.",
+      "files": []
+    },
+    {
+      "id": 13,
+      "prompt": "Our page calls scanBarcodes but in the app it sometimes answers { ok: false, error: 'capability' } and in Safari nothing happens at all. What is wrong and how do we fix it?",
+      "expected_output": "Explains that 'capability' means the app has not granted the camera capability to this web app, so the app team has to enable it in the web app's configuration, and that this is not a bug in the page. Explains that in Safari the package resolves { ok: false, error: 'unavailable' } instead of throwing, so the page must handle unavailable, unknownAction (old app) and capability with a web fallback such as a manual input field. Does not suggest working around it with raw window.webkit.messageHandlers calls or a copy of the bridge.",
+      "files": []
+    },
+    {
+      "id": 14,
+      "prompt": "Delivery notes scanned in the BMS app should land on our FastAPI backend and be stored per user.",
+      "expected_output": "Uses scanDocument() from @bmsuisse/app-native (the app uploads the result itself to the web app's document upload path) and create_document_router(on_document_received=..., auth_dependency=...) on the backend. Stores the file with the owner taken from context.user and not from the user_email in the form, uses doc.filename and doc.data of ReceivedDocument, and mentions the default limit of 25 MB (413 above, max_bytes changes it). Mentions the camera capability and that documents of native forms arrive with kind='form' and may return a reference.",
+      "files": []
+    }
+  ]
+}

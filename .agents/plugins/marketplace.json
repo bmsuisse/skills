@@ -19,6 +19,7 @@
         "./skills/sql-optimization",
         "./skills/tanstack-best-practices",
         "./skills/fastapi-azure-auth",
+        "./skills/bmsapp-native",
         "./skills/duckdb",
         "./skills/ducklake",
         "./skills/playwright-python",
