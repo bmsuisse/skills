@@ -126,8 +126,8 @@ orders = "test-orders"
 2. Test layout: split unit and E2E tests into `tests/unit/<area>/` and `tests/e2e/<area>/`. Add
    `required_labels` (and optionally `scope_labels`) to `pyproject.toml`.
 3. Pipeline (`references/pipeline.md`): `executeTests` rule for promotion PRs, a `Plan` stage that turns PR
-   labels into the area list, unit and E2E stages that run only those areas (pytest with `--durations=20
-   --durations-min=1.0` so the slowest tests are logged), a nightly schedule on `dev`
+   labels into the area list, unit and E2E stages that run only those areas (pytest with `--maxfail=3` to stop early
+   and `--durations=20 --durations-min=1.0` to log the slowest tests), a nightly schedule on `dev`
    that runs everything and deploys to `test` when green, deploy-only runs for pushes to `test`/`main`, and
    the guard for rule 7.
 4. Policies (`references/azure-devops-policies.md`): build validation on `dev`, `test`, `main` pointing at that
