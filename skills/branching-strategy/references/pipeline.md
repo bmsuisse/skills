@@ -5,6 +5,7 @@ for why each piece exists.
 
 ## Contents
 - Triggers and the nightly schedule
+- `UV_NO_BUILD`: install wheels only
 - `executeTests`: skip tests on promotion PRs
 - `Plan` stage: PR labels -> areas
 - Unit and E2E stages run the selected areas
@@ -30,6 +31,22 @@ schedules:
       include: [dev]
     always: true               # run without changes: environment/data/dependency drift breaks tests too
 ```
+
+## `UV_NO_BUILD`: install wheels only
+
+A top-level pipeline variable (it reaches every `uv` call, as an environment variable), so no command needs
+its own `--no-build`.
+
+```yaml
+variables:
+  # CI installs wheels only: a dependency without one for the pinned Python fails the build instead of compiling for minutes.
+  - name: UV_NO_BUILD
+    value: "1"
+```
+
+If the pipeline already has a `variables:` block, add the entry to it (the `executeTests` block below is
+written in mapping form; convert the block to list form, or put the variable in a variable template, when
+mixing the two).
 
 ## `executeTests`: skip tests on promotion PRs
 
