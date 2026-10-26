@@ -28,7 +28,8 @@ invocation is found anywhere in the session.
 A review done by a different agent, the `codex` CLI, counts as well, but only when the transcript holds an
 actual Bash tool call that runs one of
 
-  codex exec "<prompt that mentions a code review / the bms-code-review skill>"   (also `codex e`)
+  codex exec "<prompt that mentions a code review / the bms-code-review skill, or that says "review" together
+              with diff, branch, PR, pull request, changes or commit>"                 (also `codex e`)
   codex review ...                                                                   (also `codex exec review`)
 
 AND that review is known to have finished (a mere start proves nothing). How that is proven depends on how it ran:
@@ -134,8 +135,11 @@ def is_pr_publish_command(tokens: list[str]) -> bool:
 
 # --- review through the codex CLI -----------------------------------------------------------------------------
 
-# A `codex exec` prompt only counts when it asks for a code review (e.g. "Use the bms-code-review skill ...").
+# A `codex exec` prompt only counts when it asks for a code review: either the words "code review" (e.g. "Use the
+# bms-code-review skill ...") or "review" together with what is reviewed ("Review the diff of this branch ...").
 CODEX_REVIEW_PROMPT = re.compile(r"\bcode[ -]?review", re.IGNORECASE)
+CODEX_REVIEW_WORD = re.compile(r"\breview\b", re.IGNORECASE)
+CODEX_REVIEW_SUBJECT = re.compile(r"\b(diff|branch|PR|pull[ -]?request|changes|commits?)\b", re.IGNORECASE)
 CODEX_HELP_FLAGS = {"-h", "--help", "-V", "--version"}
 # codex options that take a separate value (so the value is not mistaken for the subcommand / prompt).
 CODEX_VALUE_OPTS = {
@@ -286,6 +290,12 @@ def status_is_codex(segments: list[tuple[list[str], str]], idx: int, pipefail: b
     return not any(words for words, _ in segments[end + 1 :])
 
 
+def is_codex_review_prompt(prompt: str) -> bool:
+    return bool(CODEX_REVIEW_PROMPT.search(prompt)) or bool(
+        CODEX_REVIEW_WORD.search(prompt) and CODEX_REVIEW_SUBJECT.search(prompt)
+    )
+
+
 def codex_reviews_in_command(command: str, depth: int = 0, pipefail: bool = False) -> list[CodexReview]:
     """The `codex exec`/`codex review` code reviews that `command` runs (not `codex --version`, not mere text)."""
     reviews: list[CodexReview] = []
@@ -343,7 +353,12 @@ def codex_reviews_in_command(command: str, depth: int = 0, pipefail: bool = Fals
             else:
                 prompt = expand_vars(" ".join(rest), env)
                 # no prompt argument / "-": the prompt arrives on stdin (heredoc, pipe), so look at the whole command
-                if not CODEX_REVIEW_PROMPT.search(command if prompt in ("", "-") else prompt):
+                # (only the strict "code review" wording there: the whole command also holds file names and other
+                # shell words, which must not supply the "review" + "diff" evidence)
+                if prompt in ("", "-"):
+                    if not CODEX_REVIEW_PROMPT.search(command):
+                        continue
+                elif not is_codex_review_prompt(prompt):
                     continue
                 sub = "review"
         if sub == "review":
@@ -605,6 +620,8 @@ def main() -> None:
         "Blocked: this command publishes/completes a PR, but neither /code-review nor "
         "/bms-code-review has been run yet in this session (directly or via a subagent), and no completed "
         "`codex exec`/`codex review` code review was found either. Run one of them first, then retry. "
+        "A `codex exec` prompt is only recognised as a review when it says \"code review\" (or names the "
+        "bms-code-review skill), or says \"review\" together with diff, branch, PR, pull request, changes or commit. "
         "A codex review counts once it has finished: run it in the foreground as the last command of the line "
         "(no `| tee`, `; echo` or `|| true` after it, which would hide a failure), or backgrounded with `&` "
         "and `-o <file>` so the output file proves completion."
