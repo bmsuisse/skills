@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""PostToolUse hook (Edit|Write): regenerate the locale JSON after `translations.toml` is edited.
+"""PostToolUse hook (Edit|Write|MultiEdit): regenerate the locale JSON after `translations.toml` is edited.
 
 `translations.toml` is the source of truth; the generated `<lng>.json` files are git-ignored build
 artifacts. Runs `uv run bdt translate` in the project root; where the files go lives in

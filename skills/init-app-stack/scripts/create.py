@@ -15,7 +15,6 @@ Creates:
 """
 
 import json
-import shutil
 import subprocess
 import sys
 import textwrap
@@ -858,32 +857,6 @@ def main() -> None:
         """,
     )
 
-    # Claude Code hook: regenerate the locale JSON whenever translations.toml is edited.
-    # Runs `uv run bdt translate` (config lives in [tool.bdt.translate]), so it works unchanged in every BMS app.
-    hook_src = Path(__file__).resolve().parent.parent / "hooks" / "translate_on_edit.py"
-    hook_dst = root / ".claude" / "hooks" / "translate_on_edit.py"
-    hook_dst.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(hook_src, hook_dst)
-    write(
-        root / ".claude" / "settings.json",
-        json.dumps(
-            {
-                "hooks": {
-                    "PostToolUse": [
-                        {
-                            "matcher": "Edit|Write",
-                            "hooks": [
-                                {"type": "command", "command": 'python3 "$CLAUDE_PROJECT_DIR/.claude/hooks/translate_on_edit.py"'}
-                            ],
-                        }
-                    ]
-                }
-            },
-            indent=2,
-        )
-        + "\n",
-    )
-
     # tests/ — pgdevkit's ensure_testdb() spins up a per-branch test database
     # and applies database/ to it before any test runs.
     write(
@@ -1332,16 +1305,9 @@ def main() -> None:
 
         ## Translations
 
-        UI text lives in `translations.toml` (the source of truth); `uv run bdt translate` generates the
-        git-ignored `frontend/src/locales/<lng>.json` from it (also run by `just install`,
-        `just frontend` and `just agent-preview`). Add a key with:
-
-        ```bash
-        uv run bdt translate add SAVE en=Save de=Speichern fr=Enregistrer it=Salva
-        ```
-
-        Editing `translations.toml` through Claude Code regenerates the JSON automatically
-        (`.claude/hooks/translate_on_edit.py`).
+        UI text lives in `translations.toml`; `uv run bdt translate` generates the git-ignored
+        `frontend/src/locales/<lng>.json` (run by `just install`, `just frontend`, `just agent-preview`).
+        Add a key: `uv run bdt translate add SAVE en=Save de=Speichern fr=Enregistrer it=Salva`.
 
         ## Stack notes
 

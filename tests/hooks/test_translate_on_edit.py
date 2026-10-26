@@ -1,4 +1,4 @@
-"""Tests for the init-app-stack translate_on_edit PostToolUse hook (uses a fake `uv`, so no uv/bdt install needed)."""
+"""Tests for the dev-workflow translate-on-edit PostToolUse hook (uses a fake `uv`, so no uv/bdt install needed)."""
 
 import json
 import os
@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-HOOK = Path(__file__).resolve().parents[2] / "skills" / "init-app-stack" / "hooks" / "translate_on_edit.py"
+HOOK = Path(__file__).resolve().parents[2] / "hooks" / "translate-on-edit.py"
 
 
 @pytest.fixture

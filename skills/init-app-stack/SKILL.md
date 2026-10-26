@@ -37,9 +37,9 @@ The script (works on Mac, Linux, Windows):
 9. Writes `docker-compose.yml` with a single `db` service (Postgres 17) + named volume — this is the **dev** database; pgdevkit's `pgdb testdb` manages a separate, per-branch database for tests
 10. Writes `database/.gitkeep` (schema-as-code root — see [pgdevkit's skill](https://github.com/bmsuisse/pgdevkit) for the layer/object-type folder convention) and `tests/conftest.py` + `tests/test_health.py` wired to pgdevkit's `ensure_testdb()` fixture
 11. Writes `scripts/agent_preview.py` — `start`/`status`/`stop` subcommands for the isolated, parallel-safe preview described above (provisions a pgdevkit test DB via `ensure_testdb()`, builds the frontend if missing/`--rebuild`, launches `granian` directly on an OS-picked or `--port`-pinned port, polls `/health`, tracks the running instance in a `/tmp/<project>-agent-preview-<db>.json` state file keyed by the pgdevkit workspace DB name so concurrent worktrees never clash)
-12. Writes a root `justfile` (`install`, `db-up`, `db-down`, `backend`, `frontend`, `dev`, `agent-preview`, `agent-preview-status`, `agent-preview-stop`, `generate-api`, `test`) as the project's task runner — `generate-api` runs `backend/dump_openapi.py` then `bun run generate-api`; `install`, `frontend` and `agent-preview` run `uv run bdt translate` first (no separate `just` recipe — `bdt` is called directly, as in CCMT2/OneSales/MDMApp)
+12. Writes a root `justfile` (`install`, `db-up`, `db-down`, `backend`, `frontend`, `dev`, `agent-preview`, `agent-preview-status`, `agent-preview-stop`, `generate-api`, `test`) as the project's task runner — `generate-api` runs `backend/dump_openapi.py` then `bun run generate-api`; `install`, `frontend` and `agent-preview` run `uv run bdt translate` first
 13. Writes root `biome.json` — strict lint rules (`noExplicitAny`, `noNonNullAssertion`, `noConsole`, `noForEach`, `useImportType`, `useConsistentTypeDefinitions`, type-aware `noFloatingPromises`, …), 4-space/double-quote/120-col formatting, import sorting; `generated/`, `routeTree.gen.ts` and `openapi.json` are excluded. The scaffold finishes with `biome check --write` + a verifying `biome check` so the frontend starts lint-clean
-14. Writes `translations.toml` (seeded with one key) + `[tool.bdt.translate]` in `pyproject.toml` (output `frontend/src/locales`, git-ignored; `bmsdna-devtools` is a dev dep) + `.claude/hooks/translate_on_edit.py` registered in `.claude/settings.json` (runs `uv run bdt translate` when `translations.toml` is edited — see [`references/translations.md`](references/translations.md)), `.env.example` (frontend + backend, `APP_POSTGRES_*` vars), root `.gitignore` (includes `.claude/skills/`, `.agents/skills/`, `.agent/skills/` — skillup-managed, see Step 3; does **not** ignore `frontend/openapi.json` or `frontend/src/lib/generated/` — both are committed), `README.md` with startup steps including the agent-preview workflow
+14. Writes `translations.toml` (seeded with one key) + `[tool.bdt.translate]` in `pyproject.toml` (`bmsdna-devtools` dev dep, git-ignored `frontend/src/locales/*.json`), `.env.example` (frontend + backend, `APP_POSTGRES_*` vars), root `.gitignore` (includes `.claude/skills/`, `.agents/skills/`, `.agent/skills/` — skillup-managed, see Step 3; does **not** ignore `frontend/openapi.json` or `frontend/src/lib/generated/` — both are committed), `README.md` with startup steps including the agent-preview workflow
 
 After running:
 
@@ -99,7 +99,6 @@ This installs:
 | [`references/ui-components.md`](references/ui-components.md)             | Using `@bmsuisse/ui`/`@bmsuisse/datagrid`, the shadcn CLI fallback for what they don't cover, theme tokens, `cn()` usage, dark mode |
 | [`references/postgres-pgdevkit.md`](references/postgres-pgdevkit.md)     | `pgdevkit.db` pool lifecycle, CRUD helpers, `.sql` file loading, `database/` folder, `pgdb testdb` for tests |
 | [`references/openapi-typed-client.md`](references/openapi-typed-client.md) | Regenerating the SDK/hooks/validators from FastAPI, using the generated client |
-| [`references/translations.md`](references/translations.md)               | `translations.toml` workflow: running `uv run bdt translate` directly, `[tool.bdt.translate]`, adding keys, the regenerate-on-edit hook |
 | [`references/fastapi-sse.md`](references/fastapi-sse.md)                 | Adding SSE streaming endpoints (AI chat, live updates, logs)                 |
 
 For UI aesthetics — sidebar/nav layout, brand colors, background/surface scale,
@@ -117,7 +116,7 @@ where the goal is consistency across apps rather than differentiation.
 - Always use **bun** (not npm/yarn/pnpm) for the frontend.
 - Always use **uv** (not pip/poetry/pipenv) for the backend. Pin Python **3.14**.
 - Backend uses `fastapi` + `granian` — do **not** use `fastapi[standard]` (bundles uvicorn, conflicts with Granian).
-- UI text goes in `translations.toml`, never hand-written locale JSON. Add keys with `uv run bdt translate add KEY en=… de=… fr=… it=…` and regenerate with `uv run bdt translate` — see [`references/translations.md`](references/translations.md).
+- Do translations via `translations.toml`, never hand-written locale JSON. Add one with `uv run bdt translate add KEY en=… de=… fr=… it=…`.
 - Run backend dev with `just backend` (wraps `uv run dev` → `granian --interface asgi main:app --reload`).
 - **Do not use SQLAlchemy or any ORM.** Postgres access goes through [pgdevkit](https://github.com/bmsuisse/pgdevkit) (psycopg) — install its skill via `skillup add bmsuisse/pgdevkit --skill pgdevkit` (Step 3) before doing any nontrivial database work, it's the source of truth for these conventions, not this bullet list.
   ```python

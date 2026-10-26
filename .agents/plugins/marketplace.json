@@ -133,6 +133,17 @@
                 }
               ]
             }
+          ],
+          "PostToolUse": [
+            {
+              "matcher": "apply_patch|Edit|Write",
+              "hooks": [
+                {
+                  "type": "command",
+                  "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/translate-on-edit.py\""
+                }
+              ]
+            }
           ]
         }
       }
