@@ -28,12 +28,14 @@ def fake_uv(root: Path, run_code: int = 0, output: str = "") -> dict:
     return {**os.environ, "PATH": f"{root / 'bin'}:/usr/bin:/bin"}
 
 
-def run_hook(file: Path, env: dict | None = None, project: Path | None = None) -> subprocess.CompletedProcess:
+def run_hook(
+    file: Path, env: dict | None = None, project: Path | None = None, payload: dict | None = None
+) -> subprocess.CompletedProcess:
     """Run the hook as Claude Code does: CLAUDE_PROJECT_DIR is the project root (default: the file's directory)."""
     env = {**(env or os.environ), "CLAUDE_PROJECT_DIR": str(project or file.parent)}
     return subprocess.run(
         [sys.executable, str(HOOK)],
-        input=json.dumps({"tool_input": {"file_path": str(file)}}),
+        input=json.dumps(payload or {"tool_input": {"file_path": str(file)}}),
         capture_output=True,
         text=True,
         env=env,
@@ -95,5 +97,33 @@ def test_ignores_translations_toml_outside_the_project(project, tmp_path_factory
     (vendored / "pyproject.toml").write_text("[tool.bdt.translate]\n")
     (vendored / "translations.toml").write_text('[A]\nen = "a"\n')
     result = run_hook(vendored / "translations.toml", fake_uv(project), project=project)
+    assert result.returncode == 0
+    assert calls(project) == []
+
+
+def test_edit_in_a_worktree_regenerates_that_worktree_not_the_main_checkout(project):
+    worktree = project / ".worktrees" / "task"
+    worktree.mkdir(parents=True)
+    (worktree / "pyproject.toml").write_text("[tool.bdt.translate]\n")
+    (worktree / "translations.toml").write_text('[A]\nen = "a"\n')
+    result = run_hook(worktree / "translations.toml", fake_uv(project), project=project)
+    assert result.returncode == 0
+    assert calls(project) == [f"{worktree.resolve()}: run bdt translate"]
+
+
+def test_codex_apply_patch_headers_trigger_translation_relative_to_cwd(project):
+    patch = (
+        "*** Begin Patch\n*** Update File: translations.toml\n@@\n-x\n+y\n*** Update File: README.md\n*** End Patch\n"
+    )
+    payload = {"tool_name": "apply_patch", "cwd": str(project), "tool_input": {"command": patch}}
+    result = run_hook(project / "translations.toml", fake_uv(project), project=project, payload=payload)
+    assert result.returncode == 0
+    assert calls(project) == [f"{project.resolve()}: run bdt translate"]
+
+
+def test_codex_apply_patch_without_translations_toml_is_ignored(project):
+    patch = "*** Begin Patch\n*** Update File: README.md\n@@\n-x\n+y\n*** End Patch\n"
+    payload = {"tool_name": "apply_patch", "cwd": str(project), "tool_input": {"command": patch}}
+    result = run_hook(project / "translations.toml", fake_uv(project), project=project, payload=payload)
     assert result.returncode == 0
     assert calls(project) == []
