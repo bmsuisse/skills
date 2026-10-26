@@ -615,6 +615,7 @@ def main() -> None:
     print("\n🐍 Backend: FastAPI + pgdevkit (psycopg), Python 3.14")
 
     be.mkdir(exist_ok=True)
+    had_src = (root / "src").exists()
     run(["uv", "init", "--python", "3.14", "."], root, "uv init (python 3.14)")
     run(
         ["uv", "add", "fastapi", "granian[reload]", "pydantic-settings", "pgdevkit[cli,db]"],
@@ -840,7 +841,8 @@ def main() -> None:
                 """
             )
             pyproject.write_text(content, encoding="utf-8")
-            shutil.rmtree(root / "src", ignore_errors=True)  # uv init's package stub, unused (app lives in backend/)
+            if not had_src:
+                shutil.rmtree(root / "src", ignore_errors=True)  # uv init's package stub, unused (app lives in backend/)
         content = pyproject.read_text(encoding="utf-8")
         if "[tool.bdt.translate]" not in content:
             content += textwrap.dedent(
