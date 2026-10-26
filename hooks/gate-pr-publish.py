@@ -353,7 +353,12 @@ def codex_reviews_in_command(command: str, depth: int = 0, pipefail: bool = Fals
             else:
                 prompt = expand_vars(" ".join(rest), env)
                 # no prompt argument / "-": the prompt arrives on stdin (heredoc, pipe), so look at the whole command
-                if not is_codex_review_prompt(command if prompt in ("", "-") else prompt):
+                # (only the strict "code review" wording there: the whole command also holds file names and other
+                # shell words, which must not supply the "review" + "diff" evidence)
+                if prompt in ("", "-"):
+                    if not CODEX_REVIEW_PROMPT.search(command):
+                        continue
+                elif not is_codex_review_prompt(prompt):
                     continue
                 sub = "review"
         if sub == "review":

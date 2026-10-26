@@ -213,6 +213,7 @@ def test_denies_run_in_background_codex_review_without_completion(tmp_path, noti
         "which codex; codex --version 2>&1 | head -2",
         'codex exec "fix the failing test in cli.py"',
         'codex exec "review the README wording"',
+        'echo "Summarize this text" | codex exec - -o /tmp/review-diff.md',
         'codex exec "write a changes summary for the diff"',
         'codex exec resume --last "code review"',
         'codex login --code-review "x"',
