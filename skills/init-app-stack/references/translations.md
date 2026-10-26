@@ -50,7 +50,7 @@ then run `just translate`.
 `hooks/translate_on_edit.py` is a `PostToolUse` hook (`Edit|Write`) that runs `just translate` whenever the
 edited file is named `translations.toml`. If the recipe fails (for example a `t("KEY")` in code that the toml
 doesn't define) it exits 2 with the output, so the agent fixes it right away. It does nothing for other files,
-or when `just` or a `translate` recipe is missing.
+or when `just` or a `translate` recipe is missing. It only ever runs the justfile at `$CLAUDE_PROJECT_DIR`, and only for files inside that project.
 
 `scripts/create.py` already copies it to `.claude/hooks/` and registers it in `.claude/settings.json`. For an
 existing app, copy the file there and add:

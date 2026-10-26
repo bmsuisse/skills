@@ -31,7 +31,9 @@ def fake_just(root: Path, show_code: int = 0, run_code: int = 0, output: str = "
     return {**os.environ, "PATH": f"{root / 'bin'}:/usr/bin:/bin"}
 
 
-def run_hook(file: Path, env: dict | None = None) -> subprocess.CompletedProcess:
+def run_hook(file: Path, env: dict | None = None, project: Path | None = None) -> subprocess.CompletedProcess:
+    """Run the hook as Claude Code does: CLAUDE_PROJECT_DIR is the project root (default: the file's directory's root)."""
+    env = {**(env or os.environ), "CLAUDE_PROJECT_DIR": str(project or file.parent)}
     return subprocess.run(
         [sys.executable, str(HOOK)],
         input=json.dumps({"tool_input": {"file_path": str(file)}}),
@@ -52,11 +54,11 @@ def test_runs_the_shared_recipe_when_translations_toml_is_edited(project):
     assert calls(project) == ["--show translate", "translate"]
 
 
-def test_finds_the_justfile_from_a_nested_translations_toml(project):
+def test_uses_the_project_justfile_for_a_nested_translations_toml(project):
     nested = project / "akeneo_editor"
     nested.mkdir()
     (nested / "translations.toml").write_text('[A]\nen = "a"\n')
-    result = run_hook(nested / "translations.toml", fake_just(project))
+    result = run_hook(nested / "translations.toml", fake_just(project), project=project)
     assert result.returncode == 0
     assert calls(project) == ["--show translate", "translate"]
 
@@ -90,3 +92,23 @@ def test_noop_without_a_justfile(tmp_path):
     (tmp_path / "bin").mkdir()
     assert run_hook(tmp_path / "translations.toml", fake_just(tmp_path)).returncode == 0
     assert calls(tmp_path) == []
+
+
+def test_ignores_translations_toml_outside_the_project(project, tmp_path_factory):
+    vendored = tmp_path_factory.mktemp("vendored")
+    (vendored / "justfile").write_text("translate:\n    echo pwned\n")
+    (vendored / "translations.toml").write_text('[A]\nen = "a"\n')
+    result = run_hook(vendored / "translations.toml", fake_just(project), project=project)
+    assert result.returncode == 0
+    assert calls(project) == []
+
+
+def test_ignores_a_justfile_that_is_not_at_the_project_root(project):
+    sub = project / "vendor"
+    sub.mkdir()
+    (sub / "justfile").write_text("translate:\n    echo pwned\n")
+    (sub / "translations.toml").write_text('[A]\nen = "a"\n')
+    (project / "justfile").unlink()
+    result = run_hook(sub / "translations.toml", fake_just(project), project=project)
+    assert result.returncode == 0
+    assert calls(project) == []

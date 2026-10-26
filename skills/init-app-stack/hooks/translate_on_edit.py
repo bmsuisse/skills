@@ -4,6 +4,8 @@
 `translations.toml` is the source of truth; `frontend/src/locales/*.json` are git-ignored build
 artifacts. Runs the project's shared `just translate` recipe (CCMT2, OneSales and MDMApp all use that
 name), so the hook never needs to know where the files go: that lives in `[tool.bdt.translate]`.
+Only the justfile at `$CLAUDE_PROJECT_DIR` (the cwd when unset) is used, and only for files inside that
+project, so an edited `translations.toml` elsewhere never gets its neighbouring recipes executed.
 
 Exit 2 with the output on stderr when the recipe fails (e.g. `t("KEY")` used in code but missing from
 the toml), which Claude Code hands to the model. A no-op (exit 0) for any other file, or when `just`
@@ -14,6 +16,7 @@ Runs under the system `python3` (maybe 3.12), so it avoids syntax newer than tha
 """
 
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -22,11 +25,12 @@ from pathlib import Path
 RECIPE = "translate"
 
 
-def find_justfile_dir(start: Path) -> Path | None:
-    for d in [start, *start.parents]:
-        if any((d / n).is_file() for n in ("justfile", "Justfile", ".justfile")):
-            return d
-    return None
+def project_root() -> Path:
+    return Path(os.environ.get("CLAUDE_PROJECT_DIR") or Path.cwd()).resolve()
+
+
+def has_justfile(root: Path) -> bool:
+    return any((root / n).is_file() for n in ("justfile", "Justfile", ".justfile"))
 
 
 def run(cmd: list[str], cwd: Path) -> tuple[int, str]:
@@ -39,8 +43,10 @@ def run(cmd: list[str], cwd: Path) -> tuple[int, str]:
 
 def translate(file: Path) -> str:
     just = shutil.which("just")
-    root = find_justfile_dir(file.parent)
-    if not just or not root:
+    root = project_root()
+    # Only the project's own justfile runs: an edited translations.toml outside it (a vendored or
+    # external checkout) must not get its neighbouring recipes executed.
+    if not just or not file.is_relative_to(root) or not has_justfile(root):
         return ""
     if run([just, "--show", RECIPE], root)[0] != 0:  # no `translate` recipe in this project
         return ""
