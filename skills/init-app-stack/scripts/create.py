@@ -15,6 +15,8 @@ Creates:
 """
 
 import json
+import re
+import shutil
 import subprocess
 import sys
 import textwrap
@@ -27,6 +29,43 @@ def run(cmd: list[str], cwd: Path, label: str) -> None:
     if result.returncode != 0:
         print(f"❌ Failed: {label}", file=sys.stderr)
         sys.exit(result.returncode)
+
+
+def _drop_toml_tables(content: str, names: set[str]) -> str:
+    """Remove the given top-level `[table]` sections (header up to the next header) from TOML text."""
+    out: list[str] = []
+    skipping = False
+    for line in content.splitlines(keepends=True):
+        header = re.match(r"\s*(\[\[?)([^\[\]]+)\]\]?\s*(#.*)?$", line)
+        if header:
+            skipping = header.group(1) == "[" and header.group(2).strip() in names
+        if not skipping:
+            out.append(line)
+    return "".join(out)
+
+
+def _assert_pyproject_tables(pyproject: Path) -> None:
+    """Fail loudly if the patch above did not land (e.g. a future uv writes a table we didn't expect)."""
+    import tomllib
+
+    data = tomllib.loads(pyproject.read_text(encoding="utf-8"))
+    scripts = data.get("project", {}).get("scripts", {})
+    missing = [name for name in ("dev", "start") if name not in scripts]
+    missing += [
+        table
+        for table, present in {
+            "build-system (setuptools)": data.get("build-system", {}).get("build-backend") == "setuptools.build_meta",
+            "tool.uv.package": data.get("tool", {}).get("uv", {}).get("package") is True,
+            "tool.pgdevkit": "pgdevkit" in data.get("tool", {}),
+            "tool.pytest.ini_options": "ini_options" in data.get("tool", {}).get("pytest", {}),
+            "tool.ruff.lint": "lint" in data.get("tool", {}).get("ruff", {}),
+            "tool.ty.src": "src" in data.get("tool", {}).get("ty", {}),
+        }.items()
+        if not present
+    ]
+    if missing:
+        print(f"❌ pyproject.toml is missing expected entries: {', '.join(missing)}", file=sys.stderr)
+        sys.exit(1)
 
 
 def run_soft(cmd: list[str], cwd: Path, label: str) -> None:
@@ -576,6 +615,7 @@ def main() -> None:
     print("\n🐍 Backend: FastAPI + pgdevkit (psycopg), Python 3.14")
 
     be.mkdir(exist_ok=True)
+    had_src = (root / "src").exists()
     run(["uv", "init", "--python", "3.14", "."], root, "uv init (python 3.14)")
     run(
         ["uv", "add", "fastapi", "granian[reload]", "pydantic-settings", "pgdevkit[cli,db]"],
@@ -717,10 +757,13 @@ def main() -> None:
     # Append build-system + [project.scripts] so `uv run dev` / `uv run start` work.
     # Needs: a build backend (setuptools), explicit py-modules (flat layout),
     # and tool.uv.package = true so uv installs the project's entry points.
+    # uv >= 0.13 already writes its own [project.scripts] (`<name> = "<name>:main"`) and a
+    # uv_build [build-system] (plus a src/<name>/ stub); drop those so ours replace them.
     pyproject = root / "pyproject.toml"
     if pyproject.exists():
         content = pyproject.read_text(encoding="utf-8")
-        if "[project.scripts]" not in content:
+        if "backend.scripts:dev" not in content:
+            content = _drop_toml_tables(content, {"project.scripts", "build-system"}).rstrip() + "\n"
             content += textwrap.dedent(
                 """
                 [project.scripts]
@@ -798,7 +841,8 @@ def main() -> None:
                 """
             )
             pyproject.write_text(content, encoding="utf-8")
-        # Separate guard from the block above: uv init may already have written [project.scripts].
+            if not had_src:
+                shutil.rmtree(root / "src", ignore_errors=True)  # uv init's package stub, unused (app lives in backend/)
         content = pyproject.read_text(encoding="utf-8")
         if "[tool.bdt.translate]" not in content:
             content += textwrap.dedent(
@@ -813,6 +857,7 @@ def main() -> None:
                 """
             )
             pyproject.write_text(content, encoding="utf-8")
+        _assert_pyproject_tables(pyproject)
         run(["uv", "sync"], root, "uv sync (install entry points)")
         # uv init's hello-world stub is unused (the app lives in backend/) and would fail ANN/T20.
         (root / "main.py").unlink(missing_ok=True)
