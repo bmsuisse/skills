@@ -3,7 +3,7 @@
 
 `translations.toml` is the source of truth; the generated `<lng>.json` files are git-ignored build
 artifacts. Runs `uv run bdt translate` in the nearest parent of the edited file whose `pyproject.toml`
-has `[tool.bdt.translate]` (so an edit inside a git worktree regenerates that worktree, not the main
+has a `[tool.bdt.translate]` table (so an edit inside a git worktree regenerates that worktree, not the main
 checkout); where the files go lives in that config. Only files inside `$CLAUDE_PROJECT_DIR` (the cwd when
 unset) are handled.
 
@@ -21,9 +21,9 @@ import re
 import shutil
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
 
-CONFIG_MARKER = "[tool.bdt.translate]"
 TARGET = "translations.toml"
 # Codex edits files with apply_patch: tool_input.command holds the patch, whose headers name the files it touches.
 PATCH_FILE_HEADER = re.compile(r"^\*\*\* (?:Add File|Update File|Move to): (.+?)\s*$", re.MULTILINE)
@@ -35,17 +35,23 @@ def project_dir() -> Path:
 
 def is_configured(directory: Path) -> bool:
     pyproject = directory / "pyproject.toml"
-    return pyproject.is_file() and CONFIG_MARKER in pyproject.read_text(errors="ignore")
+    if not pyproject.is_file():
+        return False
+    try:
+        config = tomllib.loads(pyproject.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False
+    return isinstance(config.get("tool", {}).get("bdt", {}).get("translate"), dict)
 
 
 def owning_root(file: Path, project: Path) -> Path | None:
-    """Nearest directory from the file up to (and including) the project that configures `bdt translate`."""
+    """Nearest directory from the file up that configures `bdt translate`, never past the project or its repo/worktree root."""
     if not file.is_relative_to(project):
         return None
     for d in file.parents:
         if is_configured(d):
             return d
-        if d == project:
+        if d == project or (d / ".git").exists():  # a worktree has a `.git` file: don't escape into the main checkout
             break
     return None
 
@@ -79,7 +85,7 @@ def translate(files: list[Path]) -> str:
     for root in sorted(roots):
         code, out = run([uv, "run", "bdt", "translate"], root)
         if code != 0:
-            problems.append(out)
+            problems.append(out or f"exit code {code}, no output (in {root})")
     return "\n".join(problems)
 
 

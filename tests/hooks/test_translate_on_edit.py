@@ -127,3 +127,28 @@ def test_codex_apply_patch_without_translations_toml_is_ignored(project):
     result = run_hook(project / "translations.toml", fake_uv(project), project=project, payload=payload)
     assert result.returncode == 0
     assert calls(project) == []
+
+
+def test_does_not_escape_an_unconfigured_worktree_into_the_main_checkout(project):
+    worktree = project / ".worktrees" / "task"
+    worktree.mkdir(parents=True)
+    (worktree / ".git").write_text("gitdir: ../../.git/worktrees/task\n")
+    (worktree / "translations.toml").write_text('[A]\nen = "a"\n')
+    result = run_hook(worktree / "translations.toml", fake_uv(project), project=project)
+    assert result.returncode == 0
+    assert calls(project) == []
+
+
+def test_config_is_parsed_not_substring_matched(project):
+    (project / "pyproject.toml").write_text("# [tool.bdt.translate]\n")
+    assert run_hook(project / "translations.toml", fake_uv(project)).returncode == 0
+    assert calls(project) == []
+    (project / "pyproject.toml").write_text('[ tool.bdt.translate ]\noutput = ["x"]\n')
+    run_hook(project / "translations.toml", fake_uv(project))
+    assert len(calls(project)) == 1
+
+
+def test_failure_without_output_is_still_reported(project):
+    result = run_hook(project / "translations.toml", fake_uv(project, run_code=9, output=""))
+    assert result.returncode == 2
+    assert "exit code 9" in result.stderr
