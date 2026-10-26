@@ -36,9 +36,9 @@ def _drop_toml_tables(content: str, names: set[str]) -> str:
     out: list[str] = []
     skipping = False
     for line in content.splitlines(keepends=True):
-        header = re.match(r"\s*\[([^\[\]]+)\]\s*(#.*)?$", line)
+        header = re.match(r"\s*(\[\[?)([^\[\]]+)\]\]?\s*(#.*)?$", line)
         if header:
-            skipping = header.group(1).strip() in names
+            skipping = header.group(1) == "[" and header.group(2).strip() in names
         if not skipping:
             out.append(line)
     return "".join(out)
