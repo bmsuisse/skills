@@ -28,7 +28,9 @@ tag and its newest comment is a reply (not a triage comment): a reply means re-t
 search the code (`codegraph explore` if the repo has `.codegraph/`, else grep), look for the screen / endpoint / table
 it names, similar work items (`bdt issue search <keywords> --state all`), and other repos (`cross-repo-discovery`).
 Upload the findings to the work item (step 4), even when you end up asking questions: the next reader should not
-repeat your research. Questions the code or the history can answer are not questions; answer them yourself.
+repeat your research. Questions the code or the history can answer are not questions; answer them yourself. If you
+can't find what the item names (screen, report, field), say what you searched in "What I found" and ask the business for
+its exact name or location; don't invent a technical question to fill the gap.
 
 ## 3. Decide
 
@@ -49,11 +51,11 @@ Every question is **business** or **technical**:
 
 ## 4. Write one comment, set the tags
 
-One comment per triage, so the work item's author gets one notification. Write the business part in plain language
-for non-developers: no jargon, no code names. Make questions easy to answer: closed or multiple choice, with your
-suggested default ("Should the list show only open orders? Proposed: yes").
+One comment per triage, so the work item's author gets one notification. Write it in the language the work item is
+written in. The business part is for non-developers: no jargon, no code names. Make questions easy to answer: closed
+or multiple choice, with your suggested default ("Should the list show only open orders? Proposed: yes").
 
-Not ready (omit an empty section):
+Both variants start with the line `**Triage**` (step 1 recognises earlier triage by it). Not ready (omit an empty section):
 
 ```markdown
 **Triage**
@@ -68,16 +70,31 @@ Not ready (omit an empty section):
 1. ...
 ```
 
-Ready: start the comment with `@Agent` (that is what `bdt issue search --for-me` picks up), then the findings, the
-files / places to change and the acceptance criteria you derived.
+Ready: put `@Agent` on the second line (that is what `bdt issue search --for-me` picks up; plain text, no Azure
+mention syntax):
+
+```markdown
+**Triage**
+@Agent ready for implementation
+
+**What I found**
+- <findings with references>
+
+**Where to change**
+- <files / screens / tables>
+
+**Acceptance criteria**
+1. <observable, testable results, from the work item's own words>
+```
 
 ```bash
 bdt issue comment add N --message "$(cat comment.md)"
 ```
 
 Tags, set by what is open: `needs-business` if there is any business question, `needs-techie` if there is any
-technical one, both if both, neither if ready. On Azure DevOps `--tag` **replaces the whole tag list**, so pass the
-existing tags too (from `issue show`), or use `--remove-tag` to drop a single one:
+technical one, both if both, neither if ready (a ready item needs no update, except removing a `needs-*` tag that is
+still on it). On Azure DevOps `--tag` **replaces the whole tag list**, so pass every existing tag as its own `--tag`
+(`issue show --json` lists them in `tags`), or use `--remove-tag` to drop a single one:
 
 ```bash
 bdt issue update N --tag <existing> --tag needs-business --tag needs-techie
