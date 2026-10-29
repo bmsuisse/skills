@@ -8,25 +8,39 @@ description: Triage business users' Azure DevOps work items: research, then mark
 
 Business users file work items with vague wording ("faster", "like before", "the usual customers"). Triage turns each
 one into either **ready for an agent** or **a short list of questions to the right people**, so nobody starts
-implementing a guess. Needs `bdt` 0.47+ (`uv tool upgrade bmsdna-devtools`). Triage never changes the state or the
-assignee, and never edits code: it researches, comments and tags.
+implementing a guess. Triage never changes the state or the assignee, and never edits code: it researches, comments
+and tags. `--business-user` needs `bdt` 0.47+ (`uv tool upgrade bmsdna-devtools`).
+
+**Business users usually can't open pull requests** (and don't read code), so the work item is the only place where
+information is exchanged with them: findings, questions, answers, status and the later result all go into comments on
+it. Never answer with "see the PR" or a link to code; put what matters in the comment itself, in their words, with
+screenshots or a short description of what they will see. Developers can follow along in the PR; the business user
+reads the work item.
 
 ## 1. Pick the items
 
 ```bash
-bdt issue search --business-user                    # open items created by business users
-bdt issue search --business-user --tag needs-business   # waiting for a business answer (same for needs-techie)
+bdt issue search --business-user --since-days 0 --limit 30        # open items created by business users
+bdt issue search --business-user --since-days 0 --tag needs-business   # waiting for a business answer (same for needs-techie)
 ```
 
-`--business-user` means a Stakeholder license, or no commit in the last 1000 commits of the repo you run it in (so run it
-in the repo the work items belong to). Take an item if it has neither tag and no earlier triage comment, or if it has a
-tag and its newest comment is a reply (not a triage comment): a reply means re-triage (step 5).
+The default `--since-days 30` / `--limit 10` would hide older items behind recently touched, already triaged ones. The
+list shows no tags or comments, so look at each candidate with `bdt issue show N --json`.
+
+`--business-user` means a Stakeholder license, or no commit in the last 1000 commits of the repo you run it in.
+Run it in a full clone of the repo the work items belong to: in another team's repo every developer looks like a
+business user, and without git history (shallow clone, no repo) it returns nothing, which is not "nothing to triage".
+
+Take an item if it has no triage comment yet, or if its newest comment is a **reply** (step 5), tagged or not: a business
+user may answer a ready item with "also include X". A reply is any newest comment that is neither a triage comment
+(first line `Triage`) nor `Taken by ...`. Skip an item whose newest comment is `Taken by ...`: an agent is already
+working on it.
 
 ## 2. Research first
 
 `bdt issue show N --json` (description, comments, creator). Then find out what the request is about before judging it:
 search the code (`codegraph explore` if the repo has `.codegraph/`, else grep), look for the screen / endpoint / table
-it names, similar work items (`bdt issue search <keywords> --state all`), and other repos (`cross-repo-discovery`).
+it names, similar work items (`bdt issue search [keywords] --state all --since-days 0`, one or two distinctive words at a time: keywords are ANDed and match only title and description), and other repos (`cross-repo-discovery`, if available).
 Upload the findings to the work item (step 4), even when you end up asking questions: the next reader should not
 repeat your research. Questions the code or the history can answer are not questions; answer them yourself. If you
 can't find what the item names (screen, report, field), say what you searched in "What I found" and ask the business for
@@ -55,13 +69,15 @@ One comment per triage, so the work item's author gets one notification. Write i
 written in. The business part is for non-developers: no jargon, no code names. Make questions easy to answer: closed
 or multiple choice, with your suggested default ("Should the list show only open orders? Proposed: yes").
 
-Both variants start with the line `**Triage**` (step 1 recognises earlier triage by it). Not ready (omit an empty section):
+Both variants start with the line `**Triage**` (step 1 recognises earlier triage by it; `bdt` posts the text as
+Markdown source, so check once how your org's work item renders it). Don't write angle brackets (`/orders/<id>`, `List<T>`)
+in a comment: `bdt issue show` strips them as HTML tags. Write `{id}`. Not ready (omit an empty section):
 
 ```markdown
 **Triage**
 
 **What I found**
-- <research findings, with file / screen / work item references>
+- [research findings, with file / screen / work item references]
 
 **Questions for the business**
 1. ...
@@ -78,17 +94,13 @@ mention syntax):
 @Agent ready for implementation
 
 **What I found**
-- <findings with references>
+- [findings with references]
 
 **Where to change**
-- <files / screens / tables>
+- [files / screens / tables]
 
 **Acceptance criteria**
-1. <observable, testable results, from the work item's own words>
-```
-
-```bash
-bdt issue comment add N --message "$(cat comment.md)"
+1. [observable, testable results, from the work item's own words]
 ```
 
 Tags, set by what is open: `needs-business` if there is any business question, `needs-techie` if there is any
@@ -101,15 +113,31 @@ bdt issue update N --tag <existing> --tag needs-business --tag needs-techie
 bdt issue update N --remove-tag needs-business
 ```
 
+Tags first, then the comment: if the tag update fails after the comment was posted, step 1 would never pick the item
+up again. Write the comment to a temp file outside the repo (so a later `git add` can't pick it up) and delete it after.
+
+```bash
+bdt issue comment add N --message "$(cat "$TMPDIR/comment.md")"
+```
+
 ## 5. Re-triage on a reply
 
 Read the new comments, remove the tag whose questions are now all answered (leave the other), and decide again (step 3).
 Answers that raise new vagueness get a new, short triage comment with only the open questions. When both tags are
-gone and the item holds up, mark it ready with the `@Agent` comment. To wait for an answer instead of coming back
-later: `bdt issue watch N --since-comment ID --skip-own`.
+gone and the item holds up, mark it ready with a new `@Agent` comment: `--for-me` only looks at the newest comment, so a
+reply after an earlier ready comment hides the item from agents until `@Agent` is posted again.
+
+Business answers take hours or days, so normally leave the item tagged and come back later. To block instead:
+`bdt issue watch N --since-comment ID --skip-own --timeout 0` (the default 900 s ends with exit 4, meaning "no reply
+yet", not an error; `--skip-own` is reliable only when run inside an agent session).
+
+## After triage
+
+When an agent implements a ready item, the result goes back to the work item too (what changed, screenshots), written
+for the business user (`dev-workflow` step 11). A PR link alone is not an answer for them.
 
 ## Notes
 
-- If `bdt issue show` says the license is unknown, the PAT lacks the *Member Entitlement Management (read)* scope; the
-  commit check still decides, so the result can be wrong for developers who commit elsewhere. Say so in your summary.
-- Don't triage an item an agent has already taken (newest comment `Taken by ...`).
+- `bdt issue show` prints `Created by: X (business user: license unknown, ...)` when the license lookup failed (token
+  without the *Member Entitlement Management (read)* scope, creator not in the org, outage). The commit check still
+  decides, so the verdict can be wrong for developers who commit elsewhere. Say so in your summary.
