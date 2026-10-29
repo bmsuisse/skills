@@ -56,6 +56,7 @@
 | [improve-codebase-architecture](./skills/improve-codebase-architecture/) | Scan a codebase for architectural friction and propose "deepening" refactors that turn many shallow modules into fewe… |
 | [init-app-stack](./skills/init-app-stack/) | Use this skill whenever the user wants to bootstrap, scaffold, or initialize a new full-stack app with a Vite + React… |
 | [inter-without-ai-slop](./skills/inter-without-ai-slop/) | Use Inter as a UI typeface in data-dense B2B apps (dashboards, tables, cockpits) without triggering the "generic AI d… |
+| [issue-triage](./skills/issue-triage/) | Triage business users' Azure DevOps work items: research, then mark ready for an agent or ask business/technical ques… |
 | [kendo-ui-angular](./skills/kendo-ui-angular/) | Use this skill whenever the user is working with Kendo UI for Angular — including the Data Grid, TreeList, TreeView,… |
 | [kendo-ui-react](./skills/kendo-ui-react/) | KendoReact component library patterns and best practices for React developers. Trigger whenever the user works with K… |
 | [kendo-ui-vue](./skills/kendo-ui-vue/) | Use this skill whenever the user is working with Kendo UI for Vue — including the Data Grid, DropDownList, ComboBox,… |
