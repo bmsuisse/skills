@@ -13,9 +13,10 @@ and tags. `--business-user` needs `bdt` 0.47+ (`uv tool upgrade bmsdna-devtools`
 
 **Business users usually can't open pull requests** (and don't read code), so the work item is the only place where
 information is exchanged with them: findings, questions, answers, status and the later result all go into comments on
-it. Never answer with "see the PR" or a link to code; put what matters in the comment itself, in their words, with
-screenshots or a short description of what they will see. Developers can follow along in the PR; the business user
-reads the work item.
+it. Never answer a business user with "see the PR" or a code link; put what matters in the comment itself, in their
+words, with screenshots or a short description of what they will see. For developers, links to code are welcome and
+helpful (file, line, PR, other work items): put them in "What I found", "Where to change" and the developer questions,
+and keep them out of the business questions.
 
 ## 1. Pick the items
 
@@ -75,7 +76,7 @@ Every question is **business** or **technical**:
 ## 4. Write one comment, set the tags
 
 One comment per triage, so the work item's author gets one notification. Write it in the language the work item is
-written in. The business part is for non-developers: no jargon, no code names. Make questions easy to answer: closed
+written in. The business questions are for non-developers: no jargon, no code names or links. Make questions easy to answer: closed
 or multiple choice, with your suggested default ("Should the list show only open orders? Proposed: yes").
 
 Both variants start with the line `**Triage**` (step 1 recognises earlier triage by it; `bdt` posts the text as
