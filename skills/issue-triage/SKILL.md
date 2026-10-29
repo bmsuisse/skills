@@ -61,10 +61,7 @@ The item is **ready** only if all of these hold, otherwise it gets questions:
   unnamed things (which screen, customer, report, field, role?), unclear who or when, missing expected result.
 - You can name where the change goes (files, tables, screens) and what "done" looks like.
 - Nothing is blocked on a decision that nobody has made.
-- **Database design has had feedback from a developer.** If the change needs a new table, column, constraint, index
-  or a different place to store or read data, it is never ready on your word alone, however obvious the design looks:
-  ask a technical question (proposal included: "new column `X` on `Y`, because ...") and tag `needs-techie`. The item
-  is ready once a developer has answered.
+- Database design has feedback from a developer.
 
 Every question is **business** or **technical**:
 
