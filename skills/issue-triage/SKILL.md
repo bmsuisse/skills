@@ -46,6 +46,11 @@ repeat your research. Questions the code or the history can answer are not quest
 can't find what the item names (screen, report, field), say what you searched in "What I found" and ask the business for
 its exact name or location; don't invent a technical question to fill the gap.
 
+**Don't assume where data comes from or where it is stored**, unless the research makes it obvious (the query, the
+table, the API call is right there). "The delivery date probably comes from the order table" is a guess; a wrong guess
+sends an agent to build on the wrong source. Write what you verified under "What I found", and turn what you could
+only suspect into a technical question.
+
 ## 3. Decide
 
 The item is **ready** only if all of these hold, otherwise it gets questions:
@@ -55,6 +60,10 @@ The item is **ready** only if all of these hold, otherwise it gets questions:
   unnamed things (which screen, customer, report, field, role?), unclear who or when, missing expected result.
 - You can name where the change goes (files, tables, screens) and what "done" looks like.
 - Nothing is blocked on a decision that nobody has made.
+- **Database design has had feedback from a developer.** If the change needs a new table, column, constraint, index
+  or a different place to store or read data, it is never ready on your word alone, however obvious the design looks:
+  ask a technical question (proposal included: "new column `X` on `Y`, because ...") and tag `needs-techie`. The item
+  is ready once a developer has answered.
 
 Every question is **business** or **technical**:
 
