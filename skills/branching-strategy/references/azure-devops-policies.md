@@ -51,6 +51,8 @@ Notes:
 - Merge strategy (`az repos policy merge-strategy create`): squash is fine for feature -> `dev`. Promotions
   (`dev` -> `test` -> `main`) should use a merge commit, not squash, otherwise the branches end up with
   the same content in different commits and every promotion conflicts again. Set it per branch.
+  `bdt pr create` already defaults to this per PR (see "Merge strategy with `bdt`" in `SKILL.md`); the policy
+  covers PRs opened in the portal.
 
 ## Environment approvals (`test` and `main`)
 

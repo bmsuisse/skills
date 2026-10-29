@@ -120,6 +120,27 @@ orders = "test-orders"
 - A repo that already uses other label names (e.g. `e2e-<area>`) can keep them; the prefix is a choice, but
   one label must select the area's unit *and* E2E tests, otherwise authors have to remember two.
 
+## Merge strategy with `bdt`
+
+Squash feature work, never promotions (rule 4's definition: squashing `dev` -> `test` -> `main` leaves the same
+content in different commits, so every later promotion conflicts again). `bdt pr create` (devtools >= the release
+containing [bmsuisse/devtools#116](https://github.com/bmsuisse/devtools/pull/116)) applies this by default, so
+the recipes need no flags:
+
+- A PR whose **source** is a long-lived branch (`dev`, `develop`, `test`, `main`, `master`, `release/*`; so
+  promotions and the `main` -> `dev` back-merge) gets a merge commit and its source branch is kept.
+- Any other source (feature, `fix/...`, `hotfix/...`) is squashed and its source branch deleted on completion
+  (Azure DevOps completion options; on GitHub only the auto-merge method is set, deleting branches is the
+  repo's "automatically delete head branches" setting).
+- The rule is by *source* branch, not target, so a `fix/...` -> `main` PR squashes while `main` -> `dev` does not.
+- Different long-lived branches: `[tool.bdt.pr] long_lived_branches = ["dev", "test", "main", "staging"]`
+  (case-insensitive globs; replaces the default list).
+- Opt out per PR with `--squash false` / `--delete-source-branch false`, e.g. for a stacked PR whose source is
+  another open PR's target (not detected).
+
+Still set the repo's merge-strategy *policy* per branch (`references/azure-devops-policies.md`), so a PR
+opened in the portal follows the same rule; `bdt` only covers PRs it creates.
+
 ## Setting a project up — checklist
 
 1. Branches: create `dev` and `test` from `main` if missing; set `dev` as the default branch.
@@ -134,7 +155,7 @@ orders = "test-orders"
    pipeline; reviewer minimums; no bypass. Plus approvers on the `Test` and `Production` environments the
    deploy job uses (documented there; set in the portal).
 5. Task-runner recipes `pr-dev` / `pr-test` / `pr-main` with the default labels above, and a recipe listing
-   the available area labels.
+   the available area labels. Squash/delete-source need no flags (see "Merge strategy with `bdt`").
 6. Write the model into the repo's `AGENTS.md`/`CLAUDE.md` in a few lines (base branch, labels, fixes-only
    `main`) — agents and new colleagues read that, not this skill.
 7. Verify with a dry run per case: a labeled feature PR into `dev` runs only its areas (unit and E2E); a
