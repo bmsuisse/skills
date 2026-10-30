@@ -68,7 +68,9 @@ already reviewed when it entered `dev` (see the branching-strategy skill, rule 4
 branches come from the command's own flags (--target/--base/--target-branch, --head/--source-branch), else from the
 current git branch (the source of `create`; `bdt pr create` targets `dev` by default), else from a `gh pr view` /
 `az repos pr show|list` lookup of the PR being published/merged. When the branches cannot be determined the gate
-applies as usual. Fix branches into `main` (`fix/*`, `hotfix/*`) are not promotions and still need a review.
+applies as usual, which also holds when the line has more than one publishing command, a `cd`/`pushd`, a
+--repo/--organization/--project style flag, or a `gh pr merge` whose PR selector can't be told apart from a flag
+value. Only the publishing command's own flags are read. Fix branches into `main` (`fix/*`, `hotfix/*`) are not promotions and still need a review.
 
 Matching is done on shell-tokenized words (via shlex), not a raw substring/regex
 search over the whole command string. This means a phrase like "bdt pr publish"
@@ -144,6 +146,10 @@ def is_pr_publish_command(tokens: list[str]) -> bool:
 # --- promotion PRs (dev -> test -> main) need no review ----------------------------------------------------
 
 PROMOTION_BRANCHES = {"dev", "test", "main"}
+DIRECTORY_COMMANDS = {"cd", "pushd", "popd"}
+# Flags that point the command at another repository/organization than the one in the hook's cwd; the lookups
+# below only see the cwd, so such a command can never be proven a promotion.
+OTHER_CONTEXT_FLAGS = ("--repo", "-R", "--repository", "--organization", "--org", "--project", "--detect")
 LOOKUP_TIMEOUT_SECONDS = 20
 
 
@@ -188,7 +194,11 @@ def lookup_pr_branches(tokens: list[str], cwd: str) -> tuple[str | None, str | N
     for verb in ("ready", "merge"):
         if has_subsequence(tokens, ["gh", "pr", verb]):
             rest = tokens[tokens.index(verb) + 1 :]
-            number = next((t for t in rest if not t.startswith("-")), "")
+            if rest and not rest[0].startswith("-"):
+                number = rest[0]
+            elif any(not t.startswith("-") for t in rest):
+                # `gh pr merge --body dev 7`: without knowing each flag's arity the selector is a guess
+                return None, None
     out = run_lookup(["gh", "pr", "view", *([number] if number else []), "--json", "headRefName,baseRefName"], cwd)
     if out:
         try:
@@ -235,7 +245,29 @@ def pr_branches(tokens: list[str], cwd: str) -> tuple[str | None, str | None]:
     return lookup_pr_branches(tokens, cwd)
 
 
-def is_promotion_pr(tokens: list[str], cwd: str) -> bool:
+def publish_segment(command: str) -> list[str] | None:
+    """The words of the one simple command that publishes the PR, or None when that cannot be told reliably.
+
+    Only that command's own flags may be used: `echo --head dev --base test && gh pr merge 7` must not borrow them. A
+    `cd`/`pushd` anywhere in the line moves the command away from the hook's cwd, and so does a flag selecting
+    another repository, so those are never treated as promotions either.
+    """
+    segments = [words for words, _ in split_simple_commands(command)]
+    if any(words and words[0] in DIRECTORY_COMMANDS for words in segments):
+        return None
+    publishing = [words for words in segments if is_pr_publish_command(words)]
+    if len(publishing) != 1:
+        return None
+    words = publishing[0]
+    if any(word == flag or word.startswith(f"{flag}=") for word in words for flag in OTHER_CONTEXT_FLAGS):
+        return None
+    return words
+
+
+def is_promotion_pr(command: str, cwd: str) -> bool:
+    tokens = publish_segment(command)
+    if tokens is None:
+        return False
     source, target = pr_branches(tokens, cwd)
     return source in PROMOTION_BRANCHES and target in PROMOTION_BRANCHES and source != target
 
@@ -706,8 +738,7 @@ def main() -> None:
         return
 
     command = data.get("tool_input", {}).get("command", "")
-    tokens = tokenize(command)
-    if not is_pr_publish_command(tokens):
+    if not is_pr_publish_command(tokenize(command)):
         # Catch a codex review that could never count (`codex review | tail`, `codex exec ...; echo done`, `... &`
         # without `-o`) before it runs, instead of at publish time when the review is already spent. Harmless once
         # a review has been accepted this session.
@@ -724,7 +755,7 @@ def main() -> None:
     if code_review_ran(data.get("transcript_path", "")):
         return
 
-    if is_promotion_pr(tokens, str(data.get("cwd") or os.getcwd())):
+    if is_promotion_pr(command, str(data.get("cwd") or os.getcwd())):
         return
 
     deny(

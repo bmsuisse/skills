@@ -660,3 +660,27 @@ def test_az_update_looks_up_the_promotion_pr_via_az(tmp_path):
 
 def test_unresolvable_branches_fall_back_to_requiring_review(tmp_path):
     assert_denied(run_hook(transcript_with(tmp_path, None), "gh pr merge 7"))
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "gh pr create --head hotfix/x --base main; echo --head dev --base test",
+        "cd ../other && bdt pr create --no-draft --target main",
+        "gh pr merge 7 --repo org/other",
+        "az repos pr update --id 12 --status completed --organization https://dev.azure.com/other",
+        "gh pr merge --body dev 7 --merge",
+        "gh pr create --head dev --base test && gh pr create --head hotfix/x --base main",
+    ],
+)
+def test_ambiguous_or_foreign_context_never_counts_as_a_promotion(tmp_path, command):
+    bin_dir = fake_cli(tmp_path, "gh", '{"headRefName": "dev", "baseRefName": "test"}')
+    assert_denied(
+        run_hook(transcript_with(tmp_path, None), command, cwd=git_repo_on(tmp_path, "dev"), path_prefix=bin_dir)
+    )
+
+
+def test_flags_of_other_commands_in_the_line_are_not_borrowed(tmp_path):
+    bin_dir = fake_cli(tmp_path, "gh", '{"headRefName": "hotfix/x", "baseRefName": "main"}')
+    command = "echo --head dev --base test && gh pr merge 7"
+    assert_denied(run_hook(transcript_with(tmp_path, None), command, path_prefix=bin_dir))
