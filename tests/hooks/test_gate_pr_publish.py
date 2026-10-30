@@ -1,8 +1,11 @@
 """Tests for the gate-pr-publish PreToolUse hook."""
 
+import functools
 import json
+import os
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -10,15 +13,35 @@ import pytest
 HOOK = Path(__file__).resolve().parents[2] / "hooks" / "gate-pr-publish.py"
 
 
-def run_hook(transcript: Path, command: str = "bdt pr publish") -> dict | None:
-    payload = json.dumps(
-        {
-            "tool_name": "Bash",
-            "tool_input": {"command": command},
-            "transcript_path": str(transcript),
-        }
+@functools.cache
+def failing_cli_dir() -> Path:
+    """`gh`/`az` stand-ins that exit 1, so the promotion lookup never reaches the network and finds nothing."""
+    bin_dir = Path(tempfile.mkdtemp(prefix="failing-cli-"))
+    for name in ("gh", "az"):
+        (bin_dir / name).write_text("#!/bin/sh\nexit 1\n")
+        (bin_dir / name).chmod(0o755)
+    return bin_dir
+
+
+def run_hook(
+    transcript: Path, command: str = "bdt pr publish", cwd: Path | None = None, path_prefix: Path | None = None
+) -> dict | None:
+    payload_data: dict = {
+        "tool_name": "Bash",
+        "tool_input": {"command": command},
+        "transcript_path": str(transcript),
+    }
+    if cwd:
+        payload_data["cwd"] = str(cwd)
+    env = {**os.environ, "PATH": f"{path_prefix or failing_cli_dir()}{os.pathsep}{os.environ['PATH']}"}
+    result = subprocess.run(
+        [sys.executable, str(HOOK)],
+        input=json.dumps(payload_data),
+        capture_output=True,
+        text=True,
+        timeout=30,
+        env=env,
     )
-    result = subprocess.run([sys.executable, str(HOOK)], input=payload, capture_output=True, text=True, timeout=10)
     return json.loads(result.stdout) if result.stdout.strip() else None
 
 
@@ -541,3 +564,99 @@ def test_codex_allows_common_ways_to_read_the_review_skill(tmp_path, command):
 )
 def test_codex_denies_commands_that_only_mention_the_review_skill_file(tmp_path, command):
     assert_denied(run_hook(codex_rollout(tmp_path, codex_command(command))))
+
+
+# --- promotion PRs (dev -> test -> main) need no review ----------------------------------------------------------
+
+
+def git_repo_on(tmp_path: Path, branch: str) -> Path:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init", "-q", "-b", branch], cwd=repo, check=True)
+    subprocess.run(
+        ["git", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "--allow-empty", "-m", "i"],
+        cwd=repo,
+        check=True,
+    )
+    return repo
+
+
+def fake_cli(tmp_path: Path, name: str, stdout: str) -> Path:
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir(exist_ok=True)
+    script = bin_dir / name
+    script.write_text(f"#!/bin/sh\ncat <<'EOF'\n{stdout}\nEOF\n")
+    script.chmod(0o755)
+    return bin_dir
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "az repos pr create --source-branch dev --target-branch test --auto-complete true",
+        "az repos pr create --source-branch refs/heads/test --target-branch main --auto-complete true",
+        "az repos pr create --source-branch=main --target-branch=dev --auto-complete true",
+        "gh pr create --head dev --base test",
+        "bdt pr create --no-draft --target test -- --source-branch dev",
+    ],
+)
+def test_promotion_pr_with_explicit_branches_needs_no_review(tmp_path, command):
+    assert run_hook(transcript_with(tmp_path, None), command) is None
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "az repos pr create --source-branch feature/x --target-branch dev --auto-complete true",
+        "az repos pr create --source-branch fix/x --target-branch main --auto-complete true",
+        "gh pr create --head hotfix/x --base main",
+        "gh pr create --head dev --base feature/x",
+        "bdt pr create --no-draft --target main -- --source-branch fix/x",
+    ],
+)
+def test_non_promotion_pr_with_explicit_branches_still_needs_review(tmp_path, command):
+    assert_denied(run_hook(transcript_with(tmp_path, None), command))
+
+
+def test_bdt_create_defaults_to_dev_target(tmp_path):
+    transcript = transcript_with(tmp_path, None)
+    assert_denied(run_hook(transcript, "bdt pr create --no-draft", cwd=git_repo_on(tmp_path, "feature-x")))
+
+
+def test_bdt_create_from_test_branch_into_default_dev_target_is_a_promotion(tmp_path):
+    # main -> dev merge-back: both ends are promotion branches
+    repo = git_repo_on(tmp_path, "main")
+    assert run_hook(transcript_with(tmp_path, None), "bdt pr create --no-draft", cwd=repo) is None
+
+
+def test_bdt_create_from_dev_to_test_needs_no_review(tmp_path):
+    repo = git_repo_on(tmp_path, "dev")
+    assert run_hook(transcript_with(tmp_path, None), "bdt pr create --no-draft --target test", cwd=repo) is None
+
+
+def test_bdt_create_from_feature_branch_to_test_still_needs_review(tmp_path):
+    repo = git_repo_on(tmp_path, "feature-x")
+    assert_denied(run_hook(transcript_with(tmp_path, None), "bdt pr create --no-draft --target test", cwd=repo))
+
+
+def test_publish_looks_up_the_promotion_pr_via_gh(tmp_path):
+    bin_dir = fake_cli(tmp_path, "gh", '{"headRefName": "dev", "baseRefName": "test"}')
+    out = run_hook(transcript_with(tmp_path, None), "gh pr merge 7 --squash", path_prefix=bin_dir)
+    assert out is None
+
+
+def test_publish_of_a_feature_pr_found_via_gh_still_needs_review(tmp_path):
+    bin_dir = fake_cli(tmp_path, "gh", '{"headRefName": "feature/x", "baseRefName": "dev"}')
+    assert_denied(run_hook(transcript_with(tmp_path, None), "gh pr ready 7", path_prefix=bin_dir))
+
+
+def test_az_update_looks_up_the_promotion_pr_via_az(tmp_path):
+    bin_dir = fake_cli(tmp_path, "az", "refs/heads/test\nrefs/heads/main")
+    out = run_hook(
+        transcript_with(tmp_path, None), "az repos pr update --id 12 --status completed", path_prefix=bin_dir
+    )
+    assert out is None
+
+
+def test_unresolvable_branches_fall_back_to_requiring_review(tmp_path):
+    assert_denied(run_hook(transcript_with(tmp_path, None), "gh pr merge 7"))

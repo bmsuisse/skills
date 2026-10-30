@@ -63,6 +63,13 @@ counts when the rollout shows an explicitly invoked `$bms-code-review`/`$code-re
 shell command that read that skill's SKILL.md (cat, sed, ...), a finished Codex `/review` (`exited_review_mode`), or a `codex exec`/
 `codex review` code review run from the session's shell that exited 0 (same rules as above).
 
+Promotion PRs are exempt: a PR whose source AND target are both in {dev, test, main} only moves code that was
+already reviewed when it entered `dev` (see the branching-strategy skill, rule 4), so no review is required. The
+branches come from the command's own flags (--target/--base/--target-branch, --head/--source-branch), else from the
+current git branch (the source of `create`; `bdt pr create` targets `dev` by default), else from a `gh pr view` /
+`az repos pr show|list` lookup of the PR being published/merged. When the branches cannot be determined the gate
+applies as usual. Fix branches into `main` (`fix/*`, `hotfix/*`) are not promotions and still need a review.
+
 Matching is done on shell-tokenized words (via shlex), not a raw substring/regex
 search over the whole command string. This means a phrase like "bdt pr publish"
 sitting inside a quoted --description, commit message, or grep pattern is a single
@@ -75,6 +82,7 @@ import json
 import os
 import re
 import shlex
+import subprocess
 import sys
 from dataclasses import dataclass
 from datetime import datetime
@@ -131,6 +139,105 @@ def is_pr_publish_command(tokens: list[str]) -> bool:
         return True
 
     return False
+
+
+# --- promotion PRs (dev -> test -> main) need no review ----------------------------------------------------
+
+PROMOTION_BRANCHES = {"dev", "test", "main"}
+LOOKUP_TIMEOUT_SECONDS = 20
+
+
+def flag_value(tokens: list[str], *names: str) -> str | None:
+    for i, token in enumerate(tokens):
+        for name in names:
+            if token == name and i + 1 < len(tokens):
+                return tokens[i + 1]
+            if token.startswith(f"{name}="):
+                return token[len(name) + 1 :]
+    return None
+
+
+def run_lookup(argv: list[str], cwd: str) -> str | None:
+    """stdout of a read-only CLI lookup, or None when it is unavailable or fails."""
+    try:
+        result = subprocess.run(argv, cwd=cwd, capture_output=True, text=True, timeout=LOOKUP_TIMEOUT_SECONDS)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return result.stdout.strip() if result.returncode == 0 else None
+
+
+def current_branch(cwd: str) -> str | None:
+    return run_lookup(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd)
+
+
+def short_ref(ref: str) -> str:
+    return ref.strip().removeprefix("refs/heads/")
+
+
+def lookup_pr_branches(tokens: list[str], cwd: str) -> tuple[str | None, str | None]:
+    """Source and target branch of the existing PR a publish/ready/merge/update command acts on."""
+    pr_id = flag_value(tokens, "--id")
+    if pr_id and has_subsequence(tokens, ["az", "repos", "pr", "update"]):
+        out = run_lookup(
+            ["az", "repos", "pr", "show", "--id", pr_id, "--query", "[sourceRefName,targetRefName]", "-o", "tsv"], cwd
+        )
+        refs = out.splitlines() if out else []
+        return (short_ref(refs[0]), short_ref(refs[1])) if len(refs) == 2 else (None, None)
+
+    number = ""
+    for verb in ("ready", "merge"):
+        if has_subsequence(tokens, ["gh", "pr", verb]):
+            rest = tokens[tokens.index(verb) + 1 :]
+            number = next((t for t in rest if not t.startswith("-")), "")
+    out = run_lookup(["gh", "pr", "view", *([number] if number else []), "--json", "headRefName,baseRefName"], cwd)
+    if out:
+        try:
+            pr = json.loads(out)
+            return pr["headRefName"], pr["baseRefName"]
+        except (ValueError, KeyError, TypeError):
+            return None, None
+
+    if has_subsequence(tokens, ["bdt", "pr", "publish"]):  # Azure DevOps: the active PR of the current branch
+        branch = current_branch(cwd)
+        if branch:
+            target = run_lookup(
+                [
+                    "az",
+                    "repos",
+                    "pr",
+                    "list",
+                    "--source-branch",
+                    branch,
+                    "--status",
+                    "active",
+                    "--query",
+                    "[0].targetRefName",
+                    "-o",
+                    "tsv",
+                ],
+                cwd,
+            )
+            return branch, short_ref(target) if target else None
+    return None, None
+
+
+def pr_branches(tokens: list[str], cwd: str) -> tuple[str | None, str | None]:
+    source = flag_value(tokens, "--source-branch", "--head", "-H", "-s")
+    target = flag_value(tokens, "--target-branch", "--base", "-B", "--target")
+    source, target = (short_ref(b) if b else None for b in (source, target))
+    is_create = has_subsequence(tokens, ["pr", "create"]) or has_subsequence(tokens, ["repos", "pr", "create"])
+    if is_create:
+        if has_subsequence(tokens, ["bdt", "pr", "create"]) and target is None:
+            target = "dev"
+        return source or current_branch(cwd), target
+    if source and target:
+        return source, target
+    return lookup_pr_branches(tokens, cwd)
+
+
+def is_promotion_pr(tokens: list[str], cwd: str) -> bool:
+    source, target = pr_branches(tokens, cwd)
+    return source in PROMOTION_BRANCHES and target in PROMOTION_BRANCHES and source != target
 
 
 # --- review through the codex CLI -----------------------------------------------------------------------------
@@ -599,7 +706,8 @@ def main() -> None:
         return
 
     command = data.get("tool_input", {}).get("command", "")
-    if not is_pr_publish_command(tokenize(command)):
+    tokens = tokenize(command)
+    if not is_pr_publish_command(tokens):
         # Catch a codex review that could never count (`codex review | tail`, `codex exec ...; echo done`, `... &`
         # without `-o`) before it runs, instead of at publish time when the review is already spent. Harmless once
         # a review has been accepted this session.
@@ -614,6 +722,9 @@ def main() -> None:
         return
 
     if code_review_ran(data.get("transcript_path", "")):
+        return
+
+    if is_promotion_pr(tokens, str(data.get("cwd") or os.getcwd())):
         return
 
     deny(

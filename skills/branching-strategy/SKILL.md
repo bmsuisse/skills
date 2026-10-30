@@ -47,7 +47,9 @@ against the rules below before changing anything.
    area-agnostic: they run in full on every PR.
 4. **Promotion PRs run no tests.** Any PR whose source *and* target are both in {`dev`, `test`, `main`}
    skips the test stages: the code was tested when it entered `dev` and again in the nightly run. The build
-   policy still applies; the pipeline just marks the test stages skipped.
+   policy still applies; the pipeline just marks the test stages skipped. They need no code review either:
+   the code was reviewed when it entered `dev`, and the `dev-workflow` PR-publish gate lets them through
+   without a `/bms-code-review` run.
 5. **A nightly build on `dev` runs the complete suite** (every area, unit and E2E) and, only if green,
    deploys `dev` to the `test` environment. It is the safety net for the per-area shortcut in rule 3: a
    change labeled `test-visits` that quietly broke `customers` is caught here, not in production. Run it
