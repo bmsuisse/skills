@@ -109,7 +109,7 @@ Spawn only the ones the diff calls for.
 ("Not everything requires tests"), a committed test must cover at least ~100 lines of real code, a complex algorithm,
 or a real user interaction in e2e. Flag, as *Should fix* (delete it), a new test that only re-asserts what the code
 already says (getters/setters, a constant, a thin wrapper, a mock returning what the test then expects, a pydantic model
-accepting its own fields) or that duplicates what an existing HTTP/e2e test already covers. Such a test belongs in an
+accepting its own fields) or that repeats an existing test of the same tier (an HTTP test plus an e2e spec of the same flow is wanted, not a duplicate). Such a test belongs in an
 ignored `test*_temp.py`/`.ts` and is thrown away once green: a committed `*_temp` file is a finding too (the
 `.gitignore` should already hide it). Never flag a test that pins a fixed bug, an auth/permission rule or a money
 calculation as pointless, however short.
