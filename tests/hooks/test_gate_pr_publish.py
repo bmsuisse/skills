@@ -203,6 +203,77 @@ def test_denies_background_codex_review_without_output_file(tmp_path):
     assert_denied(run_hook(background_start(tmp_path, None)))
 
 
+# Claude Code also writes an `api-request-blob` row that repeats the assistant's tool_use (same id, usually with the
+# command rewritten, e.g. a `cd <cwd> &&` prefix) but without a timestamp. It used to overwrite the real call, so the
+# `-o` file could no longer be proven newer than the call and a finished background review was rejected.
+BACKGROUND_PROMPT = "Code review of this branch: Review the branch diff, report real bugs only."
+
+
+def background_shapes(scratch: Path) -> dict[str, tuple[str, Path]]:
+    s = scratch
+    return {
+        "literal-paths": (
+            f'cd /work/wt && codex exec -s read-only --add-dir {s} -o {s}/review.md "{BACKGROUND_PROMPT}" '
+            f"> {s}/run.log 2>&1 &",
+            s / "review.md",
+        ),
+        "var-env-prefix-and-trailing-echo": (
+            f"cd /work/wt && S={s}; mkdir -p $S/codex-tmp; TMPDIR=$S/codex-tmp codex exec -s read-only "
+            f'--add-dir $S/codex-tmp -o $S/review.md "{BACKGROUND_PROMPT}" > $S/run.log 2>&1 &\necho started',
+            s / "review.md",
+        ),
+        "var-rm-mkdir-codex-last": (
+            f"cd /work/wt && S={s}; rm -f $S/review.md; mkdir -p $S/codex-tmp; TMPDIR=$S/codex-tmp codex exec "
+            f'-s read-only --add-dir $S/codex-tmp -o $S/review.md "{BACKGROUND_PROMPT}" > $S/run.log 2>&1 &',
+            s / "review.md",
+        ),
+        "braced-var-and-and-chain": (
+            f"S={s} && mkdir -p ${{S}}/codex-tmp && TMPDIR=${{S}}/codex-tmp codex exec -s read-only "
+            f'-o "${{S}}/review.md" "{BACKGROUND_PROMPT}" > ${{S}}/run.log 2>&1 &\necho started',
+            s / "review.md",
+        ),
+    }
+
+
+def api_request_blob(command: str, tool_id: str = "toolu_1") -> dict:
+    """The request-payload copy of a tool_use: no timestamp, no cwd, the command as sent to the API."""
+    block = {"type": "tool_use", "id": tool_id, "name": "Bash", "input": {"command": f"cd /work/wt && {command}"}}
+    return {"type": "api-request-blob", "message": {"role": "assistant", "content": [block]}}
+
+
+@pytest.mark.parametrize("with_blob", [False, True], ids=["transcript-row-only", "plus-api-request-blob"])
+@pytest.mark.parametrize("shape", list(background_shapes(Path("/x"))))
+def test_allows_finished_shell_backgrounded_codex_review_in_any_shape(tmp_path, shape, with_blob):
+    command, out = background_shapes(tmp_path)[shape]
+    out.write_text("No real bugs found.\n")
+    rows = [
+        bash_call(command, background=True, timestamp="2020-01-01T00:00:00Z"),
+        bash_result(text="Command running in background with ID: b1"),
+    ]
+    if with_blob:
+        rows.append(api_request_blob(command))
+    assert run_hook(transcript_rows(tmp_path, *rows)) is None
+
+
+@pytest.mark.parametrize("shape", list(background_shapes(Path("/x"))))
+@pytest.mark.parametrize("state", ["missing", "empty", "stale"])
+def test_denies_unfinished_shell_backgrounded_codex_review_in_any_shape_despite_api_request_blob(
+    tmp_path, shape, state
+):
+    command, out = background_shapes(tmp_path)[shape]
+    if state != "missing":
+        out.write_text("" if state == "empty" else "an older review")
+    timestamp = "2999-01-01T00:00:00Z" if state == "stale" else "2020-01-01T00:00:00Z"
+    rows = [bash_call(command, background=True, timestamp=timestamp), bash_result(), api_request_blob(command)]
+    assert_denied(run_hook(transcript_rows(tmp_path, *rows)))
+
+
+def test_api_request_blob_alone_is_not_a_codex_review_call(tmp_path):
+    command, out = background_shapes(tmp_path)["literal-paths"]
+    out.write_text("No real bugs found.\n")
+    assert_denied(run_hook(transcript_rows(tmp_path, api_request_blob(command))))
+
+
 def test_allows_run_in_background_codex_review_after_completed_notification(tmp_path):
     command = f'codex exec "{REVIEW_PROMPT}"'
     transcript = transcript_rows(
