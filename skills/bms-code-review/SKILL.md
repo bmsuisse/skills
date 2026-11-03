@@ -105,6 +105,15 @@ Spawn only the ones the diff calls for.
 | **Backend** | Python changed | `coding-guidelines-python`, `fastapi-guideline`, `testing-strategy` | Style, typing, layering, tests exist (HTTP-level first). **Error handling:** flag every `try/except` that swallows an error (bare/broad `except`, `pass`, returning a default): it must re-raise, or log (with traceback) and carry a one-line justification of why continuing is safe. Let errors propagate to the framework's handler otherwise |
 | **Frontend** | frontend changed | `coding-guidelines-typescript`, `tanstack-best-practices`, `bms-frontend-design`, `kendo-ui-*`/`rich-data-tables` where used | Framework idioms; **uses bmsuisse packages where appropriate** instead of hand-rolled equivalents (check `package.json` and `cross-repo-discovery`); accessibility; states (loading/empty/error). **Every HTTP request** (query or mutation) needs a loading indicator and visible error handling: prefer `@bmsuisse/ui` `AsyncBoundary` (or `LoadingState`/`ErrorState`/`InlineError`) for queries, `isPending` on submit buttons plus an error toast/`InlineError` for mutations; flag unhandled `.catch`-less `fetch`/`await` calls and ignored `isError`. If bmsui lacks what's needed, say so (upgrade `@bmsuisse/ui` first, else file an issue there) |
 
+**Pointless tests** (Backend and Frontend subagents, plus anyone reading a changed test file): per `testing-strategy`
+("Not everything requires tests"), a committed test must cover at least ~100 lines of real code, a complex algorithm,
+or a real user interaction in e2e. Flag, as *Should fix* (delete it), a new test that only re-asserts what the code
+already says (getters/setters, a constant, a thin wrapper, a mock returning what the test then expects, a pydantic model
+accepting its own fields) or that repeats an existing test of the same tier (an HTTP test plus an e2e spec of the same flow is wanted, not a duplicate). Such a test belongs in an
+ignored `test*_temp.py`/`.ts` and is thrown away once green: a committed `*_temp` file is a finding too (the
+`.gitignore` should already hide it). Never flag a test that pins a fixed bug, an auth/permission rule or a money
+calculation as pointless, however short.
+
 **Duplication recipe.** Need duplicatecode >= 0.3.2 (`duplicatecode -V`; else `uv tool upgrade duplicatecode`, or `uvx duplicatecode`). Add `--embed` to every command below when local ollama has embeddinggemma (`curl -s -m 3 127.0.0.1:11434/api/tags | grep -q embeddinggemma`): the best preset in the repo's benchmark, it finds re-implementations that share no tokens. Without it, run static. Never use `--embed=openai|cohere`: they upload the code.
 
 1. **New code vs existing:** `git diff <base> | duplicatecode diff --repo . [--embed]`. This is the main check: does the added code re-implement something that already exists?

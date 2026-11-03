@@ -1,6 +1,7 @@
 # maintenance: tests
 
-Slow and flaky tests. Slow ones make people skip the suite, flaky ones teach them to ignore red. **Run per test
+Slow, flaky and pointless tests. Slow ones make people skip the suite, flaky ones teach them to ignore red, pointless ones
+only cost run time and upkeep. **Run per test
 project** (see [bump.md](bump.md) for finding them); needs the test DB up (`pgdevkit`) like the normal run.
 
 ## Slow
@@ -40,3 +41,29 @@ Fix the cause. Not: more retries, longer sleeps, `--reruns` (that hides it), or 
 in reasonable time: `bdt issue create --title "..."` (failure output, how often, what you ruled out; search first, no
 duplicates) and, only then, quarantine it with an explicit marker that names the issue, so it is visible and not
 silently green. In the PR: which tests, the cause, and how you verified (N consecutive green runs).
+
+## Pointless
+
+`testing-strategy` ("Not everything requires tests"): a committed test covers at least ~100 lines of real code, a
+complex algorithm, or a real user interaction in e2e. **Remove the ones that don't**: they cost time on every run and
+break on every refactor without catching anything. Candidates:
+
+- tests that only restate the code: a getter/setter, a constant, a thin wrapper, a mock returning what the test
+  then asserts, a model accepting its own fields, `assert f(x) == <the same expression as in f>`;
+- tests with no assertion that matters (only "doesn't raise" on a trivial call) or that assert on mocks, not behaviour;
+- two tests of the same tier with the same flow and different names, or the same assertions repeated across cases. An
+  HTTP test plus an e2e spec of the *same flow* is the intended pairing of `testing-strategy`: keep it, but trim the e2e
+  spec's backend assertions if it re-checks what the HTTP test does;
+- committed `test*_temp.py` / `test*_temp.ts` scratch files: delete them and make sure `.gitignore` has the
+  `test*_temp.*` patterns.
+
+Find them by reading, with coverage as a hint (needs `pytest-cov`: `uv add --dev pytest-cov` if missing, don't commit it just for this):
+`uv run pytest --cov --cov-context=test`, then `uv run coverage json --show-contexts` writes `coverage.json` with, per line,
+which tests ran it; a test whose own lines (outside shared fixtures and imports) number a handful is a
+candidate, not a verdict. Read each candidate before deleting.
+
+**Keep**, however short: a test that pins a fixed bug (the issue or commit says so), an auth/permission rule, a money or
+rounding calculation, a migration/constraint guarantee. Unsure: keep it, and list it in the PR for a human.
+Delete one logical group per commit (the test and the fixtures/helpers only it used), run the suite, and report the
+count removed, suite time before/after, and the coverage delta. It should barely move; a larger drop means a test
+covered something: check whether that code needs a real test (write one) or is dead (remove it). Dead code that only a removed test still called goes through [dead-code.md](dead-code.md).
