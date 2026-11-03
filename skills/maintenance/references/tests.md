@@ -1,6 +1,7 @@
 # maintenance: tests
 
-Slow and flaky tests. Slow ones make people skip the suite, flaky ones teach them to ignore red. **Run per test
+Slow, flaky and pointless tests. Slow ones make people skip the suite, flaky ones teach them to ignore red, pointless ones
+only cost run time and upkeep. **Run per test
 project** (see [bump.md](bump.md) for finding them); needs the test DB up (`pgdevkit`) like the normal run.
 
 ## Slow
@@ -40,3 +41,27 @@ Fix the cause. Not: more retries, longer sleeps, `--reruns` (that hides it), or 
 in reasonable time: `bdt issue create --title "..."` (failure output, how often, what you ruled out; search first, no
 duplicates) and, only then, quarantine it with an explicit marker that names the issue, so it is visible and not
 silently green. In the PR: which tests, the cause, and how you verified (N consecutive green runs).
+
+## Pointless
+
+`testing-strategy` ("Not everything requires tests"): a committed test covers at least ~100 lines of real code, a
+complex algorithm, or a real user interaction in e2e. **Remove the ones that don't**: they cost time on every run and
+break on every refactor without catching anything. Candidates:
+
+- tests that only restate the code: a getter/setter, a constant, a thin wrapper, a mock returning what the test
+  then asserts, a model accepting its own fields, `assert f(x) == <the same expression as in f>`;
+- tests with no assertion that matters (only "doesn't raise" on a trivial call) or that assert on mocks, not behaviour;
+- an e2e spec checking what an HTTP-level test of the same flow already proves (`testing-strategy`), or two tests
+  with the same flow and different names;
+- committed `test*_temp.py` / `test*_temp.ts` scratch files: delete them and make sure `.gitignore` has the
+  `test*_temp.*` patterns.
+
+Find them by reading, with coverage as a hint: `uv run pytest --cov --cov-context=test`, then `coverage json --show-contexts`
+lists per line which tests ran it; a test whose own lines (outside shared fixtures and imports) number a handful is a
+candidate, not a verdict. Read each candidate before deleting.
+
+**Keep**, however short: a test that pins a fixed bug (the issue or commit says so), an auth/permission rule, a money or
+rounding calculation, a migration/constraint guarantee. Unsure: keep it, and list it in the PR for a human.
+Delete one logical group per commit (the test and the fixtures/helpers only it used), run the suite, and report the
+count removed, suite time before/after, and the coverage delta (it should barely move: if it drops, the test wasn't
+pointless). Dead code that only a removed test still called goes through [dead-code.md](dead-code.md).

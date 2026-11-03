@@ -6,11 +6,11 @@ description: >
   mode argument: `dead-code` (find/remove unused code), `bump` (update
   dependencies), `lint` (Python projects on the latest ruff/ty baseline of `init-app-stack`), `audit` (`bun audit` / `uv audit`
   vulnerability fixes), `prod` (Application Insights errors vs. open issues), `nightly` (failed nightly builds),
-  `xfail` (fix xfail tests), `db-perf` (slow queries / Postgres health), `tests` (slow and flaky tests), or `all`.
+  `xfail` (fix xfail tests), `db-perf` (slow queries / Postgres health), `tests` (slow, flaky and pointless tests), or `all`.
   Use for "maintenance", "regular tasks", "find dead code", "remove unused code", "bump
   dependencies", "update packages", "ruff/ty baseline", "bun audit", "uv audit", "vulnerable
   dependency", "CVE", "Dependabot alert", "check prod logs", "app insights", "nightly failed", "xfail",
-  "slow queries", "postgres performance", "flaky tests", "slow tests". Invoke as `/maintenance <mode>`. Repo-wide upkeep, not for
+  "slow queries", "postgres performance", "flaky tests", "slow tests", "pointless tests". Invoke as `/maintenance <mode>`. Repo-wide upkeep, not for
   reviewing a pending diff (deslop, security-review).
 ---
 
