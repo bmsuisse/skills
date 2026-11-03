@@ -41,6 +41,10 @@ AND that review is known to have finished (a mere start proves nothing). How tha
     transcript timestamp (codex writes it when the review is done). Without `-o`, or without a valid timestamp on
     the call, such a run cannot be proven finished and does not count. An `-o` file never rescues a foreground
     or run_in_background call: a failed run can leave a partial file behind.
+    The `-o` path may be a literal or use `$VAR`/`${VAR}` assigned earlier in the same command (`S=/x; ... -o $S/r.md`);
+    `VAR=value codex ...` prefixes, `cd`/`mkdir`/`rm` before it and an `echo` after the `&` do not matter. Claude Code
+    also logs the request payload it sent (`api-request-blob` rows) which repeats the tool_use without a timestamp;
+    those rows are ignored, and a copy without timestamp never replaces the real call.
 
 For the two non-shell-backgrounded cases the tool result is the exit status of the WHOLE command line, so it only
 proves codex succeeded when the codex call decides that status. That holds when the codex command is the last
@@ -290,6 +294,9 @@ CODEX_OUTPUT_OPTS = {"-o", "--output-last-message"}
 WRAPPER_COMMANDS = {"nohup", "setsid", "time", "command", "exec", "env", "timeout", "npx", "bunx"}
 SHELLS = {"bash", "sh", "zsh"}
 SHELL_PUNCT = set(";&|()\n")
+# Claude Code also logs the request payload it sent to the API (`api-request-blob`). It repeats the assistant's
+# tool_use blocks, with the id of the real call but without a timestamp or cwd, so it is not a call of its own.
+NON_TRANSCRIPT_ROWS = {"api-request-blob"}
 TASK_NOTIFICATION = re.compile(r"<tool-use-id>([^<]+)</tool-use-id>.*?<status>([^<]+)</status>", re.DOTALL)
 
 
@@ -565,7 +572,7 @@ def codex_review_ran_in(path: str) -> bool:
 
 def scan_row(row: object, calls: dict, errors: dict[str, bool], notifications: dict[str, str]) -> None:
     """Collect codex Bash calls, tool results and background-task notifications from one transcript row."""
-    if not isinstance(row, dict):
+    if not isinstance(row, dict) or row.get("type") in NON_TRANSCRIPT_ROWS:
         return
     message = row.get("message")
     content = message.get("content") if isinstance(message, dict) else None
@@ -585,11 +592,15 @@ def scan_row(row: object, calls: dict, errors: dict[str, bool], notifications: d
                 continue
             reviews = codex_reviews_in_command(str(tool_input.get("command", "")))
             if reviews:
-                calls[str(block.get("id", ""))] = (
+                tool_id = str(block.get("id", ""))
+                started = parse_timestamp(row.get("timestamp"))
+                if started is None and tool_id in calls:
+                    continue  # a copy of a call already seen must not drop the timestamp it carried
+                calls[tool_id] = (
                     reviews,
                     bool(tool_input.get("run_in_background")),
                     str(row.get("cwd") or os.getcwd()),
-                    parse_timestamp(row.get("timestamp")),
+                    started,
                 )
         elif block.get("type") == "tool_result" and str(block.get("tool_use_id")) in calls:
             errors[str(block["tool_use_id"])] = bool(block.get("is_error"))
@@ -766,7 +777,8 @@ def main() -> None:
         "bms-code-review skill), or says \"review\" together with diff, branch, PR, pull request, changes or commit. "
         "A codex review counts once it has finished: run it in the foreground as the last command of the line "
         "(no `| tee`, `; echo` or `|| true` after it, which would hide a failure), or backgrounded with `&` "
-        "and `-o <file>` so the output file proves completion."
+        "and `-o <file>` so the output file proves completion (a literal path, or `$VAR` assigned earlier in the same "
+        "command; the file must be non-empty and newer than the call)."
     )
 
 
