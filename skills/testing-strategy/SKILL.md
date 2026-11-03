@@ -68,3 +68,8 @@ state across calls) is usually worth the extra setup. Reach for
 isn't worth building for, e.g. a genuinely external service outside the
 team's control, or a frontend-only test that has no interest in backend
 behavior at all.
+
+## Not everything requires tests
+
+A test that is committed should test at minimum 100 LoC, or some complex algorithm or real user interaction in e2e. No pointless tests.
+Trivial tests that just retest what the code already says are something you put in a test*_temp.py/ts - it's fine to test yourself, but should be in gitignore and can be thrown away once green.
