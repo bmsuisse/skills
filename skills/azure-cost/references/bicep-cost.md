@@ -1,6 +1,5 @@
 # bicep-cost
 
-For "what will this Bicep deployment cost", "did this PR raise the bill", "does the estimate match the bill".
 [`bicep-cost`](https://github.com/bmsuisse/bicep-cost) prices Bicep/ARM templates (or a deployed subscription) from the
 Azure Retail Prices API, and reads real usage and cost from Azure. Run `uvx bicep-cost@latest <cmd>`; `.bicep` input
 needs the Bicep CLI. Versions: `estimate`/`collect` 0.2, `spikes` 0.3, `--existing` 0.4, `scan` 0.5.
@@ -42,13 +41,13 @@ longer deployed); `--measure` adds Azure Monitor usage.
 Compare per resource: `scan --actuals`, or `estimate --format json` against `collect`'s comments (monthly). A
 [cost-query.md](cost-query.md) total is for its whole window: scale to a month (÷ days × 30.4) first. Off by more than
 ~25 %: wrong parameters, a usage key still at default, an unmodelled meter (egress, Premium storage, licences,
-reservations), or a real overspend. Only the last is a finding.
+reservations), or a real overspend. A real overspend is a cost finding, a modelling gap an issue on the bicep-cost repo.
 
 ## PR guard
 
 ```bash
 uvx bicep-cost estimate main.bicep -p prod.bicepparam --format json -o base.json      # on the base branch
-uvx bicep-cost estimate main.bicep -p prod.bicepparam --baseline base.json --fail-increase-percent 10 --fail-above <budget>
+uvx bicep-cost estimate main.bicep -p prod.bicepparam --baseline base.json --fail-increase-percent 10 --fail-above <budget> --format json -o head.json
 uvx bicep-cost diff base.json head.json
 ```
 

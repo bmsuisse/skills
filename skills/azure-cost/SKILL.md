@@ -19,8 +19,6 @@ description: >
 
 # Azure Cost Management
 
-Four things people ask for, four references:
-
 | Intent | Reference |
 |---|---|
 | "What are we spending / what's driving cost?" | [references/cost-query.md](references/cost-query.md) |
@@ -30,7 +28,7 @@ Four things people ask for, four references:
 
 Request/response schema, dimension availability, and rate limits are shared across all three — see [references/api-reference.md](references/api-reference.md).
 
-Always start with a query (even for an optimization ask) — you can't credibly recommend savings without first showing the actual bill. Present the breakdown, then the recommendations.
+For spend and optimization questions always start with a query (even for an optimization ask) — you can't credibly recommend savings without first showing the actual bill. Present the breakdown, then the recommendations.
 
 ## Fast path
 
@@ -51,15 +49,12 @@ az rest --method POST \
   }'
 ```
 
-`az rest` against the Cost Management API is more reliable than `az costmanagement query` — the CLI wrapper is thinner and lags the REST surface. Use `az rest` for everything cost-related.
+`az rest` against the Cost Management API is more reliable than `az costmanagement query` — the CLI wrapper is thinner and lags the REST surface. Use `az rest` for Cost Management calls.
 
 ## Spike check
 
-`uvx bicep-cost spikes` (bicep-cost >= 0.3) does the "did cost jump" check in one Daily query: `--group-by
-ServiceName`, then `--group-by ResourceId --service <name>` for the culprit; last N complete days vs the median of
-the rest, today excluded, 429s retried. Read-only; details in [references/cost-query.md](references/cost-query.md).
-`uvx bicep-cost scan --actuals` (>= 0.5) prices what is deployed and reconciles it with the bill, see
-[references/bicep-cost.md](references/bicep-cost.md).
+"Did cost jump": `uvx bicep-cost spikes`, see [references/cost-query.md](references/cost-query.md#spike-check).
+Price what is deployed against the bill: `uvx bicep-cost scan --actuals`, see [references/bicep-cost.md](references/bicep-cost.md).
 
 ## Hard-won guardrails (learned live, not just from docs)
 

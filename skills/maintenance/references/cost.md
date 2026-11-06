@@ -16,7 +16,7 @@ uvx bicep-cost@latest spikes --resource-group "$AZURE_RESOURCE_GROUP"
 ```
 
 Last 3 complete days vs the median of the 28 before. The newest days can lag up to ~72 h: if they look suspiciously
-low, say so. Nothing flagged: report the numbers and stop. Slow creep isn't caught: when the bill feels off, compare
+low, say so. Nothing flagged: report the numbers, skip step 2, continue with 3-4. Slow creep isn't caught: when the bill feels off, compare
 against last month ([cost-query.md](../../azure-cost/references/cost-query.md#workflow) step 3).
 
 ## 2. Name the cause
@@ -24,11 +24,12 @@ against last month ([cost-query.md](../../azure-cost/references/cost-query.md#wo
 Per flagged service, one at a time:
 
 ```bash
+SUB=$(az account show --query id -o tsv)
 uvx bicep-cost spikes --resource-group "$AZURE_RESOURCE_GROUP" --group-by ResourceId --service "<ServiceName>"
 az extension add --name resource-graph          # once
-az graph query -q "resourcechanges | where properties.targetResourceId =~ '<resource id>' | where todatetime(properties.changeAttributes.timestamp) > ago(14d) | project ts=properties.changeAttributes.timestamp, type=properties.changeType, by=properties.changeAttributes.changedBy, changes=properties.changes"
-az graph query -q "resourcechanges | where properties.changeType == 'Create' and todatetime(properties.changeAttributes.timestamp) > ago(14d) | project ts=properties.changeAttributes.timestamp, id=properties.targetResourceId, by=properties.changeAttributes.changedBy"
-az monitor activity-log list -g "$AZURE_RESOURCE_GROUP" --offset 14d --status Succeeded \
+az graph query --subscriptions "$SUB" -q "resourcechanges | where properties.targetResourceId =~ '<resource id>' | where todatetime(properties.changeAttributes.timestamp) > ago(14d) | project ts=properties.changeAttributes.timestamp, type=properties.changeType, by=properties.changeAttributes.changedBy, changes=properties.changes"
+az graph query --subscriptions "$SUB" --first 1000 -q "resourcechanges | where resourceGroup =~ '$AZURE_RESOURCE_GROUP' | where properties.changeType == 'Create' and todatetime(properties.changeAttributes.timestamp) > ago(14d) | project ts=properties.changeAttributes.timestamp, id=properties.targetResourceId, by=properties.changeAttributes.changedBy"
+az monitor activity-log list --resource-id '<resource id>' --offset 14d --max-events 1000 --status Succeeded \
   --query "[?contains(operationName.value,'write') || contains(operationName.value,'delete')].{ts:eventTimestamp, op:operationName.value, res:resourceId, by:caller}" -o table
 ```
 
@@ -58,7 +59,7 @@ month. Not created from this mode.
 
 ```bash
 uvx bicep-cost@latest scan --actuals --resource-group "$AZURE_RESOURCE_GROUP" --format markdown   # >= 0.5, no template needed
-uvx bicep-cost scan --measure --days 30 --save-usage prod.usage.toml                              # + Azure Monitor usage
+uvx bicep-cost scan --measure --days 30 --resource-group "$AZURE_RESOURCE_GROUP" --save-usage prod.usage.toml   # + Azure Monitor usage
 ```
 
 Read the coverage table: *modelled / actual* far from 100 % (usage defaults: `--measure`; discounts: `--azure-prices`
