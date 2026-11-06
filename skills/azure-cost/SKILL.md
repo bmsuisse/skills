@@ -12,20 +12,21 @@ description: >
   spike", "cost increased", "reduce azure spend", "optimize azure costs",
   "save money on azure", "orphaned resources", "unattached disks",
   "rightsize vms", "storage cost", "forecast azure spending", "azure
-  budget". DO NOT USE FOR: deploying or provisioning resources, general
+  budget", "bicep cost", "estimate bicep", "what will this template cost". DO NOT USE FOR: deploying or provisioning resources, general
   Azure resource configuration, or security/compliance audits unrelated to
   cost — those are separate concerns even if they touch the same resources.
 ---
 
 # Azure Cost Management
 
-Three things people ask for, three references:
+Four things people ask for, four references:
 
 | Intent | Reference |
 |---|---|
 | "What are we spending / what's driving cost?" | [references/cost-query.md](references/cost-query.md) |
 | "How do we spend less?" | [references/cost-optimization.md](references/cost-optimization.md) |
 | "What will next month/quarter cost?" | [references/cost-forecast.md](references/cost-forecast.md) |
+| "What will this Bicep deployment cost / does the estimate match the bill?" | [references/bicep-cost.md](references/bicep-cost.md) (`bicep-cost` CLI) |
 
 Request/response schema, dimension availability, and rate limits are shared across all three — see [references/api-reference.md](references/api-reference.md).
 
@@ -51,6 +52,13 @@ az rest --method POST \
 ```
 
 `az rest` against the Cost Management API is more reliable than `az costmanagement query` — the CLI wrapper is thinner and lags the REST surface. Use `az rest` for everything cost-related.
+
+## Spike check
+
+`scripts/cost_spike.py` does the "did cost jump" check in one Daily query (`--group-by ServiceName`, then
+`--group-by ResourceId --service <name>` for the culprit): last N complete days vs the median of the rest, today
+excluded, 429s retried. `--min-delta`/`--ratio` set the thresholds. It only reads; details in
+[references/cost-query.md](references/cost-query.md).
 
 ## Hard-won guardrails (learned live, not just from docs)
 
