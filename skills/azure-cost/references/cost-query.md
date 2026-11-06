@@ -10,20 +10,22 @@ For "what are we spending" / "what's driving cost" / "why did the bill go up" qu
 4. **Drill into the top 2-3 services by resource** (`ResourceId` grouping, filtered by `ServiceName`) to name the specific resource, not just the service category — "Storage is $2,275" is less actionable than "storage account `stprodlogs` is $1,900 of that $2,275."
 5. **Pace your requests.** 4 req/min per scope is the real ceiling — see the guardrails in [SKILL.md](../SKILL.md#hard-won-guardrails-learned-live-not-just-from-docs). Sleep between calls rather than firing them back to back.
 
-## Spike check script
+## Spike check
 
-For "did cost spike" without hand-diffing two queries:
+For "did cost spike" without hand-diffing two queries (`bicep-cost` >= 0.3, `az login`, Cost Management Reader):
 
 ```bash
-python scripts/cost_spike.py [--resource-group <rg>]                      # by ServiceName, last 31 days
-python scripts/cost_spike.py --group-by ResourceId --service Storage      # which resource inside a flagged service
-python scripts/cost_spike.py --days 31 --recent 7 --min-delta 20 --json   # slower, bigger-only, machine-readable
+uvx bicep-cost spikes [--resource-group <rg>]                       # by ServiceName, last 31 days
+uvx bicep-cost spikes --group-by ResourceId --service Storage       # which resource inside a flagged service
+uvx bicep-cost spikes --days 31 --recent 7 --min-delta 20 --json    # slower, bigger-only, machine-readable
 ```
 
 One query per run. Compares the mean of the last `--recent` complete days (default 3) with the median of the
-days before (a one-off spike in the baseline doesn't hide a new one). A group with no baseline is reported as
-`new`. Defaults flag +5 currency units/day and 1.5x; raise `--min-delta` for a big bill. Daily grouped is the
-heaviest query shape: run the `ResourceId` drill-down a minute after the first call, not straight after.
+days before (a one-off spike in the baseline doesn't hide a new one). A group with no baseline is `new`, `n/a` if
+the median is zero but there were a few cost days. Defaults flag +5 currency units/day and 1.5x; raise `--min-delta`
+for a big bill. Daily grouped is the heaviest query shape: run the `ResourceId` drill-down a minute after the first
+call, not straight after (the tool retries 429s after 15/30/60 s, max 3). Missing latest days (billing lag up to
+~72 h) are not zero spend: if the newest days look empty, say so instead of reporting "no spike".
 
 ## Examples
 

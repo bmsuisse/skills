@@ -12,10 +12,11 @@ scope: space calls, don't retry blind). Needs `az login` and Cost Management Rea
 ## 1. Find the spike
 
 ```bash
-python ../../azure-cost/scripts/cost_spike.py --resource-group "$AZURE_RESOURCE_GROUP"   # by service, last 31 days
+uvx bicep-cost@latest spikes --resource-group "$AZURE_RESOURCE_GROUP"   # by service, last 31 days
 ```
 
-Last 3 complete days vs the median of the 28 before, today excluded (cost data lags and is partial). Nothing flagged:
+Last 3 complete days vs the median of the 28 before, today excluded (cost data lags and is partial; the newest
+days can still be incomplete for up to ~72 h: if the last days look suspiciously low, say so). Nothing flagged:
 say so with the numbers (total per day, window) and stop; don't lower the thresholds until something shows up.
 Slow creep doesn't show up in it (3 days vs a median): also compare the same window against last month with a
 `Custom` timeframe, per [cost-query.md](../../azure-cost/references/cost-query.md#workflow) step 3, once a quarter or
@@ -26,7 +27,7 @@ when the bill feels off.
 For each flagged service, one at a time (rate limit):
 
 ```bash
-python ../../azure-cost/scripts/cost_spike.py --resource-group "$AZURE_RESOURCE_GROUP" --group-by ResourceId --service "<ServiceName>"
+uvx bicep-cost spikes --resource-group "$AZURE_RESOURCE_GROUP" --group-by ResourceId --service "<ServiceName>"
 ```
 
 Then what changed on that resource, from Azure, in the window of the spike's first day:
@@ -68,9 +69,27 @@ No budget with notifications (`Microsoft.Consumption/budgets`), or no `InsightAl
 below its radar): that's an issue, "add budget/anomaly alert", with the monthly figure for the budget taken from the last
 full month, not a guess. Alerts are created in the portal or Bicep (`Microsoft.Consumption/budgets`); not from this mode.
 
-## 4. Estimate vs bill, parameters (only if the repo has Bicep)
+## 4. Estimate vs bill
 
-Find the templates (`**/*.bicep`, `*.bicepparam`) and follow [bicep-cost.md](../../azure-cost/references/bicep-cost.md):
+Needs `bicep-cost` >= 0.5 for `scan`. First a template-free look at the whole scope, read-only (Reader, plus Cost
+Management Reader for `--actuals`):
+
+```bash
+uvx bicep-cost@latest scan --actuals --resource-group "$AZURE_RESOURCE_GROUP" --format markdown
+uvx bicep-cost scan --measure --days 30 --save-usage prod.usage.toml        # + usage from Azure Monitor / Log Analytics
+```
+
+`scan` lists what is deployed (Resource Graph), prices it, and with `--actuals` ends with a **coverage table** per
+resource type: modelled vs actual (scaled to a month), what had to be priced from the bill (types without an
+estimator), and the cost of resource ids that are gone. Read it for:
+
+- a type whose *modelled / actual* is far from 100 %: usage defaults (use `--measure`), discounts or reservations
+  (`--azure-prices` or `[discounts]`), or a modelling gap worth an issue on the `bicep-cost` repo;
+- cost of ids no longer in the inventory: deleted or short-lived resources that still bill, or managed-service nodes;
+- an actual-priced type that is new compared to the last run.
+
+If the repo has Bicep (`**/*.bicep`, `*.bicepparam`), follow [bicep-cost.md](../../azure-cost/references/bicep-cost.md)
+for the template side (templates that only reference platform resources need `--existing FILE.json`):
 
 ```bash
 uvx bicep-cost collect <main.bicep> -p <prod.bicepparam> --resource-group "$AZURE_RESOURCE_GROUP" --days 60
@@ -92,6 +111,6 @@ Three things come out of it:
 
 Per scope: window and currency, total per day, flagged groups (baseline → recent per day, delta, first day), the
 named cause with its evidence (resource id, Activity Log entry or `resourcechanges` row, deploy), budgets/anomaly
-alert present or missing, bicep-cost drift. Issues: `bdt issue search --state all --since-days 0 "<resource or
+alert present or missing, the `scan --actuals` coverage gaps and bicep-cost drift. Issues: `bdt issue search --state all --since-days 0 "<resource or
 service>"` first (see SKILL.md), one per root cause, with the figures and the commands that produced them. Don't
 paste caller emails of non-colleagues or secrets from resource properties.

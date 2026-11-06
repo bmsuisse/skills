@@ -6,7 +6,8 @@ from the public Azure Retail Prices API (no login), and `collect` measures real 
 so the estimate stops running on defaults. Complements the other references: Query shows what *was* billed,
 bicep-cost what the template *will* bill.
 
-Run it with `uvx bicep-cost ...` (PyPI) or `uv tool install bicep-cost`. Needs the Bicep CLI (`bicep` on PATH,
+Run it with `uvx bicep-cost@latest ...` (PyPI) or `uv tool install bicep-cost`. Commands by version: `estimate`/`collect`
+0.2, `spikes` 0.3, `--existing` 0.4, `scan` 0.5. Needs the Bicep CLI (`bicep` on PATH,
 `$BICEP_CLI` or `az bicep install`) for `.bicep` input.
 
 ## Estimate
@@ -48,9 +49,31 @@ Keep the file in the repo (it's what makes the PR estimate honest); put hand-wri
 (`--usage a.toml --usage b.toml`, later wins) so a re-`collect` doesn't overwrite them. `--days` of 30 is the
 default; use 60-90 for workloads with monthly peaks.
 
+## No template: `scan`, `spikes`
+
+```bash
+uvx bicep-cost scan --actuals [--subscription-id <id>] [--resource-group <rg> ...] --format markdown
+uvx bicep-cost scan --measure --days 30 --save-usage prod.usage.toml
+uvx bicep-cost spikes [--resource-group <rg>] [--group-by ResourceId --service <name>]
+```
+
+`scan` prices the *deployed* subscription (Resource Graph) with the same estimators; `--actuals` adds the
+Cost Management bill and a per-type coverage table (modelled vs actual, resources priced from the bill, cost of ids no
+longer in the inventory); `--measure` also reads Azure Monitor and implies `--actuals`. Types without an estimator
+are priced from their actual cost only with `--actuals`, otherwise they are listed as not covered. `spikes` finds cost
+jumps from the bill, see [cost-query.md](cost-query.md#spike-check). Read-only; needs Reader and Cost Management Reader.
+
+## Templates that only reference resources
+
+`resource plan '...' existing = {...}` deploys nothing, so such a template estimates ~0 and a `--fail-above` guard
+guards nothing. Pass `--existing FILE.json` (repeatable; `estimate`, `collect`, `init-usage`) listing the referenced
+resources with ARM fields (`type`, `name`, `sku`, `properties`, optional `resourceGroup`/`subscriptionId`; see
+`examples/existing.json` in the repo). A resource the template deploys itself wins over a same-id entry.
+
 ## Compare estimate with the real bill
 
-1. `estimate --format json` with the fresh usage file, per-resource figures.
+1. `estimate --format json` with the fresh usage file, per-resource figures (or `scan --actuals`, which does the
+   comparison per resource type for you).
 2. `collect`'s comments give the actual cost, already scaled to a month. A [cost-query.md](cost-query.md) total grouped
    by `ResourceId` is for the whole window: divide by the window's days and multiply by 30.4 (730 h) before comparing,
    a 60-day total is not a monthly figure.

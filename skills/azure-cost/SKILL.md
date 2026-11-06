@@ -55,10 +55,11 @@ az rest --method POST \
 
 ## Spike check
 
-`scripts/cost_spike.py` does the "did cost jump" check in one Daily query (`--group-by ServiceName`, then
-`--group-by ResourceId --service <name>` for the culprit): last N complete days vs the median of the rest, today
-excluded, 429s retried. `--min-delta`/`--ratio` set the thresholds. It only reads; details in
-[references/cost-query.md](references/cost-query.md).
+`uvx bicep-cost spikes` (bicep-cost >= 0.3) does the "did cost jump" check in one Daily query: `--group-by
+ServiceName`, then `--group-by ResourceId --service <name>` for the culprit; last N complete days vs the median of
+the rest, today excluded, 429s retried. Read-only; details in [references/cost-query.md](references/cost-query.md).
+`uvx bicep-cost scan --actuals` (>= 0.5) prices what is deployed and reconciles it with the bill, see
+[references/bicep-cost.md](references/bicep-cost.md).
 
 ## Hard-won guardrails (learned live, not just from docs)
 
