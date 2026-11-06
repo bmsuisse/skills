@@ -1,99 +1,57 @@
 # bicep-cost
 
-For "what will this Bicep deployment cost", "did this PR raise the bill" and "does our estimate match the real bill".
-[`bicep-cost`](https://github.com/bmsuisse/bicep-cost) prices a `.bicep` / `.bicepparam` / compiled ARM template
-from the public Azure Retail Prices API (no login), and `collect` measures real usage from the deployed resources
-so the estimate stops running on defaults. Complements the other references: Query shows what *was* billed,
-bicep-cost what the template *will* bill.
-
-Run it with `uvx bicep-cost@latest ...` (PyPI) or `uv tool install bicep-cost`. Commands by version: `estimate`/`collect`
-0.2, `spikes` 0.3, `--existing` 0.4, `scan` 0.5. Needs the Bicep CLI (`bicep` on PATH,
-`$BICEP_CLI` or `az bicep install`) for `.bicep` input.
+For "what will this Bicep deployment cost", "did this PR raise the bill", "does the estimate match the bill".
+[`bicep-cost`](https://github.com/bmsuisse/bicep-cost) prices Bicep/ARM templates (or a deployed subscription) from the
+Azure Retail Prices API, and reads real usage and cost from Azure. Run `uvx bicep-cost@latest <cmd>`; `.bicep` input
+needs the Bicep CLI. Versions: `estimate`/`collect` 0.2, `spikes` 0.3, `--existing` 0.4, `scan` 0.5.
 
 ## Estimate
 
 ```bash
-uvx bicep-cost estimate app/infra/main.bicep -p app/infra/parameters/prod.bicepparam \
-  --currency CHF --resource-group <rg> --subscription-id <sub> --detail
-uvx bicep-cost estimate main.bicep --format json -o head.json     # also markdown (PR comment), csv
+uvx bicep-cost estimate main.bicep -p parameters/prod.bicepparam --currency CHF --resource-group <rg> --detail
 ```
-
-Parameters that change the answer, in order of how often they are wrong:
 
 | Flag | Why it matters |
 |---|---|
-| `-p` / `--set NAME=VALUE` | Without the prod parameters the template's defaults are priced (often dev SKUs). Secure params without a default need `--set x=x`. |
-| `--usage FILE` | Storage GB, log GB, replica hours... Without it the built-in defaults are used (10 GB per storage account, 2 GB logs) and the report says how many figures are defaults. Default lookup: `<params stem>.usage.toml` or `bicep-cost.usage.toml` next to the input. |
-| `--currency` | Defaults to the usage file's `[meta] cost_currency`, else USD. Use the billing currency of the subscription (read it from a Cost Management query, see [cost-query.md](cost-query.md)); no conversion happens, and the report and `diff` must use the same one. |
-| `--resource-group`, `--subscription-id` | Only needed so `resourceGroup()` / `resourceId()` evaluate like the deployed ones; `collect` requires them. |
-| `[discounts]` in the usage file | Retail prices are list prices. EA/MCA discounts as percent per resource type, e.g. `"Microsoft.Web/serverfarms" = 30`. Or `--azure-prices` (az login, needs access to the subscription's price sheet) to use negotiated rates; then `[discounts]` is ignored. |
-| `--location` | Region for resources without one (default `westeurope`). |
-| `--strict` | Exit 2 if any resource could not be priced. Without it, unsupported types are only *listed* ("cost NOT included"): read that section before quoting a total. |
+| `-p` / `--set NAME=VALUE` | Without prod parameters the template defaults are priced (often dev SKUs). |
+| `--usage FILE` | Storage GB, log GB, replica hours. Without it built-in defaults apply (10 GB per storage account, 2 GB logs); the report counts them. Auto-found: `<params stem>.usage.toml`, `bicep-cost.usage.toml`. |
+| `--currency` | Default: usage file's `[meta] cost_currency`, else USD. Use the subscription's billing currency; no conversion. |
+| `[discounts]` / `--azure-prices` | Prices are list prices. EA/MCA discounts per resource type in the usage file, or negotiated rates (az login, needs price sheet access). |
+| `--existing FILE.json` | `resource x '...' existing` deploys nothing, so it estimates ~0. List the referenced resources (`type`, `name`, `sku`, `properties`) to price them. |
+| `--strict` | Exit 2 if something couldn't be priced. Otherwise read the "not covered" section before quoting a total. |
 
-Fixed lines (plan SKU x instances, DB compute, private endpoints) follow from the template; usage-based lines
-(`*`) are only as good as the usage file. Say which one a number is when reporting it.
+Fixed lines follow from the template; usage-based lines (`*`) are only as good as the usage file. Say which a number is.
 
-## Measure real values: `collect`
-
-Read-only (GETs, Azure Monitor metrics, Log Analytics `Usage`, Cost Management `query`); needs `az login` with
-Reader on the resources, Cost Management Reader and Log Analytics Reader for cost/log data.
+## Real values (read-only, `az login`)
 
 ```bash
-uvx bicep-cost collect app/infra/main.bicep -p app/infra/parameters/prod.bicepparam \
-  --resource-group <rg> --days 60          # writes parameters/prod.usage.toml next to the parameters
+uvx bicep-cost collect main.bicep -p prod.bicepparam --resource-group <rg> --days 60   # writes prod.usage.toml
+uvx bicep-cost scan --actuals [--resource-group <rg>]     # no template: price what is deployed, reconcile with the bill
+uvx bicep-cost spikes [--resource-group <rg>]             # cost jumps, see cost-query.md#spike-check
 ```
 
-The usage file holds the measured values, the **drift** between template and live (32 GB vs 64 GB, 2 vs 3
-instances) and each resource's actual cost of the window as a comment. Windows are scaled to 730 h/month.
-Keep the file in the repo (it's what makes the PR estimate honest); put hand-written overrides in a second file
-(`--usage a.toml --usage b.toml`, later wins) so a re-`collect` doesn't overwrite them. `--days` of 30 is the
-default; use 60-90 for workloads with monthly peaks.
+`collect` measures usage (storage, logs, replicas, executions), prints template-vs-live **drift** and each resource's
+actual monthly cost as a comment. Keep the file in the repo; hand-written overrides go in a second `--usage` file so
+a re-`collect` doesn't overwrite them. 60-90 days for workloads with monthly peaks.
 
-## No template: `scan`, `spikes`
+`scan --actuals` ends with a per-type coverage table (modelled vs actual, types priced from the bill, cost of ids no
+longer deployed); `--measure` adds Azure Monitor usage.
+
+## Estimate vs bill
+
+Compare per resource: `scan --actuals`, or `estimate --format json` against `collect`'s comments (monthly). A
+[cost-query.md](cost-query.md) total is for its whole window: scale to a month (÷ days × 30.4) first. Off by more than
+~25 %: wrong parameters, a usage key still at default, an unmodelled meter (egress, Premium storage, licences,
+reservations), or a real overspend. Only the last is a finding.
+
+## PR guard
 
 ```bash
-uvx bicep-cost scan --actuals [--subscription-id <id>] [--resource-group <rg> ...] --format markdown
-uvx bicep-cost scan --measure --days 30 --save-usage prod.usage.toml
-uvx bicep-cost spikes [--resource-group <rg>] [--group-by ResourceId --service <name>]
+uvx bicep-cost estimate main.bicep -p prod.bicepparam --format json -o base.json      # on the base branch
+uvx bicep-cost estimate main.bicep -p prod.bicepparam --baseline base.json --fail-increase-percent 10 --fail-above <budget>
+uvx bicep-cost diff base.json head.json
 ```
 
-`scan` prices the *deployed* subscription (Resource Graph) with the same estimators; `--actuals` adds the
-Cost Management bill and a per-type coverage table (modelled vs actual, resources priced from the bill, cost of ids no
-longer in the inventory); `--measure` also reads Azure Monitor and implies `--actuals`. Types without an estimator
-are priced from their actual cost only with `--actuals`, otherwise they are listed as not covered. `spikes` finds cost
-jumps from the bill, see [cost-query.md](cost-query.md#spike-check). Read-only; needs Reader and Cost Management Reader.
-
-## Templates that only reference resources
-
-`resource plan '...' existing = {...}` deploys nothing, so such a template estimates ~0 and a `--fail-above` guard
-guards nothing. Pass `--existing FILE.json` (repeatable; `estimate`, `collect`, `init-usage`) listing the referenced
-resources with ARM fields (`type`, `name`, `sku`, `properties`, optional `resourceGroup`/`subscriptionId`; see
-`examples/existing.json` in the repo). A resource the template deploys itself wins over a same-id entry.
-
-## Compare estimate with the real bill
-
-1. `estimate --format json` with the fresh usage file, per-resource figures (or `scan --actuals`, which does the
-   comparison per resource type for you).
-2. `collect`'s comments give the actual cost, already scaled to a month. A [cost-query.md](cost-query.md) total grouped
-   by `ResourceId` is for the whole window: divide by the window's days and multiply by 30.4 (730 h) before comparing,
-   a 60-day total is not a monthly figure.
-3. A resource where actual differs from estimate by more than ~25 %: wrong parameter file, a usage key that
-   is still a default, an unmodelled meter (egress, Premium storage, licences, reservations: see the tool's
-   "Not covered" list), or a real overspend. The first three fix the estimate, the last one is a finding.
-
-## PR guard rail
-
-```bash
-uvx bicep-cost estimate main.bicep -p prod.bicepparam --format json -o base.json   # on the base branch
-uvx bicep-cost estimate main.bicep -p prod.bicepparam --baseline base.json --fail-increase-percent 10 --fail-above <monthly budget>
-uvx bicep-cost diff base.json head.json     # per-resource change
-```
-
-Exit 3 when a cap is exceeded, 2 with `--strict` and something unpriced. Both reports need the same currency and
-usage assumptions, otherwise the diff compares assumptions, not infrastructure.
-
-## Where it stops
-
-Bandwidth/egress, reservations, Premium storage, load balancers, gateways and firewalls are not modelled (the
-tool's README lists every supported type and what it leaves out). An estimate below the actual bill by roughly those items is expected, not a bug. A missing resource type
-is a PR on the bicep-cost repo (`bicep_cost/estimators/`).
+Exit 3 above a cap, 2 with `--strict` and something unpriced. Same currency and usage assumptions on both sides.
+Egress, reservations, Premium storage, gateways and firewalls aren't modelled; a missing type is a PR on the
+bicep-cost repo (`bicep_cost/estimators/`).
