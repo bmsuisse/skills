@@ -109,7 +109,7 @@ def analyse(
         base_med, now_mean = statistics.median(base), statistics.fmean(now)
         delta = now_mean - base_med
         is_new = base_med == 0 and sum(base) == 0
-        if delta >= min_delta and (is_new or now_mean >= ratio * base_med):
+        if delta >= min_delta and (base_med == 0 or now_mean >= ratio * base_med):
             peak_day = max(recent_days, key=lambda d: costs.get(d, 0.0))
             findings.append(
                 {
@@ -117,7 +117,7 @@ def analyse(
                     "baseline_per_day": round(base_med, 2),
                     "recent_per_day": round(now_mean, 2),
                     "delta_per_day": round(delta, 2),
-                    "ratio": None if is_new else round(now_mean / base_med, 1),
+                    "ratio": None if base_med == 0 else round(now_mean / base_med, 1),
                     "new": is_new,
                     "peak_day": peak_day.isoformat(),
                     "daily": {d.isoformat(): round(costs.get(d, 0.0), 2) for d in days[-(recent + 7) :]},
@@ -156,11 +156,17 @@ def main() -> None:
 
     if not 2 <= args.days <= MAX_DAILY_DAYS or not 1 <= args.recent < args.days:
         sys.exit(f"--days must be 2..{MAX_DAILY_DAYS} and --recent smaller than --days")
-    last_day = date.today() - timedelta(days=1)
-    start = last_day - timedelta(days=args.days - 1)
+    yesterday = date.today() - timedelta(days=1)
+    start = yesterday - timedelta(days=args.days - 1)
     scope = build_scope(args)
 
     records, currency = query_daily(scope, start, date.today(), args.group_by, args.service, args.cost_type)
+    # Billing data can lag up to ~72 h: treat the newest day with any cost as the last complete one, so missing
+    # days are not counted as zero spend (which would hide a spike).
+    data_days = [date.fromisoformat(_fmt(r["UsageDate"])) for r in records]
+    last_day = min(yesterday, max((d for d in data_days if d <= yesterday), default=yesterday))
+    if last_day < yesterday:
+        print(f"note: no cost data after {last_day} yet (billing lag), analysing up to there", file=sys.stderr)
     findings = analyse(records, args.group_by, start, last_day, args.recent, args.min_delta, args.ratio)
     total = defaultdict(float)
     for rec in records:
@@ -191,7 +197,7 @@ def main() -> None:
         return
     print(f"{'group':60} {'baseline/d':>11} {'recent/d':>10} {'delta/d':>9} {'x':>6}  peak")
     for f in findings:
-        mult = "new" if f["new"] else f"{f['ratio']}x"
+        mult = "new" if f["new"] else "n/a" if f["ratio"] is None else f"{f['ratio']}x"
         print(
             f"{str(f[args.group_by])[:60]:60} {f['baseline_per_day']:>11} {f['recent_per_day']:>10} {f['delta_per_day']:>9} {mult:>6}  {f['peak_day']}"
         )

@@ -5,7 +5,7 @@ API, Resource Graph and the Activity Log, not from guesses. The output is issues
 e.g. a SKU in a Bicep file); never change, scale or delete anything in Azure from this mode.
 
 Uses the [`azure-cost`](../../azure-cost/SKILL.md) skill for the queries and its guardrails (4 requests/minute per
-scope: space calls, don't retry blind). Needs `az login` and Cost Management Reader on the scope. Scope = the repo's
+scope: space calls, don't retry blind). Needs `az login` and Cost Management Reader on the scope; step 2 also needs Reader on the resources (Resource Graph, Activity Log) and step 3 Reader on the subscription (scheduled actions, budgets). A 403 is a missing role, not "no evidence" or "no alert": report it as that. Scope = the repo's
 `AZURE_RESOURCE_GROUP` (`bdt env`, as in [prod.md](prod.md)) first; if the repo has none, the subscription from
 `az account show`.
 
@@ -33,8 +33,8 @@ Then what changed on that resource, from Azure, in the window of the spike's fir
 
 ```bash
 az extension add --name resource-graph          # once
-az graph query -q "resourcechanges | where properties.targetResourceId =~ '<resource id>' | where properties.changeAttributes.timestamp > ago(14d) | project ts=properties.changeAttributes.timestamp, type=properties.changeType, by=properties.changeAttributes.changedBy, changes=properties.changes"
-az graph query -q "resourcechanges | where properties.changeType == 'Create' and properties.changeAttributes.timestamp > ago(14d) | project ts=properties.changeAttributes.timestamp, id=properties.targetResourceId, by=properties.changeAttributes.changedBy"
+az graph query -q "resourcechanges | where properties.targetResourceId =~ '<resource id>' | where todatetime(properties.changeAttributes.timestamp) > ago(14d) | project ts=properties.changeAttributes.timestamp, type=properties.changeType, by=properties.changeAttributes.changedBy, changes=properties.changes"
+az graph query -q "resourcechanges | where properties.changeType == 'Create' and todatetime(properties.changeAttributes.timestamp) > ago(14d) | project ts=properties.changeAttributes.timestamp, id=properties.targetResourceId, by=properties.changeAttributes.changedBy"
 az monitor activity-log list -g "$AZURE_RESOURCE_GROUP" --offset 14d --status Succeeded \
   --query "[?contains(operationName.value,'write') || contains(operationName.value,'delete')].{ts:eventTimestamp, op:operationName.value, res:resourceId, by:caller}" -o table
 ```
@@ -63,8 +63,9 @@ az rest --method GET --url "https://management.azure.com/subscriptions/$SUB/prov
   --query "value[?kind=='InsightAlert'].{name:name, status:properties.status, to:properties.notification.to}"
 ```
 
-No budget with notifications, or no `InsightAlert` (the anomaly alert, which would have flagged this spike
-itself): that's an issue, "add budget/anomaly alert", with the monthly figure for the budget taken from the last
+No budget with notifications (`Microsoft.Consumption/budgets`), or no `InsightAlert` (the anomaly alert, a
+`scheduledActions` resource; it watches the subscription's daily total, so a spike in one resource group can stay
+below its radar): that's an issue, "add budget/anomaly alert", with the monthly figure for the budget taken from the last
 full month, not a guess. Alerts are created in the portal or Bicep (`Microsoft.Consumption/budgets`); not from this mode.
 
 ## 4. Estimate vs bill, parameters (only if the repo has Bicep)
@@ -78,7 +79,8 @@ uvx bicep-cost estimate <main.bicep> -p <prod.bicepparam> --currency <billing cu
 
 Three things come out of it:
 
-- **Drift** between template and live (instances, storage size): the template is wrong or someone changed prod by
+- **Drift** between template and live (instances, storage size): first rule out intended drift (PostgreSQL
+  storage auto-grow, autoscale); otherwise the template is wrong or someone changed prod by
   hand. A small, clear case is a PR fixing the template; otherwise an issue.
 - **Stale usage file**: commit the refreshed `*.usage.toml` when measured values moved by more than ~25 %, in
   a separate commit; the PR estimate guard (`--fail-increase-percent`) is only as good as it. Keep hand-written

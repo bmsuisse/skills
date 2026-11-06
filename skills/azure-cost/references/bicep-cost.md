@@ -51,8 +51,9 @@ default; use 60-90 for workloads with monthly peaks.
 ## Compare estimate with the real bill
 
 1. `estimate --format json` with the fresh usage file, per-resource figures.
-2. `collect`'s comments (or [cost-query.md](cost-query.md) grouped by `ResourceId`) give the actual cost of the
-   same window.
+2. `collect`'s comments give the actual cost, already scaled to a month. A [cost-query.md](cost-query.md) total grouped
+   by `ResourceId` is for the whole window: divide by the window's days and multiply by 30.4 (730 h) before comparing,
+   a 60-day total is not a monthly figure.
 3. A resource where actual differs from estimate by more than ~25 %: wrong parameter file, a usage key that
    is still a default, an unmodelled meter (egress, Premium storage, licences, reservations: see the tool's
    "Not covered" list), or a real overspend. The first three fix the estimate, the last one is a finding.
