@@ -758,8 +758,8 @@ def main() -> None:
                 "Blocked before it runs: this codex code review would not count for the PR-publish gate, because the "
                 "Bash result would not show whether codex succeeded (a pipe such as `| tail`/`| tee` without "
                 "`set -o pipefail`, a trailing `; echo`, an `|| true`, or a `&` run without `-o <file>`). Re-run it "
-                "with codex as the last command of the line (`codex exec ... > /tmp/review.log 2>&1`, then read the "
-                "log), or `set -o pipefail;` before the pipe, or in the background with `&` and `-o <file>`."
+                "with codex as the last command of the line (`codex exec ... < /dev/null > /tmp/review.log 2>&1`, then read "
+                "the log; always close stdin with `< /dev/null`, or codex can hang on it), or `set -o pipefail;` before the pipe, or in the background with `&` and `-o <file>`."
             )
         return
 
