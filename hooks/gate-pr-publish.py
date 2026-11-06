@@ -36,7 +36,7 @@ AND that review is known to have finished (a mere start proves nothing). How tha
 
   - in the foreground: the Bash tool_result is not an error (codex exits non-zero on failure);
   - with run_in_background: a later <task-notification> for that tool call says "completed";
-  - in the background of the shell (`nohup codex exec ... -o out.md > log 2>&1 &`; the tool_result only says
+  - in the background of the shell (`nohup codex exec ... -o out.md < /dev/null > log 2>&1 &`; the tool_result only says
     "started"): ONLY the `-o <file>` output file counts. It must exist, be non-empty and be newer than the call's
     transcript timestamp (codex writes it when the review is done). Without `-o`, or without a valid timestamp on
     the call, such a run cannot be proven finished and does not count. An `-o` file never rescues a foreground
