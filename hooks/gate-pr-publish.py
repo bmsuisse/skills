@@ -36,7 +36,7 @@ AND that review is known to have finished (a mere start proves nothing). How tha
 
   - in the foreground: the Bash tool_result is not an error (codex exits non-zero on failure);
   - with run_in_background: a later <task-notification> for that tool call says "completed";
-  - in the background of the shell (`nohup codex exec ... -o out.md > log 2>&1 &`; the tool_result only says
+  - in the background of the shell (`nohup codex exec ... -o out.md < /dev/null > log 2>&1 &`; the tool_result only says
     "started"): ONLY the `-o <file>` output file counts. It must exist, be non-empty and be newer than the call's
     transcript timestamp (codex writes it when the review is done). Without `-o`, or without a valid timestamp on
     the call, such a run cannot be proven finished and does not count. An `-o` file never rescues a foreground
@@ -758,8 +758,8 @@ def main() -> None:
                 "Blocked before it runs: this codex code review would not count for the PR-publish gate, because the "
                 "Bash result would not show whether codex succeeded (a pipe such as `| tail`/`| tee` without "
                 "`set -o pipefail`, a trailing `; echo`, an `|| true`, or a `&` run without `-o <file>`). Re-run it "
-                "with codex as the last command of the line (`codex exec ... > /tmp/review.log 2>&1`, then read the "
-                "log), or `set -o pipefail;` before the pipe, or in the background with `&` and `-o <file>`."
+                "with codex as the last command of the line (`codex exec ... < /dev/null > /tmp/review.log 2>&1`, then read "
+                "the log; always close stdin with `< /dev/null`, or codex can hang on it), or `set -o pipefail;` before the pipe, or in the background with `&` and `-o <file>`."
             )
         return
 
