@@ -27,7 +27,7 @@ Fixed lines follow from the template; usage-based lines (`*`) are only as good a
 uvx bicep-cost collect main.bicep -p prod.bicepparam --resource-group <rg> --days 60   # writes prod.usage.toml
 uvx bicep-cost scan --actuals [--resource-group <rg>]     # no template: price what is deployed, reconcile with the bill
 uvx bicep-cost spikes [--resource-group <rg>]             # cost jumps, see cost-query.md#spike-check
-uvx bicep-cost rightsize [--resource-group <rg>]          # over-/under-provisioned, proposals only when sure
+uvx bicep-cost rightsize [--resource-group <rg>]          # over-/under-provisioned, proposals only for clear cases
 ```
 
 `collect` measures usage (storage, logs, replicas, executions), prints template-vs-live **drift** and each resource's

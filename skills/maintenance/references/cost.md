@@ -16,7 +16,7 @@ uvx --refresh bicep-cost spikes --resource-group "$AZURE_RESOURCE_GROUP"
 ```
 
 Last 3 complete days vs the median of the 28 before. The newest days can lag up to ~72 h: if they look suspiciously
-low, say so. Nothing flagged: report the numbers, skip step 2, continue with 3-4. Slow creep isn't caught: when the bill feels off, compare
+low, say so. Nothing flagged: report the numbers, skip step 2, continue with 3-5. Slow creep isn't caught: when the bill feels off, compare
 against last month ([cost-query.md](../../azure-cost/references/cost-query.md#workflow) step 3).
 
 ## 2. Name the cause
@@ -77,15 +77,14 @@ If the repo has Bicep, run `collect` and `estimate` per [bicep-cost.md](../../az
 uvx --refresh bicep-cost rightsize --resource-group "$AZURE_RESOURCE_GROUP" --format markdown      # >= 0.6
 ```
 
-Only `over`/`under` verdicts become proposals (the tool makes one only on complete, unambiguous data); `watch` is
-listed with its reason, never recommended. Check what the tool can't know before an issue:
+Only `over`/`under` verdicts become proposals (the tool needs >= 90 % data coverage); `watch` is listed with its
+reason, never recommended. Check what the tool can't know before an issue:
 
 - `under`: saturation isn't a problem by itself; look for latency/errors in App Insights ([prod.md](prod.md)). Low mean
-  with hours at the limit is bursty: scaling or a batch window, not a bigger SKU.
+  with hours at the limit is bursty: weigh scaling or a batch window against a bigger SKU by the observed impact.
 - `over`: is the headroom intended (HA, zone redundancy, a monthly peak outside the window)?
 
 Per proposal: resource id, current/target size, evidence, monthly saving or extra cost, risk and rollback as printed.
-Never resize from this mode.
 
 ## Report
 
