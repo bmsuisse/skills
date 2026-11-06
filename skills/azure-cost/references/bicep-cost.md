@@ -1,8 +1,8 @@
 # bicep-cost
 
 [`bicep-cost`](https://github.com/bmsuisse/bicep-cost) prices Bicep/ARM templates (or a deployed subscription) from the
-Azure Retail Prices API, and reads real usage and cost from Azure. Run `uvx bicep-cost@latest <cmd>`; `.bicep` input
-needs the Bicep CLI. Versions: `estimate`/`collect` 0.2, `spikes` 0.3, `--existing` 0.4, `scan` 0.5.
+Azure Retail Prices API, and reads real usage and cost from Azure. Run `uvx --refresh bicep-cost <cmd>` (without `--refresh` uv may serve a stale index and miss new commands); `.bicep` input
+needs the Bicep CLI. Versions: `estimate`/`collect` 0.2, `spikes` 0.3, `--existing` 0.4, `scan` 0.5, `rightsize` 0.6.
 
 ## Estimate
 
@@ -27,6 +27,7 @@ Fixed lines follow from the template; usage-based lines (`*`) are only as good a
 uvx bicep-cost collect main.bicep -p prod.bicepparam --resource-group <rg> --days 60   # writes prod.usage.toml
 uvx bicep-cost scan --actuals [--resource-group <rg>]     # no template: price what is deployed, reconcile with the bill
 uvx bicep-cost spikes [--resource-group <rg>]             # cost jumps, see cost-query.md#spike-check
+uvx bicep-cost rightsize [--resource-group <rg>]          # over-/under-provisioned, proposals only when sure
 ```
 
 `collect` measures usage (storage, logs, replicas, executions), prints template-vs-live **drift** and each resource's
@@ -35,6 +36,11 @@ a re-`collect` doesn't overwrite them. 60-90 days for workloads with monthly pea
 
 `scan --actuals` ends with a per-type coverage table (modelled vs actual, types priced from the bill, cost of ids no
 longer deployed); `--measure` adds Azure Monitor usage.
+
+`rightsize` reads 30 days of hourly Azure Monitor metrics and Advisor for App Service plans, PostgreSQL flexible
+servers, Azure SQL databases and Container Apps (other types: "not covered"). `over`/`under` verdicts carry a proposal
+(target size, saving, risk, rollback); `watch`/`ok`/`no-data` never do. It needs >= 90 % data coverage, and a second
+signal for `under`; a 14-day window can't prove `over`. Read-only; needs Monitoring Reader.
 
 ## Estimate vs bill
 

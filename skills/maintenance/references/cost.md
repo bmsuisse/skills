@@ -12,7 +12,7 @@ missing role, report it as that, not as "no evidence". Scope: the repo's `AZURE_
 ## 1. Find the spike
 
 ```bash
-uvx bicep-cost@latest spikes --resource-group "$AZURE_RESOURCE_GROUP"
+uvx --refresh bicep-cost spikes --resource-group "$AZURE_RESOURCE_GROUP"
 ```
 
 Last 3 complete days vs the median of the 28 before. The newest days can lag up to ~72 h: if they look suspiciously
@@ -58,7 +58,7 @@ month. Not created from this mode.
 ## 4. Estimate vs bill
 
 ```bash
-uvx bicep-cost@latest scan --actuals --resource-group "$AZURE_RESOURCE_GROUP" --format markdown   # >= 0.5, no template needed
+uvx --refresh bicep-cost scan --actuals --resource-group "$AZURE_RESOURCE_GROUP" --format markdown   # >= 0.5, no template needed
 uvx bicep-cost scan --measure --days 30 --resource-group "$AZURE_RESOURCE_GROUP" --save-usage prod.usage.toml   # + Azure Monitor usage
 ```
 
@@ -71,9 +71,25 @@ If the repo has Bicep, run `collect` and `estimate` per [bicep-cost.md](../../az
   the template; otherwise an issue.
 - **Stale usage file**: commit the refreshed `*.usage.toml` (own commit) when values moved by more than ~25 %.
 
+## 5. Over- and under-provisioning
+
+```bash
+uvx --refresh bicep-cost rightsize --resource-group "$AZURE_RESOURCE_GROUP" --format markdown      # >= 0.6
+```
+
+Only `over`/`under` verdicts become proposals (the tool makes one only on complete, unambiguous data); `watch` is
+listed with its reason, never recommended. Check what the tool can't know before an issue:
+
+- `under`: saturation isn't a problem by itself; look for latency/errors in App Insights ([prod.md](prod.md)). Low mean
+  with hours at the limit is bursty: scaling or a batch window, not a bigger SKU.
+- `over`: is the headroom intended (HA, zone redundancy, a monthly peak outside the window)?
+
+Per proposal: resource id, current/target size, evidence, monthly saving or extra cost, risk and rollback as printed.
+Never resize from this mode.
+
 ## Report
 
 Per scope: window and currency, flagged groups (baseline → recent per day, first day), the cause with its evidence
-(resource id, Activity Log or `resourcechanges` row), budget/anomaly alert present or missing, coverage gaps, drift.
+(resource id, Activity Log or `resourcechanges` row), budget/anomaly alert present or missing, coverage gaps, drift, provisioning proposals (over/under) and watch items.
 `bdt issue search --state all --since-days 0 "<resource or service>"` first, one issue per root cause. No secrets or
 caller emails in issues.
