@@ -116,9 +116,9 @@
     },
     {
       "name": "maintenance",
-      "description": "Repo maintenance: dead code analysis, dependency bumps, the ruff/ty lint baseline, dependency vulnerability audits (bun/uv), and the regular checks (prod errors, nightly failures, xfail tests, slow queries, slow/flaky tests), via /maintenance <mode>",
+      "description": "Repo maintenance: dead code analysis, dependency bumps, the ruff/ty lint baseline, dependency vulnerability audits (bun/uv), and the regular checks (prod errors, nightly failures, xfail tests, slow queries, slow/flaky tests, Azure cost spikes), via /maintenance <mode>",
       "source": "./",
-      "skills": ["./skills/maintenance"]
+      "skills": ["./skills/maintenance", "./skills/azure-cost"]
     },
     {
       "name": "dev-workflow",
