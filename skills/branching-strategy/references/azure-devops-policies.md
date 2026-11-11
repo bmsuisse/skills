@@ -46,7 +46,7 @@ Notes:
 - One policy per (branch, pipeline) pair: re-running the loop creates duplicates. Check with
   `az repos policy list` first, and use `az repos policy update`/`delete` to change one.
 - Raise the reviewer count on `main` (e.g. 2) if production changes need a stricter bar.
-- The tests-skipped behaviour lives in the pipeline (`executeTests`), not in the policy, so all three
+- The tests-skipped behaviour lives in the pipeline (`bdt ci plan`), not in the policy, so all three
   branches use the *same* build definition.
 - Merge strategy (`az repos policy merge-strategy create`): squash is fine for feature -> `dev`. Promotions
   (`dev` -> `test` -> `main`) should use a merge commit, not squash, otherwise the branches end up with

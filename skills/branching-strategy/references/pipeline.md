@@ -6,10 +6,9 @@ for why each piece exists.
 ## Contents
 - Triggers and the nightly schedule
 - `UV_NO_BUILD`: install wheels only
-- `executeTests`: skip tests on promotion PRs
-- `Plan` stage: PR labels -> areas
-- Unit and E2E stages run the selected areas
-- Guard: what may target `main` / `test`
+- Environment and deploy variables
+- Plan stage: `bdt ci plan`
+- Test stages consume the outputs
 - Deploy stage
 
 ## Triggers and the nightly schedule
@@ -44,155 +43,94 @@ variables:
     value: "1"
 ```
 
-If the pipeline already has a `variables:` block, add the entry to it (the `executeTests` block below is
+If the pipeline already has a `variables:` block, add the entry to it (the block in the next section is
 written in mapping form; convert the block to list form, or put the variable in a variable template, when
 mixing the two).
 
-## `executeTests`: skip tests on promotion PRs
+## Environment and deploy variables
 
-Both ends in the long-lived set means "already tested"; anything else is new code. `Schedule` always runs
-everything and deploys to the test environment. PR variables only exist at runtime, hence `$[ ]`.
+Only the environment and deploy decisions stay compile-time; which tests run is `bdt ci plan`'s job (next
+section). The nightly is the schedule, or a manual run on `dev` (so the whole nightly path can be tried on
+demand). Compare full refs: `Build.SourceBranchName` is only the last path segment (`feature/main` -> `main`).
 
 ```yaml
 variables:
-  # Nightly = the schedule, or a manual run on dev (so the whole nightly path can be tried on demand).
-  # Compare full refs: Build.SourceBranchName is only the last path segment ('feature/main' -> 'main').
   ${{ if or(eq(variables['Build.Reason'], 'Schedule'), and(eq(variables['Build.Reason'], 'Manual'), eq(variables['Build.SourceBranch'], 'refs/heads/dev'))) }}:
-    executeTests: true          # nightly: everything
     shouldDeploy: true
     environment: Test
   ${{ elseif and(eq(variables['Build.Reason'], 'IndividualCI'), eq(variables['Build.SourceBranch'], 'refs/heads/main')) }}:
-    executeTests: false         # push after merge: deploy only
-    shouldDeploy: true
+    shouldDeploy: true          # push after merge: deploy only
     environment: Production
   ${{ elseif and(eq(variables['Build.Reason'], 'IndividualCI'), eq(variables['Build.SourceBranch'], 'refs/heads/test')) }}:
-    executeTests: false
     shouldDeploy: true
     environment: Test
   ${{ else }}:                  # PR builds and manual runs elsewhere: never deploy
     shouldDeploy: false
     environment: Test           # unused, but must name a real environment
-    executeTests: $[ not(and(
-      in(variables['System.PullRequest.SourceBranch'], 'refs/heads/dev', 'refs/heads/test', 'refs/heads/main'),
-      in(variables['System.PullRequest.TargetBranch'], 'refs/heads/dev', 'refs/heads/test', 'refs/heads/main'))) ]
 ```
 
-A manual run on any other branch (no PR variables) falls into the last case and runs the tests, which is
-what you want from a "does my branch pass" run.
+Test stages are gated by the plan outputs, not by these variables. Build, lint and type-check stages stay unconditional so the build policy has something real to verify.
 
-Test stages carry `condition: and(succeeded(), eq(variables.executeTests, true))`. Build, lint and
-type-check stages stay unconditional so the build policy has something real to verify.
+## Plan stage: `bdt ci plan`
 
-## `Plan` stage: PR labels -> areas
-
-One place decides the areas; the unit and E2E stages both consume the result, so the two tiers can never
-disagree. Areas are the union of the folder names under `tests/unit/` and `tests/e2e/`, so adding a folder
-needs no pipeline edit.
+One step decides the tests (labels, inference from changed files, promotion skip, nightly = everything) and the
+branch flow (what may target `main` / `test`, and that a fix branch was cut from `main`; a violation fails the
+step, which blocks the PR through the policy). Every tier consumes the same result, so unit and E2E can never
+disagree. Behaviour and config: "Test selection with `bdt ci plan`" in `SKILL.md`.
 
 ```yaml
 - stage: Plan
   jobs:
-    - job: select
+    - job: plan
       steps:
         - checkout: self
-        - script: |
-            set -euo pipefail
-            mapfile -t areas < <(find tests/unit tests/e2e -mindepth 1 -maxdepth 1 -type d -printf '%f\n' 2>/dev/null \
-              | grep -v '^__' | sort -u)
-            [ ${#areas[@]} -gt 0 ] || { echo "##vso[task.logissue type=error]No test areas found under tests/unit or tests/e2e"; exit 1; }
-            publish() { echo "Areas: $*"; echo "##vso[task.setvariable variable=areas;isOutput=true]$*"; exit 0; }
-
-            [ "$EXECUTE_TESTS" = "True" ] || [ "$EXECUTE_TESTS" = "true" ] || publish ""           # promotion: nothing
-            [ -z "${SYSTEM_PULLREQUEST_PULLREQUESTID:-}" ] && publish "${areas[@]}"                 # nightly: everything
-
-            labels=$(curl -sS -f -u ":$SYSTEM_ACCESSTOKEN" \
-              "$(System.CollectionUri)$(System.TeamProjectId)/_apis/git/repositories/$(Build.Repository.ID)/pullrequests/$SYSTEM_PULLREQUEST_PULLREQUESTID/labels?api-version=7.1") \
-              && echo "$labels" | jq -e '.value' >/dev/null 2>&1 \
-              || publish "${areas[@]}"                                  # can't read labels: fail safe to everything
-
-            active() { echo "$labels" | jq -e --arg n "$1" '.value[]? | select(.name == $n and .active == true)' >/dev/null; }
-
-            active test-full && publish "${areas[@]}"
-
-            selected=()
-            for a in "${areas[@]}"; do active "test-${a//_/-}" && selected+=("$a"); done
-
-            if [ ${#selected[@]} -eq 0 ]; then
-              echo "##vso[task.logissue type=error]PR has no 'test-<area>' label (or 'test-full'). Add one so CI knows which areas to run."
-              exit 1
-            fi
-            publish "${selected[@]}"
-          name: pick
-          displayName: Select test areas from PR labels
+          fetchDepth: 0                  # the fix-branch base check needs history (skipped with a warning when shallow)
+        # ... install uv / sync as in the other stages
+        - script: uv run bdt ci plan
+          name: plan                     # required: the outputs are read as plan.<variable>
+          displayName: Plan tests
           env:
-            SYSTEM_ACCESSTOKEN: $(System.AccessToken)
-            EXECUTE_TESTS: $(executeTests)
+            SYSTEM_ACCESSTOKEN: $(System.AccessToken)   # reads the PR labels
 ```
 
-Needs `jq` on the agent; the build identity can read PR labels on its own repo by default. Failing here
-(missing label) happens before any expensive stage starts.
+Outputs (`isOutput=true`): `runTests`, and per tier (`unit`, `e2e`, ...) `<tier>Run`, `<tier>Areas`, `<tier>Paths`
+(a shell-quoted argument list for the runner). The repo pins `bmsdna-devtools>=0.50.0` as a **dev** dependency.
 
-## Unit and E2E stages run the selected areas
+## Test stages consume the outputs
+
+Gate on `<tier>Run` (`runTests` for a tier you don't split by area, e.g. flat unit tests) and pass `<tier>Paths`
+to the runner. Never call the runner with empty paths: it would run everything.
 
 ```yaml
 - stage: Test
   dependsOn: Plan
-  condition: and(succeeded(), eq(variables.executeTests, true))
+  condition: and(succeeded(), eq(dependencies.Plan.outputs['plan.plan.unitRun'], 'true'))
   variables:
-    areas: $[ stageDependencies.Plan.select.outputs['pick.areas'] ]
+    unitPaths: $[ stageDependencies.Plan.plan.outputs['plan.unitPaths'] ]
   jobs:
     - job: unit
       steps:
-        - script: |
-            paths=(); for a in $(areas); do [ -d "tests/unit/$a" ] && paths+=("tests/unit/$a"); done
-            [ ${#paths[@]} -eq 0 ] && { echo "No unit tests for the selected areas"; exit 0; }
-            uv run pytest --maxfail=3 --durations=20 --durations-min=1.0 "${paths[@]}"
+        - script: uv run pytest --maxfail=3 --durations=20 --durations-min=1.0 $(unitPaths)
           displayName: Unit tests (selected areas)
 
 - stage: TestE2E
   dependsOn: [Plan, Build]
-  condition: and(succeeded(), eq(variables.executeTests, true))
+  condition: and(succeeded(), eq(dependencies.Plan.outputs['plan.plan.e2eRun'], 'true'))
   variables:
-    areas: $[ stageDependencies.Plan.select.outputs['pick.areas'] ]
+    e2ePaths: $[ stageDependencies.Plan.plan.outputs['plan.e2ePaths'] ]
   jobs:
     - job: e2e
       steps:
-        - script: |
-            paths=(); for a in $(areas); do [ -d "tests/e2e/$a" ] && paths+=("tests/e2e/$a"); done
-            [ ${#paths[@]} -eq 0 ] && { echo "No e2e tests for the selected areas"; exit 0; }
-            uv run pytest --maxfail=3 --durations=20 --durations-min=1.0 "${paths[@]}"
+        - script: uv run pytest --maxfail=3 --durations=20 --durations-min=1.0 $(e2ePaths)
           displayName: E2E tests (selected areas)
 ```
 
 `--maxfail=3` stops the run after the third failure, so a broken build doesn't burn agent time on the rest of the
-suite. `--durations=20 --durations-min=1.0` prints the 20 slowest tests (setup, call and teardown) at the end of
-every run, leaving out anything under one second so the list stays short on a fast suite; slow tests show up in
-the build log and the nightly without anyone profiling. Keep the flags in the pipeline command rather than in
-`addopts`, so local runs stay quiet and complete. Use the runner of the stack (`bun test`, `vitest`, ...) the
-same way. Parallelise across areas (a matrix over `$(areas)`) when the suite is slow; the nightly then also
-finishes quickly.
-
-## Guard: what may target `main` / `test`
-
-First step of the build stage (always runs, also on skipped-test PRs). Enforces rule 7 and the
-no-skipping rule. Fails the build, which blocks the PR through the policy.
-
-```yaml
-- script: |
-    [ -z "${SYSTEM_PULLREQUEST_PULLREQUESTID:-}" ] && exit 0
-    src="${SYSTEM_PULLREQUEST_SOURCEBRANCH#refs/heads/}"; dst="${SYSTEM_PULLREQUEST_TARGETBRANCH#refs/heads/}"
-    case "$dst" in
-      main) case "$src" in test|fix/*|hotfix/*) exit 0;; esac
-            echo "##vso[task.logissue type=error]PRs into main are only allowed from 'test' (promotion) or fix/*, hotfix/* (fixes). Got '$src'."; exit 1;;
-      test) case "$src" in dev) exit 0;; esac
-            echo "##vso[task.logissue type=error]PRs into test must come from 'dev' (promotion). Got '$src'."; exit 1;;
-    esac
-  displayName: Guard branch flow
-```
-
-Nothing else may target `test`, including `main`: a fix reaches `test` via the `main` -> `dev` back-merge
-and the next `dev` -> `test` promotion. Fix branches are cut from `main` (see rule 7). Match the prefixes to
-the repo's branch naming.
+suite. `--durations=20 --durations-min=1.0` prints the 20 slowest tests at the end of every run, leaving out
+anything under one second, so slow tests show up in the build log and the nightly without anyone profiling. Keep
+the flags in the pipeline command rather than in `addopts`, so local runs stay quiet and complete. Use the runner
+of the stack (`bun test`, `vitest`, ...) the same way. Parallelise across areas (a matrix over `<tier>Areas`) when
+the suite is slow; the nightly then also finishes quickly.
 
 ## Deploy stage
 
