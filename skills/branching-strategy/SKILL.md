@@ -46,8 +46,8 @@ against the rules below before changing anything.
    tiers. `bdt` required labels (below) make a PR impossible to create without that decision, and `bdt ci plan`
    (below) turns the labels into the test selection: a PR opened without a usable label gets its areas inferred
    from the changed files. Lint, type-check and the build are cheap and area-agnostic: they run in full on every PR.
-4. **Promotion PRs run no tests.** Any PR whose source *and* target are both in {`dev`, `test`, `main`}
-   skips the test stages: the code was tested when it entered `dev` and again in the nightly run. The build
+4. **Promotion PRs run no tests.** The three promotions `dev` -> `test`, `test` -> `main` and `main` -> `dev`
+   skip the test stages: the code was tested when it entered `dev` and again in the nightly run. The build
    policy still applies; the plan step selects no tests and the test stages are skipped. They need no code review either:
    the code was reviewed when it entered `dev`, and the `dev-workflow` PR-publish gate lets them through
    without a `/bms-code-review` run.
@@ -71,7 +71,7 @@ against the rules below before changing anything.
 |---|---|---|---|
 | feature -> `dev` | all | areas from labels (inferred if unlabeled) | yes |
 | fix -> `main` | all | areas from labels (inferred if unlabeled) | yes |
-| `dev` -> `test`, `test` -> `main`, `main` -> `dev` (both ends in dev/test/main) | all | skipped | yes |
+| `dev` -> `test`, `test` -> `main`, `main` -> `dev` | all | skipped | yes |
 | push to `test` / `main` (after merge) | build | skipped | deploys to its environment |
 | nightly on `dev`, or any manual run (also on `test` / `main`) | all | **all areas** | nightly: then deploys `dev` to `test` env |
 
@@ -98,8 +98,8 @@ A PR from a feature branch into `test` is a mistake, not a variant: it would put
 
 With a `[tool.bdt.ci.plan]` table in `pyproject.toml` (below), `bdt pr create` requires at least one label of
 the group `test_area` before it creates the PR. The group is **generated from the test folders** (`test-<area>`
-for every area, plus `test-shared`, `test-full`, `test-none`), so there is no list to keep in sync. A
-hand-written `[tool.bdt.pr.required_labels] test_area = [...]` still wins; only write one for a custom set.
+for every area, which includes `test-shared` once a `shared` area exists, plus `test-full` and `test-none`),
+so there is no list to keep in sync. A hand-written `[tool.bdt.pr.required_labels] test_area = [...]` still wins; only write one for a custom set.
 
 ```toml
 # Optional: auto-add the label from the commit scope, so `feat(orders): ...` -> test-orders
