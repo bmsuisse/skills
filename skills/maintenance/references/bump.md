@@ -59,7 +59,7 @@ minimumReleaseAgeExcludes = ["@bmsuisse/ui", "@bmsuisse/datagrid"]   # every @bm
   the exemption is only safe while BMS alone controls publishing those names.
 - A project without the config gets it as its own first commit, with a PR note. `uv lock --upgrade` / `bun update` then
   see only releases older than the window.
-- The ADO feed (`BMSAzureDevOps`) reports upload times, so no extra config. For an index without them uv treats the
+- Our private Azure DevOps feed reports upload times, so no extra config. For an index without them uv treats the
   files as unavailable: opt that index/package out, don't drop the cooldown.
 - `bun update` rewrites the range in `package.json` to the resolved version; expected.
 - Frozen installs in CI (`uv sync --locked`, `bun install --frozen-lockfile`): flag a pipeline that re-resolves.
