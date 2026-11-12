@@ -62,6 +62,10 @@ report format. The agent runs `dev-workflow` steps 1, 4, 5, 6 and 8 (worktree, i
 targeted tests, then `/bms-code-review --full` on its own diff, findings fixed) and **skips** steps 2, 7 and 9-12:
 no PR, no publish, no CI watch, no screenshots.
 
+Each agent is responsible for testing its own slice: it adds or updates tests for what it changes and runs them
+(targeted, not the full suite) before integrating. The coordinator's checks in step 4 are an integration check, not a
+substitute.
+
 Each agent integrates by itself as soon as its task is done, reviewed and green locally:
 rebase onto `origin/consolidate/<topic>`, re-run its tests, push fast-forward only
 (`git push origin HEAD:consolidate/<topic>`), and retry from the fetch on rejection. A conflict inside its own

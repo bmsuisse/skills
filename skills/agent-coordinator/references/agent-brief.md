@@ -17,6 +17,8 @@ Scope
 Work
 - Follow dev-workflow steps 4-6: implement, commit often (explicit paths only), run `/bms-code-review --quick`
   on your diff after a meaningful chunk, run the tests for your area only (not the full suite; CI does that later).
+- You are responsible for testing your slice: add or update tests for what you change and make them pass. Nobody
+  else tests it before CI.
 - Before integrating, review your own work: `/bms-code-review --full` on your diff against
   `origin/consolidate/<topic>`, and fix the findings (ask the coordinator if unsure). The coordinator does not
   review your slice, so this is the only review it gets.
