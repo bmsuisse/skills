@@ -101,7 +101,7 @@
     },
     {
       "name": "dev-workflow",
-      "description": "Enforces the team dev workflow: worktree-first edits, auto-approved entry into worktree-shaped dirs, a ban on creating PRs via `az repos pr create` (use `bdt pr create`), and a gate that blocks bdt/az/gh commands which publish or complete a PR until /code-review, /bms-code-review or a finished `codex exec`/`codex review` code review has run. Also ships the bms-code-review, bms-plan-review, branching-strategy, issue-triage and agent-coordinator skills.",
+      "description": "Enforces the team dev workflow: worktree-first edits, auto-approved entry into worktree-shaped dirs, a ban on creating PRs via `az repos pr create` (use `bdt pr create`), a ban on hand-wired PR/CI watch scripts (use `bdt pr status --wait`), and a gate that blocks bdt/az/gh commands which publish or complete a PR until /code-review, /bms-code-review or a finished `codex exec`/`codex review` code review has run. Also ships the bms-code-review, bms-plan-review, branching-strategy, issue-triage and agent-coordinator skills.",
       "source": "./",
       "skills": [
         "./skills/dev-workflow",
@@ -124,6 +124,10 @@
                 {
                   "type": "command",
                   "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/ban-az-pr-create.py\""
+                },
+                {
+                  "type": "command",
+                  "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/ban-handwired-ci-watch.py\""
                 }
               ]
             },
