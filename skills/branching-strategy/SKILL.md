@@ -41,7 +41,7 @@ against the rules below before changing anything.
    approval-free environment, if wanted).
    The one deliberate exception is a short-lived `consolidate/<topic>` branch from the `agent-coordinator`
    skill: several agents push to it without CI, and it only ever leaves through a single policy-protected PR
-   into `dev`. It is never deployed, never a PR target for anything else, and deleted after that PR merges.
+   into `dev`. It is never deployed, never a PR target for anything else, and deleted when that PR merges (delete-source-branch on the PR, which `bdt pr create` sets for non-long-lived sources).
 3. **Tests are split by product area, and the PR itself decides which areas run, through labels.** Both
    unit and E2E tests live in per-area folders (`tests/unit/<area>/`, `tests/e2e/<area>/`). Each area has a
    label `test-<area>`, plus `test-full` for broad/cross-cutting changes and `test-none` for changes no test

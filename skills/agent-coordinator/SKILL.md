@@ -46,9 +46,12 @@ agents run.
 2. The branch must carry **no build policy**. Check on the first push; if a wildcard policy rejects it, stop and
    ask a human. Never use `--bypass-policy`. It is short-lived, never deployed, and only ever merged into `dev`
    through a policy-protected PR (see `branching-strategy`, rule 2).
-3. Open the single draft PR `consolidate/<topic>` → `dev` right away with `bdt pr create` (draft builds nothing),
-   post the plan, and link **every** issue it closes (`Fixes #N` / `AB#N`, once per issue). Claim each issue with
-   `bdt issue take N`; agents do not.
+3. Open the single draft PR `consolidate/<topic>` → `dev` right away with `bdt pr create --label test-full`
+   (draft builds nothing; `bdt` demands a test label where `[tool.bdt.ci.plan]` is set, and `test-full` is the
+   honest placeholder until step 5 narrows it). Keep the default squash and **delete source branch on completion**
+   (don't pass `--delete-source-branch false`), so the branch is removed when the PR merges. Post the plan, and link
+   **every** issue it closes (`Fixes #N` / `AB#N`, once per issue). Claim each issue with `bdt issue take N`;
+   agents do not.
 
 ## 3. Spawn the agents
 
@@ -84,17 +87,18 @@ When all tasks have landed:
    `dev-workflow` step 8) and fix the findings. This is the only review the PR-publish gate sees, so do not skip
    it because each agent ran `--quick`.
 3. UI changes: screenshots once, on the combined result (`dev-workflow` step 7).
-4. Label the PR with the **union** of the test areas touched (`test-<area>`, or `test-full` when any agent
-   touched shared code). Then `bdt pr publish`.
+4. Replace the placeholder label with the **union** of the test areas touched (`test-<area>`, or keep `test-full`
+   when any agent touched shared code). Then `bdt pr publish`.
 5. Watch CI with the `bms-ci-watch` agent. Every push to the branch re-triggers CI, so collect failures and
    push one fix, not one per failure. If a fix is large enough to parallelise, run it as a new wave with a fresh
    brief; the PR stays the same.
 
 ## 6. Clean up
 
-Never merge the PR yourself. After a human merges it (squashed by default: the agents' working history on the
-consolidation branch is not kept), delete `consolidate/<topic>` if the host did not, and remove every agent
-worktree with `bdt cleanup worktree`. Remove only your own worktrees; others in `.worktrees` may belong to other
+Never merge the PR yourself. The consolidation branch is deleted when the PR merges (the completion option from
+step 2; the squash means the agents' working history is not kept). Once a human has merged it, check
+`git ls-remote --heads origin consolidate/<topic>`: if it is still there, delete it
+(`git push origin --delete consolidate/<topic>`). Also remove every agent worktree with `bdt cleanup worktree`. Remove only your own worktrees; others in `.worktrees` may belong to other
 sessions.
 
 Link every PR and issue as a link, never a bare `#N`.
