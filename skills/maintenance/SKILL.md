@@ -2,16 +2,10 @@
 name: maintenance
 plugin: maintenance
 description: >
-  Periodic repo upkeep for BMS Python (uv) and JS/TS (bun) repos, as one skill with a
-  mode argument: `dead-code` (find/remove unused code), `bump` (update
-  dependencies), `lint` (Python projects on the latest ruff/ty baseline of `init-app-stack`), `audit` (`bun audit` / `uv audit`
-  vulnerability fixes), `prod` (Application Insights errors vs. open issues), `nightly` (failed nightly builds),
-  `xfail` (fix xfail tests), `db-perf` (slow queries / Postgres health), `cost` (Azure cost spikes, over/under-provisioning), `tests` (slow, flaky and pointless tests), `incident` (a named security incident or supply chain attack), or `all`.
-  Use for "maintenance", "regular tasks", "find dead code", "remove unused code", "bump
-  dependencies", "update packages", "ruff/ty baseline", "bun audit", "uv audit", "vulnerable
-  dependency", "CVE", "Dependabot alert", "check prod logs", "app insights", "nightly failed", "xfail",
-  "slow queries", "postgres performance", "azure cost spike", "bill went up", "flaky tests", "slow tests", "pointless tests". Invoke as `/maintenance <mode>`. Repo-wide upkeep, not for
-  reviewing a pending diff (deslop, security-review).
+  Periodic upkeep of BMS uv/bun repos, one mode per run: dead-code, bump, lint, audit, prod, nightly, xfail, db-perf,
+  cost, tests, incident (security incident / supply chain attack), all. Use for "maintenance", "bump dependencies",
+  "bun audit", "uv audit", "CVE", "nightly failed", "slow queries", "azure cost spike", "flaky tests". Invoke as
+  `/maintenance <mode>`. Not for reviewing a pending diff.
 ---
 
 # Maintenance
