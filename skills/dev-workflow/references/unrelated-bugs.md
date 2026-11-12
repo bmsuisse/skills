@@ -1,6 +1,6 @@
 # Unrelated bugs found along the way
 
-A bug tied to what you're actually building gets fixed inline per step 3 of
+A bug tied to what you're actually building gets fixed inline per step 4 of
 the main workflow. A bug that's unrelated to the current task should NOT be
 fixed inline — file it and hand it off instead:
 
