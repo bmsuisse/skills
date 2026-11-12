@@ -22,6 +22,23 @@ import sys
 import textwrap
 from pathlib import Path
 
+# Dependency cooldown (see the `maintenance` skill, references/bump.md): releases younger than this are not resolved,
+# so a malicious release is usually pulled before we ever install it. Our own packages are exempt (listed by name:
+# neither bun nor uv takes a wildcard). The config is written BEFORE the first install/add so those are gated too.
+COOLDOWN_DAYS = 5
+INTERNAL_NPM_PACKAGES = ["@bmsuisse/ui", "@bmsuisse/datagrid"]
+INTERNAL_PYPI_PACKAGES = ["bmsdna-devtools", "pgdevkit"]
+
+
+def _uv_cooldown_lines() -> str:
+    exempt = ", ".join(f"{name} = false" for name in INTERNAL_PYPI_PACKAGES)
+    return f'exclude-newer = "{COOLDOWN_DAYS} days"\nexclude-newer-package = {{ {exempt} }}\n'
+
+
+def _bunfig_cooldown() -> str:
+    exempt = ", ".join(f'"{name}"' for name in INTERNAL_NPM_PACKAGES)
+    return f"[install]\nminimumReleaseAge = {COOLDOWN_DAYS * 86400}\nminimumReleaseAgeExcludes = [{exempt}]\n"
+
 
 def run(cmd: list[str], cwd: Path, label: str) -> None:
     print(f"  → {label}")
@@ -56,6 +73,7 @@ def _assert_pyproject_tables(pyproject: Path) -> None:
         for table, present in {
             "build-system (setuptools)": data.get("build-system", {}).get("build-backend") == "setuptools.build_meta",
             "tool.uv.package": data.get("tool", {}).get("uv", {}).get("package") is True,
+            "tool.uv.exclude-newer (cooldown)": "exclude-newer" in data.get("tool", {}).get("uv", {}),
             "tool.pgdevkit": "pgdevkit" in data.get("tool", {}),
             "tool.pytest.ini_options": "ini_options" in data.get("tool", {}).get("pytest", {}),
             "tool.ruff.lint": "lint" in data.get("tool", {}).get("ruff", {}),
@@ -113,6 +131,7 @@ def main() -> None:
         "bun create vite (react-ts)",
     )
 
+    (fe / "bunfig.toml").write_text(_bunfig_cooldown(), encoding="utf-8")
     run(["bun", "install"], fe, "bun install")
     run(
         [
@@ -617,6 +636,10 @@ def main() -> None:
     be.mkdir(exist_ok=True)
     had_src = (root / "src").exists()
     run(["uv", "init", "--python", "3.14", "."], root, "uv init (python 3.14)")
+    early_pyproject = root / "pyproject.toml"
+    if early_pyproject.exists() and "exclude-newer" not in early_pyproject.read_text(encoding="utf-8"):
+        with early_pyproject.open("a", encoding="utf-8") as f:
+            f.write("\n[tool.uv]\n" + _uv_cooldown_lines())
     run(
         ["uv", "add", "fastapi", "granian[reload]", "pydantic-settings", "pgdevkit[cli,db]"],
         root,
@@ -763,7 +786,7 @@ def main() -> None:
     if pyproject.exists():
         content = pyproject.read_text(encoding="utf-8")
         if "backend.scripts:dev" not in content:
-            content = _drop_toml_tables(content, {"project.scripts", "build-system"}).rstrip() + "\n"
+            content = _drop_toml_tables(content, {"project.scripts", "build-system", "tool.uv"}).rstrip() + "\n"
             content += textwrap.dedent(
                 """
                 [project.scripts]
@@ -779,6 +802,7 @@ def main() -> None:
 
                 [tool.uv]
                 package = true
+                __UV_COOLDOWN__
 
                 [tool.pgdevkit]
                 database_dir = "database"
@@ -839,7 +863,7 @@ def main() -> None:
                 [tool.ty.src]
                 exclude = [".worktrees", ".claude"]
                 """
-            )
+            ).replace("__UV_COOLDOWN__\n", _uv_cooldown_lines())
             pyproject.write_text(content, encoding="utf-8")
             if not had_src:
                 shutil.rmtree(root / "src", ignore_errors=True)  # uv init's package stub, unused (app lives in backend/)

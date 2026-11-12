@@ -24,7 +24,7 @@ This creates the full project structure deterministically — do not scaffold ma
 uv run python scripts/create.py <project-name>
 ```
 
-The script (works on Mac, Linux, Windows):
+The script (works on Mac, Linux, Windows). Before its first install it writes the 5-day dependency cooldown (`frontend/bunfig.toml` `minimumReleaseAge`, `[tool.uv] exclude-newer = "5 days"`; `@bmsuisse/ui`, `@bmsuisse/datagrid`, `bmsdna-devtools` and `pgdevkit` exempt), so even the initial installs are gated; see the `maintenance` skill, `bump`.
 
 1. **Frontend**: `bun create vite@latest frontend --template react-ts`, then installs TanStack Router + Query + Form + Table + Virtual + unified Devtools, Zustand, Zod, `@bmsuisse/ui` + `@bmsuisse/datagrid` (public npm packages, no registry/auth setup needed), TailwindCSS v4, shadcn CLI fallback deps (`class-variance-authority`, `clsx`, `tailwind-merge`, `lucide-react`, `tw-animate-css`), `@heroicons/react` (app-level icons — see [`bms-frontend-design`](../bms-frontend-design/)), `@hey-api/openapi-ts` (dev dep — the `@hey-api/client-fetch` runtime it configures is bundled into the generated output, not installed separately), `@biomejs/biome` (dev dep; replaces the Vite template's `oxlint` and `frontend/.oxlintrc.json`; `bun run lint` = `biome check`, `bun run format` = `biome check --write`)
 2. Wires `vite.config.ts` with `@tanstack/router-plugin` + `@/` path alias, sets up `src/main.tsx` with `QueryClientProvider` + `RouterProvider` (and a side-effect `import './lib/api'` to configure the generated client before any query runs), writes `src/routes/__root.tsx` and `src/routes/index.tsx`
