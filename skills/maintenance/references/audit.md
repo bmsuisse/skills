@@ -65,9 +65,10 @@ nothing committed to the manifest:
 uv lock --upgrade-package X --exclude-newer-package X=false && uv lock    # the plain lock drops the override again
 uv lock --check                                                            # and X is at the fixed version, no X under [options.exclude-newer-package]
 
-# bun >= 1.4.4: add "X@<fixed>" to minimumReleaseAgeExcludes in bunfig.toml (older bun: the bare name), then
+# bun >= 1.4.4: save bunfig.toml aside (cp bunfig.toml /tmp/bunfig.bak), add "X@<fixed>" to minimumReleaseAgeExcludes
+# (older bun: the bare name) keeping the existing entries, then
 bun update X
-git checkout bunfig.toml                                                   # back to the committed config
+cp /tmp/bunfig.bak bunfig.toml                                             # restore: the committed config is unchanged
 ```
 
 The PR lists every exception (advisory, severity, KEV, fixed version, release age) and what stayed informational.

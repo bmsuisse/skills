@@ -10,7 +10,7 @@ description: >
   Use for "maintenance", "regular tasks", "find dead code", "remove unused code", "bump
   dependencies", "update packages", "ruff/ty baseline", "bun audit", "uv audit", "vulnerable
   dependency", "CVE", "Dependabot alert", "check prod logs", "app insights", "nightly failed", "xfail",
-  "slow queries", "postgres performance", "azure cost spike", "bill went up", "flaky tests", "slow tests", "pointless tests", "security incident", "supply chain attack", "cooldown". Invoke as `/maintenance <mode>`. Repo-wide upkeep, not for
+  "slow queries", "postgres performance", "azure cost spike", "bill went up", "flaky tests", "slow tests", "pointless tests". Invoke as `/maintenance <mode>`. Repo-wide upkeep, not for
   reviewing a pending diff (deslop, security-review).
 ---
 
