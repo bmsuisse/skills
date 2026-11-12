@@ -60,6 +60,9 @@ when the tool genuinely isn't available (say so).
 **Always link PRs and issues.** Whenever you mention a PR or issue number anywhere (PR descriptions, comments,
 issue updates, commit messages, replies to the user), write it as a link, never a bare `#N`.
 
+Several agents on the same repo: don't give each its own PR to `dev`. Use `agent-coordinator` (consolidation branch,
+one PR, one CI run).
+
 Full test-suite runs, broad regression sweeps, etc. are CI's responsibility —
 don't run them locally unless asked.
 
