@@ -13,8 +13,14 @@ BUILD_API = "https://dev.azure.com/bmeurope/P/_apis/build/builds"
 PR_API = "https://dev.azure.com/bmeurope/P/_apis/git/repositories/R/pullrequests"
 
 
-def run_hook(command: str, tool_name: str = "Bash") -> dict | None:
-    payload = json.dumps({"tool_name": tool_name, "tool_input": {"command": command}})
+@pytest.fixture(autouse=True)
+def isolated_state(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The first-time marker lives in the temp dir: give every test its own."""
+    monkeypatch.setenv("TMPDIR", str(tmp_path))
+
+
+def run_hook(command: str, tool_name: str = "Bash", session_id: str = "s1") -> dict | None:
+    payload = json.dumps({"tool_name": tool_name, "tool_input": {"command": command}, "session_id": session_id})
     result = subprocess.run([sys.executable, str(HOOK)], input=payload, capture_output=True, text=True, timeout=10)
     assert result.returncode == 0, result.stderr
     return json.loads(result.stdout) if result.stdout.strip() else None
@@ -96,12 +102,35 @@ def test_allows_other_commands(command: str) -> None:
     assert run_hook(command) is None
 
 
+def test_standalone_ci_query_is_denied_only_the_first_time_per_session() -> None:
+    command = "az pipelines runs list --branch refs/pull/1/merge"
+    first = run_hook(command, session_id="a")
+    assert is_denied(first)
+    assert "once per session" in first["hookSpecificOutput"]["permissionDecisionReason"]
+    assert run_hook(command, session_id="a") is None
+    assert run_hook("gh run list", session_id="a") is None
+    assert is_denied(run_hook(command, session_id="b"))
+
+
+def test_polling_is_denied_every_time() -> None:
+    command = "while true; do az pipelines runs list; sleep 30; done"
+    for _ in range(2):
+        response = run_hook(command, session_id="a")
+        assert is_denied(response)
+        assert "once per session" not in response["hookSpecificOutput"]["permissionDecisionReason"]
+
+
+def test_standalone_ci_query_without_session_id_is_always_denied() -> None:
+    assert is_denied(run_hook("az pipelines runs list", session_id=""))
+    assert is_denied(run_hook("az pipelines runs list", session_id=""))
+
+
 def test_ignores_non_bash_tools() -> None:
     assert run_hook("az pipelines runs list", tool_name="Write") is None
 
 
 def test_hints_install_when_bdt_is_missing(tmp_path: Path) -> None:
     payload = json.dumps({"tool_name": "Bash", "tool_input": {"command": "az pipelines runs list"}})
-    env = {"PATH": str(tmp_path), "HOME": str(tmp_path)}
+    env = {"PATH": str(tmp_path), "HOME": str(tmp_path), "TMPDIR": str(tmp_path)}
     result = subprocess.run([sys.executable, str(HOOK)], input=payload, capture_output=True, text=True, timeout=10, env=env)
     assert "uv tool install bmsdna-devtools" in json.loads(result.stdout)["hookSpecificOutput"]["permissionDecisionReason"]

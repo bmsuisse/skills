@@ -11,7 +11,8 @@ Azure DevOps and GitHub. Agents still glue their own from `az repos pr show`, `a
 
   - a polling construct (`while`/`until`/`for` loop, `sleep`, `watch`) around a PR or CI status query;
   - a CI status query on its own: `az pipelines runs list|show`, `az pipelines build list|show`, `gh run list|view|watch`,
-    `gh pr checks`, or the Azure DevOps build API (`_apis/build/builds`, except logs/artifacts/attachments).
+    `gh pr checks`, or the Azure DevOps build API (`_apis/build/builds`, except logs/artifacts/attachments). This one is
+    denied only the first time in a session: the hint is the point, and a one-off query may be legitimate afterwards.
 
 A single `az repos pr show`/`list` or pull request REST call stays allowed (labels, threads and attachments have no
 `bdt` command). Only commands that run something are scanned: `echo`, `git commit -m` or a heredoc written to a file
@@ -24,6 +25,7 @@ import re
 import shlex
 import shutil
 import sys
+import tempfile
 
 ASSIGNMENT = re.compile(r"[A-Za-z_]\w*=")
 HEREDOC = re.compile(r"(?<!<)<<(?!<)-?\s*(['\"]?)([A-Za-z_]\w*)\1")
@@ -136,9 +138,26 @@ def scan(command: str) -> tuple[bool, bool, bool]:
     return polls, pr_query, ci_query
 
 
-def should_block(command: str) -> bool:
+def first_time_in_session(session_id: str) -> bool:
+    """True only for the first call with this session id; later calls find the marker and return False."""
+    marker_dir = os.path.join(tempfile.gettempdir(), f"ban-handwired-ci-watch-{os.getuid()}")
+    os.makedirs(marker_dir, mode=0o700, exist_ok=True)
+    try:
+        os.close(os.open(os.path.join(marker_dir, re.sub(r"[^\w.-]", "_", session_id)), os.O_CREAT | os.O_EXCL))
+    except FileExistsError:
+        return False
+    return True
+
+
+def should_block(command: str, session_id: str) -> str | None:
+    """Return "always" for polling around a query, "once" for a standalone CI query (first time in a session), else None."""
     polls, pr_query, ci_query = scan(command)
-    return ci_query or (polls and pr_query)
+    if polls and (pr_query or ci_query):
+        return "always"
+    # without a session id there is nothing to remember the hint by, so keep denying
+    if ci_query and (not session_id or first_time_in_session(session_id)):
+        return "once"
+    return None
 
 
 def bdt_hint() -> str:
@@ -158,7 +177,8 @@ def main() -> None:
     if data.get("tool_name") != "Bash":
         return
 
-    if not should_block(data.get("tool_input", {}).get("command", "")):
+    verdict = should_block(data.get("tool_input", {}).get("command", ""), str(data.get("session_id") or ""))
+    if verdict is None:
         return
 
     reason = (
@@ -168,7 +188,9 @@ def main() -> None:
         "failed), `bdt pr info [--pr-id N]` gives state, build state and closed issues, `bdt pr retry` re-runs only the "
         "failed jobs, `bdt pr watch-deploy --target-branch <branch>` follows the pipeline that runs after the merge. "
         "In the dev-workflow, dispatch the `bms-ci-watch` agent instead of polling yourself. If bdt cannot answer what "
-        "you need, say so to the user rather than scripting around it." + bdt_hint()
+        "you need, say so to the user rather than scripting around it."
+        + (" This is shown once per session: if you still need this one query after reading it, run it again." if verdict == "once" else "")
+        + bdt_hint()
     )
     print(
         json.dumps(
