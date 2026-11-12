@@ -19,6 +19,7 @@ A single `az repos pr show`/`list` or pull request REST call stays allowed (labe
 that merely mention these commands are not.
 """
 
+import hashlib
 import json
 import os
 import re
@@ -114,10 +115,19 @@ def scan(command: str) -> tuple[bool, bool, bool]:
     simple = split_simple_commands(command)
     # `B=https://.../_apis/build/builds; curl "$B/1/timeline"`: the URL is assigned apart from the call
     assigned = {t.split("=", 1)[0]: t for tokens in simple for t in tokens if ASSIGNMENT.match(t)}
+    depth = 0  # open `while`/`until`/`for` loops: a query inside one is polled, a query after its `done` is not
+
+    def add(found: tuple[bool, bool, bool]) -> None:
+        nonlocal polls, pr_query, ci_query
+        polls = polls or found[0] or (depth > 0 and (found[1] or found[2]))
+        pr_query, ci_query = pr_query or found[1], ci_query or found[2]
+
     for tokens in simple:
         while tokens and (ASSIGNMENT.match(tokens[0]) or tokens[0] in KEYWORDS or tokens[0] in LOOPS):
-            polls = polls or tokens[0] in LOOPS
+            depth += tokens[0] in LOOPS
             tokens = tokens[1:]
+        if tokens and tokens[0] == "done":
+            depth = max(depth - 1, 0)
         if tokens and tokens[0] in WRAPPERS:
             # wrapper options may take values (`env -u VAR`, `timeout 5`), so look for the command after it
             tokens = tokens[next((i for i, t in enumerate(tokens) if t in RUNNERS | {"sleep", "watch"}), len(tokens)) :]
@@ -128,13 +138,11 @@ def scan(command: str) -> tuple[bool, bool, bool]:
         for token in tokens:
             # `[ "$(az repos pr show ...)" = completed ]`
             for m in SUBSHELL.finditer(token):
-                found = scan(m.group(1) or m.group(2))
-                polls, pr_query, ci_query = polls or found[0], pr_query or found[1], ci_query or found[2]
+                add(scan(m.group(1) or m.group(2)))
         if tokens[0] in RUNNERS | {"watch"}:
             text = " ".join(tokens)
             used = " ".join(v for k, v in assigned.items() if re.search(rf"\${{?{k}\b", text))
-            found = scan_text(f"{used} {text}")
-            polls, pr_query, ci_query = polls or found[0], pr_query or found[1], ci_query or found[2]
+            add(scan_text(f"{used} {text}"))
     return polls, pr_query, ci_query
 
 
@@ -143,7 +151,7 @@ def first_time_in_session(session_id: str) -> bool:
     marker_dir = os.path.join(tempfile.gettempdir(), f"ban-handwired-ci-watch-{os.getuid()}")
     os.makedirs(marker_dir, mode=0o700, exist_ok=True)
     try:
-        os.close(os.open(os.path.join(marker_dir, re.sub(r"[^\w.-]", "_", session_id)), os.O_CREAT | os.O_EXCL))
+        os.close(os.open(os.path.join(marker_dir, hashlib.sha256(session_id.encode()).hexdigest()), os.O_CREAT | os.O_EXCL))
     except FileExistsError:
         return False
     return True

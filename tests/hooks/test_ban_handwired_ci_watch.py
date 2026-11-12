@@ -82,6 +82,9 @@ def test_denies_handwired_watch(command: str) -> None:
         "az pipelines run --branch x --id 3",
         "az repos pr update --id 1 --title x",
         "az repos pr create --title x",
+        # a query outside the loop is not polled
+        "for i in 1 2; do echo $i; done; gh pr view 123",
+        "for i in 1 2; do echo $i; done; echo ok",
         # an assignment the call does not use
         "B=_apis/build/builds; gh pr view 123",
         # polling something else
@@ -110,6 +113,18 @@ def test_standalone_ci_query_is_denied_only_the_first_time_per_session() -> None
     assert run_hook(command, session_id="a") is None
     assert run_hook("gh run list", session_id="a") is None
     assert is_denied(run_hook(command, session_id="b"))
+
+
+def test_query_after_a_loop_is_denied_as_a_standalone_query_once() -> None:
+    command = "for i in 1; do echo hi; done; gh run list"
+    assert is_denied(run_hook(command, session_id="a"))
+    assert run_hook(command, session_id="a") is None
+
+
+def test_session_ids_that_differ_only_in_unsafe_characters_do_not_share_a_marker() -> None:
+    command = "az pipelines runs list"
+    assert is_denied(run_hook(command, session_id="x/y"))
+    assert is_denied(run_hook(command, session_id="x_y"))
 
 
 def test_polling_is_denied_every_time() -> None:
