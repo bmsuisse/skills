@@ -16,6 +16,7 @@ PR_API = "https://dev.azure.com/bmeurope/P/_apis/git/repositories/R/pullrequests
 def run_hook(command: str, tool_name: str = "Bash") -> dict | None:
     payload = json.dumps({"tool_name": tool_name, "tool_input": {"command": command}})
     result = subprocess.run([sys.executable, str(HOOK)], input=payload, capture_output=True, text=True, timeout=10)
+    assert result.returncode == 0, result.stderr
     return json.loads(result.stdout) if result.stdout.strip() else None
 
 
@@ -50,6 +51,7 @@ def is_denied(response: dict | None) -> bool:
         "az pipelines runs \\\nlist",
         "env -i az pipelines runs list",
         "if true; then az pipelines runs show --id 1; fi",
+        "eval 'az pipelines runs list'",
     ],
 )
 def test_denies_handwired_watch(command: str) -> None:
@@ -74,6 +76,8 @@ def test_denies_handwired_watch(command: str) -> None:
         "az pipelines run --branch x --id 3",
         "az repos pr update --id 1 --title x",
         "az repos pr create --title x",
+        # an assignment the call does not use
+        "B=_apis/build/builds; gh pr view 123",
         # polling something else
         "while true; do curl -s localhost:8000/health && break; sleep 2; done",
         "sleep 30",

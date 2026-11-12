@@ -32,7 +32,7 @@ KEYWORDS = {"if", "then", "else", "elif", "do", "!", "{", "}"}
 LOOPS = {"while", "until", "for"}
 SHELL_PUNCT = set(";&|()\n")
 # commands that run what they are given, so what they are given is worth scanning
-RUNNERS = {"az", "curl", "wget", "http", "https", "gh", "python", "python3", "uv", "uvx", "bun", "bunx", "node", "bash", "sh", "zsh"}
+RUNNERS = {"eval", "az", "curl", "wget", "http", "https", "gh", "python", "python3", "uv", "uvx", "bun", "bunx", "node", "bash", "sh", "zsh"}
 INTERPRETERS = re.compile(r"\b(python3?|bash|sh|zsh|node|bun|uv)\b")
 
 # words may be separated by whitespace or by the quotes/commas of an argument list (`['az', 'repos', 'pr', 'show']`)
@@ -111,7 +111,7 @@ def scan(command: str) -> tuple[bool, bool, bool]:
         polls, pr_query, ci_query = polls or found[0], pr_query or found[1], ci_query or found[2]
     simple = split_simple_commands(command)
     # `B=https://.../_apis/build/builds; curl "$B/1/timeline"`: the URL is assigned apart from the call
-    assigned = " ".join(t for tokens in simple for t in tokens if ASSIGNMENT.match(t))
+    assigned = {t.split("=", 1)[0]: t for tokens in simple for t in tokens if ASSIGNMENT.match(t)}
     for tokens in simple:
         while tokens and (ASSIGNMENT.match(tokens[0]) or tokens[0] in KEYWORDS or tokens[0] in LOOPS):
             polls = polls or tokens[0] in LOOPS
@@ -129,7 +129,9 @@ def scan(command: str) -> tuple[bool, bool, bool]:
                 found = scan(m.group(1) or m.group(2))
                 polls, pr_query, ci_query = polls or found[0], pr_query or found[1], ci_query or found[2]
         if tokens[0] in RUNNERS | {"watch"}:
-            found = scan_text(f"{assigned} {' '.join(tokens)}")
+            text = " ".join(tokens)
+            used = " ".join(v for k, v in assigned.items() if re.search(rf"\${{?{k}\b", text))
+            found = scan_text(f"{used} {text}")
             polls, pr_query, ci_query = polls or found[0], pr_query or found[1], ci_query or found[2]
     return polls, pr_query, ci_query
 
