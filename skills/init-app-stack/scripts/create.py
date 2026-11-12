@@ -27,7 +27,7 @@ from pathlib import Path
 # neither bun nor uv takes a wildcard). The config is written BEFORE the first install/add so those are gated too.
 COOLDOWN_DAYS = 5
 INTERNAL_NPM_PACKAGES = ["@bmsuisse/ui", "@bmsuisse/datagrid"]
-INTERNAL_PYPI_PACKAGES = ["bmsdna-devtools"]
+INTERNAL_PYPI_PACKAGES = ["bmsdna-devtools", "pgdevkit"]
 
 
 def _uv_cooldown_lines() -> str:

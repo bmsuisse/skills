@@ -44,7 +44,7 @@ already in the lockfile stays, and `uvx` or global installs ignore it.
 # pyproject.toml (uv >= 0.9.17): a relative span, never an absolute date; uv.lock records it as `exclude-newer-span`
 [tool.uv]
 exclude-newer = "5 days"
-exclude-newer-package = { bmsdna-devtools = false }   # our own packages, listed by name (no wildcard)
+exclude-newer-package = { bmsdna-devtools = false, pgdevkit = false }   # our own packages, listed by name (no wildcard)
 ```
 
 ```toml
@@ -54,7 +54,7 @@ minimumReleaseAge = 432000                                   # seconds
 minimumReleaseAgeExcludes = ["@bmsuisse/ui", "@bmsuisse/datagrid"]   # every @bmsuisse/* package the project uses
 ```
 
-- **Our own packages are exempt**: `bmsdna-devtools` and the `@bmsuisse/*` packages (today `@bmsuisse/ui`, `@bmsuisse/datagrid`).
+- **Our own packages are exempt**: `bmsdna-devtools`, `pgdevkit` and the `@bmsuisse/*` packages (today `@bmsuisse/ui`, `@bmsuisse/datagrid`).
   Neither tool takes a wildcard (bun 1.4.2 and 1.4.4 ignore `@bmsuisse/*`), so list, by exact name, each one the project depends on. They are public on PyPI/npm:
   the exemption is only safe while BMS alone controls publishing those names.
 - A project without the config gets it as its own first commit, with a PR note. `uv lock --upgrade` / `bun update` then
