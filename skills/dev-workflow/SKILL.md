@@ -30,11 +30,8 @@ when the tool genuinely isn't available (say so).
    in it (persistent): each output line is a new comment from someone else. Reply with `bdt issue comment add`.
 3. **Implementation Plan**: If your task is more complex, you do an implementation plan first, and you also upload it to PR (using `bdt pr comment --message-file FILE`). You should usually start with Database, then Backend, then Frontend.
    Then run `/bms-plan-review` on the plan and address its findings before implementing.
-4. **Implement** the task. If you find or fix a bug along the way, create an
-   issue for it (`bdt issue create --title "..."` — prints just the issue
-   link; even if you close it right away) and reference that link from a
-   short comment at the fix site — don't inline lengthy explanations of the
-   bug or how it was resolved in source code comments.
+4. **Implement** the task. Keep comments at a fix site short — don't inline
+   lengthy explanations of a bug or how it was resolved in source code comments.
    Once a step is done, commit&push. Commit early, commit often.
    see `references/unrelated-bugs.md` if you spot a bug outside the current task's scope.
 5. **Review (mid-work).** Run `/bms-code-review --quick` (or, where it isn't available, `/code-review low`) on the diff after a meaningful chunk and address findings. Cheap, but it only catches the most obvious issues — it is not the pre-publish review.
