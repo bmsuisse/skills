@@ -6,26 +6,32 @@ description: >
   mode argument: `dead-code` (find/remove unused code), `bump` (update
   dependencies), `lint` (Python projects on the latest ruff/ty baseline of `init-app-stack`), `audit` (`bun audit` / `uv audit`
   vulnerability fixes), `prod` (Application Insights errors vs. open issues), `nightly` (failed nightly builds),
-  `xfail` (fix xfail tests), `db-perf` (slow queries / Postgres health), `cost` (Azure cost spikes, over/under-provisioning), `tests` (slow, flaky and pointless tests), or `all`.
+  `xfail` (fix xfail tests), `db-perf` (slow queries / Postgres health), `cost` (Azure cost spikes, over/under-provisioning), `tests` (slow, flaky and pointless tests), `incident` (a named security incident or supply chain attack), or `all`.
   Use for "maintenance", "regular tasks", "find dead code", "remove unused code", "bump
   dependencies", "update packages", "ruff/ty baseline", "bun audit", "uv audit", "vulnerable
   dependency", "CVE", "Dependabot alert", "check prod logs", "app insights", "nightly failed", "xfail",
-  "slow queries", "postgres performance", "azure cost spike", "bill went up", "flaky tests", "slow tests", "pointless tests". Invoke as `/maintenance <mode>`. Repo-wide upkeep, not for
+  "slow queries", "postgres performance", "azure cost spike", "bill went up", "flaky tests", "slow tests", "pointless tests", "security incident", "supply chain attack", "cooldown". Invoke as `/maintenance <mode>`. Repo-wide upkeep, not for
   reviewing a pending diff (deslop, security-review).
 ---
 
 # Maintenance
 
-`/maintenance dead-code | bump | lint | audit | prod | nightly | xfail | db-perf | cost | tests | all`. No argument: ask which.
+`/maintenance dead-code | bump | lint | audit | prod | nightly | xfail | db-perf | cost | tests | incident | all`. No argument: ask which.
 `all` runs them in the order `prod`, `nightly`, `xfail`, `tests`, `db-perf`, `cost` (what is broken now, so the upkeep
-runs against a known baseline), then `dead-code`, `bump`, `lint`, `audit` (remove first, so less is upgraded), one commit series per mode.
+runs against a known baseline), then `dead-code`, `bump`, `lint`, `audit` (remove first, so less is upgraded), one commit series per mode. `incident` is event-driven and never part of `all`.
 Work in a worktree and make a separate commit for each step of a mode (`/dev-workflow`). Use `uv` and `bun` only, never hand-edit lockfiles.
 
 ## Rule for bump, lint (version bumps) and audit: never lock
 
-No `==` pins, `<` caps, `overrides`/`resolutions`/`override-dependencies`/`constraint-dependencies`,
-`exclude-newer` or `--exact` to dodge an upgrade. Existing pins and caps stay (except one blocking an audit fix, see audit); mention stale-looking ones in the PR.
+Don't freeze a dependency at a version in `pyproject.toml` / `package.json` to dodge an upgrade: no `==` pins, `<` caps,
+`overrides`/`resolutions`/`override-dependencies`/`constraint-dependencies`, `--exact`, or an *absolute* `exclude-newer`
+date. Existing pins and caps stay (except one blocking an audit fix, see audit); mention stale-looking ones in the PR.
 Can't upgrade? Leave the package where it is, `bdt issue create --title "..."`, link it in the PR.
+
+The **dependency cooldown** is not a lock: a rolling, relative `exclude-newer = "5 days"` (uv) / `minimumReleaseAge` (bun)
+names no version and moves with time; it only defers *brand-new* releases (see [bump.md](references/bump.md#cooldown)).
+Keep it, never remove it to get an upgrade through; a security fix younger than the cooldown goes through the exception
+flow in [audit.md](references/audit.md#fixes-younger-than-the-cooldown).
 
 Deterministic checks belong in `bdt` (devtools); this skill keeps the rules and the judgment.
 
@@ -45,6 +51,7 @@ Read the reference for the requested mode, then follow it.
 | `db-perf` | [references/db-perf.md](references/db-perf.md) |
 | `cost` | [references/cost.md](references/cost.md) (uses the `azure-cost` skill) |
 | `tests` | [references/tests.md](references/tests.md) |
+| `incident` | [references/incident.md](references/incident.md) |
 
 `prod`, `nightly`, `db-perf`, `cost` and the flaky half of `tests` mostly *find* things: their output is issues, with no duplicates.
 Before creating one, `bdt issue search --state all --since-days 0 "<keywords>"`, and one issue per root cause. Only
