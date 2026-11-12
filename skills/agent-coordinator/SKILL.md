@@ -3,7 +3,7 @@ name: agent-coordinator
 plugin: dev-workflow
 description: >
   Coordinate several agents working in parallel on one repo: partition the work, give each agent a worktree off a
-  policy-free consolidation branch, then ship everything in one PR to dev (one review, one CI run). Use when asked to
+  policy-free consolidation branch, then ship everything in one PR to dev (agents review their own slice, one CI run). Use when asked to
   "run agents in parallel", "split this across agents", "fan out" a multi-part change, or when you are about to
   spawn several implementers on the same repo.
 ---
@@ -15,7 +15,7 @@ on `dev`, mostly for half-finished slices. Here the agents integrate into a **co
 build policy, and the coordinator opens **one PR** from it into `dev` once everything has landed.
 
 ```
-agent branch ─push─▶ consolidate/<topic> ──one PR (review, CI, labels)──▶ dev
+agent branch ─push─▶ consolidate/<topic> ──one PR (CI, labels)──▶ dev
 agent branch ─push─▶       (no policy)
 agent branch ─push─▶
 ```
@@ -23,8 +23,8 @@ agent branch ─push─▶
 Not for a single task (use `dev-workflow`) or for independent changes that should be reviewed, released or
 reverted separately (separate PRs on purpose).
 
-You are the coordinator: you plan, spawn, integrate and publish. You do not implement a slice yourself while
-agents run.
+You are the coordinator: you plan, spawn, integrate and publish. You do not implement or review a slice yourself
+while agents run: each agent reviews its own work before it lands.
 
 ## 1. Plan and partition
 
@@ -55,12 +55,18 @@ agents run.
 
 ## 3. Spawn the agents
 
-One agent per task, in parallel (a single message with several Agent calls). Brief each with
+One agent per task, in parallel (a single message with several Agent calls; spawn them as subagents so their
+reviews show up in the session for the PR-publish gate). Brief each with
 `references/agent-brief.md`: its worktree command, owned paths, what not to touch, how to integrate, and the
-report format. The agent runs `dev-workflow` steps 1, 4, 5 and 6 (worktree, implement, `--quick` review,
-targeted tests) and **skips** steps 2 and 7-12: no PR, no publish, no CI watch, no screenshots.
+report format. The agent runs `dev-workflow` steps 1, 4, 5, 6 and 8 (worktree, implement, mid-work `--quick` review,
+targeted tests, then `/bms-code-review --full` on its own diff, findings fixed) and **skips** steps 2, 7 and 9-12:
+no PR, no publish, no CI watch, no screenshots.
 
-Each agent integrates by itself as soon as its task is done and green locally:
+Each agent is responsible for testing its own slice: it adds or updates tests for what it changes and runs them
+(targeted, not the full suite) before integrating. The coordinator's checks in step 4 are an integration check, not a
+substitute.
+
+Each agent integrates by itself as soon as its task is done, reviewed and green locally:
 rebase onto `origin/consolidate/<topic>`, re-run its tests, push fast-forward only
 (`git push origin HEAD:consolidate/<topic>`), and retry from the fetch on rejection. A conflict inside its own
 paths it resolves; a conflict with another agent's paths it reports to you instead of guessing.
@@ -77,15 +83,15 @@ There is no CI on the consolidation branch, so you are the integration check:
 - Regenerate shared artifacts (step 1, point 2) once, after the last wave.
 - Start the next wave from the verified tip.
 
-## 5. One review, one publish
+## 5. One publish
 
 When all tasks have landed:
 
 1. `git merge origin/dev` into the consolidation branch (merge, not rebase, so agent pushes stay valid) and
    re-run the checks.
-2. Run `/bms-code-review --full` on the whole diff against `dev` (or a finished `codex` review, see
-   `dev-workflow` step 8) and fix the findings. This is the only review the PR-publish gate sees, so do not skip
-   it because each agent ran `--quick`.
+2. Do not re-review the diff yourself: every agent's report must say its `--full` review ran and its findings
+   are fixed. Send back any agent that skipped it. Cross-slice problems (a contract one agent changed and another
+   uses) are what step 4 is for; if one shows up, give it to the owning agent.
 3. UI changes: screenshots once, on the combined result (`dev-workflow` step 7).
 4. Replace the placeholder label with the **union** of the test areas touched (`test-<area>`, or keep `test-full`
    when any agent touched shared code). Then `bdt pr publish`.
