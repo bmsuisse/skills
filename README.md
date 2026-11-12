@@ -18,6 +18,7 @@
 <!-- SKILLS_TABLE_START -->
 | Skill | Description |
 |---|---|
+| [agent-coordinator](./skills/agent-coordinator/) | Coordinate several agents working in parallel on one repo: partition the work, give each agent a worktree off a polic… |
 | [aiochannel-python](./skills/aiochannel-python/) | Correct patterns for channel-based asyncio concurrency in Python using the aiochannel library. Use this skill wheneve… |
 | [autoresearch](./skills/autoresearch/) | Autonomous iterative optimization loop for Python, SQL, ML, and Spark/Databricks. Define a measurable goal; the skill… |
 | [azure-cost](./skills/azure-cost/) | Query, analyze, and reduce Azure spending via the Cost Management REST API and Azure CLI. Covers cost breakdowns by s… |
