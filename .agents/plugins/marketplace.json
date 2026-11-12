@@ -8,6 +8,7 @@
       "skills": [
         "./skills/autoresearch",
         "./skills/bms-frontend-design",
+        "./skills/bmsui",
         "./skills/coding-guidelines-python",
         "./skills/coding-guidelines-typescript",
         "./skills/code-comments",
