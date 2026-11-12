@@ -40,18 +40,23 @@ uv lock --upgrade-package <pkg> && uv sync
 A fix newer than the [cooldown](bump.md#cooldown) is blocked (`bun audit fix` "blocked", `uv lock` keeps the old
 version). It is exempted from the cooldown only through this flow, never by editing the config.
 
-`bdt deps advisories [--path DIR ...]` (OSV; PyPI and npm only, other sources are listed as unsupported) reports per
-locked package one status:
+Run `bun audit` / `uv audit` first as usual: they stay the per-repo check. Only for a fix the cooldown blocks, run
+`bdt deps advisories [--path DIR ...]`. It adds what the two audits don't give for both ecosystems (`uv audit` has no
+severity, `bun audit` queries npm's own database and gives no fixed version; neither reports `MAL-` advisories): the
+fixed version, severity, CISA KEV, and the fix's age against the cooldown. It reads OSV (PyPI and npm only; other
+sources are listed as unsupported) and reports per locked package one status:
 
-| Status | Meaning | Action |
-|---|---|---|
-| `exempt-eligible` | the locked version is affected, a compatible fixed version exists, and the advisory is high/critical or in CISA KEV | apply the exception below |
-| `informational` | affected, but lower severity | wait out the cooldown |
-| `needs-triage` | severity, affected range or fix is missing, conflicting or unparseable | a human decides, no exception |
-| `blocked` | no fixed version compatible with the declared constraints | issue, see the rules above |
+| Status | Action |
+|---|---|
+| `exempt-eligible` | high/critical or in CISA KEV, and the fix is younger than the cooldown: apply the exception below |
+| `bump` | the fix is already older than the cooldown: a normal bump takes it |
+| `informational` | affected, lower severity, fix inside the cooldown: wait it out |
+| `needs-triage` | severity, affected range or fix is missing, conflicting or unparseable: a human decides, no exception |
+| `no-fix` | no fixed version published: issue, see the rules above |
+| `blocked` | the fix is outside the range the project declares: widen that specifier (see above) |
+| `malicious` | a `MAL-` advisory covers the locked version: [incident.md](incident.md), not a bump |
 
-If OSV or the KEV feed can't be read, the command exits non-zero: an incomplete answer is never "clean". A `MAL-`
-advisory on a locked version is not a bump: use [incident.md](incident.md).
+If OSV or the KEV feed can't be read, the command exits 3: an incomplete answer is never "clean".
 
 Exception, **per invocation**, one package, the lowest compatible fixed version the report names (never "latest"),
 nothing committed to the manifest:
