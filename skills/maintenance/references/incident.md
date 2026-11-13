@@ -3,7 +3,7 @@
 `/maintenance incident <package | advisory url | news link>`: a named vulnerability or supply chain attack. Event-driven,
 not part of `all`. Rule for the bump: see "never lock" in [SKILL.md](../SKILL.md).
 
-1. **Identify**: ecosystem (PyPI/npm), package, affected range, fixed version, and whether it is a *vulnerable* release
+1. **Identify**: ecosystem (PyPI/npm/Maven), package, affected range, fixed version, and whether it is a *vulnerable* release
    (fix arrives as a new version) or a *malicious* one (`MAL-` advisory, hijacked account, typosquat: the new version is
    the problem). Sources: OSV (`https://api.osv.dev/v1/vulns/<id>`), GitHub advisories, vendor write-ups (Socket,
    Aikido, StepSecurity); treat a blog as a lead, confirm in OSV/GHSA before acting.
