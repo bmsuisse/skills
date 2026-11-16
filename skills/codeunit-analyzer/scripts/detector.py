@@ -94,9 +94,18 @@ class BottleneckDetector:
                     "severity": severity,
                     "score": score,
                     "procedure": proc_name,
-                    "explanation": f"Large transaction with COMMIT (weight: {transaction_weight}). Contains {insert_count} INSERTs, {modify_count} MODIFYs, {delete_count} DELETEs. Explicit COMMIT prevents proper rollback on errors.",
-                    "recommendation": "Split into smaller transactions or remove COMMIT to allow NAV to handle transaction boundaries automatically.",
-                    "example": "// Avoid explicit COMMIT\n// Break into smaller logical units\n// Let NAV manage transactions",
+                    "explanation": (
+                        f"Large transaction with COMMIT (weight: {transaction_weight}). Contains {insert_count} "
+                        f"INSERTs, {modify_count} MODIFYs, {delete_count} DELETEs. Explicit COMMIT prevents proper "
+                        "rollback on errors."
+                    ),
+                    "recommendation": (
+                        "Split into smaller transactions or remove COMMIT to allow NAV to handle transaction "
+                        "boundaries automatically."
+                    ),
+                    "example": (
+                        "// Avoid explicit COMMIT\n// Break into smaller logical units\n// Let NAV manage transactions"
+                    ),
                     "codeunit": {
                         "file": self.file_path.name,
                         "object_name": self.data.get("object_name"),
@@ -140,9 +149,19 @@ class BottleneckDetector:
                 "severity": severity,
                 "score": adjusted_score,
                 "procedure": proc_name,
-                "explanation": f"N+1 query pattern detected: {len(findset_in_loops)} FINDSET and {len(get_in_loops)} GET operations inside loops. Affected tables: {tables_str}. Impact multiplier: {max_impact_multiplier}x",
-                "recommendation": "Load all records at once using FINDSET with filters outside the loop, then process in memory. Use SETRANGE/SETFILTER before FINDSET to limit data.",
-                "example": "// Good:\nTable.SETRANGE(Field, Value);\nIF Table.FINDSET THEN REPEAT\n  // Process\nUNTIL Table.NEXT = 0;",
+                "explanation": (
+                    f"N+1 query pattern detected: {len(findset_in_loops)} FINDSET and {len(get_in_loops)} GET "
+                    f"operations inside loops. Affected tables: {tables_str}. Impact multiplier: "
+                    f"{max_impact_multiplier}x"
+                ),
+                "recommendation": (
+                    "Load all records at once using FINDSET with filters outside the loop, then process in memory. "
+                    "Use SETRANGE/SETFILTER before FINDSET to limit data."
+                ),
+                "example": (
+                    "// Good:\nTable.SETRANGE(Field, Value);\nIF Table.FINDSET THEN REPEAT\n  // Process\nUNTIL "
+                    "Table.NEXT = 0;"
+                ),
                 "affected_lines": affected_lines,
                 "codeunit": {
                     "file": self.file_path.name,
@@ -189,9 +208,18 @@ class BottleneckDetector:
                 "severity": severity,
                 "score": adjusted_score,
                 "procedure": proc_name,
-                "explanation": f"CALCFIELDS/CALCSUMS called {total_calc_ops} times inside loops. Affected tables: {tables_str}. Each call triggers expensive aggregate calculations. Impact multiplier: {max_impact_multiplier}x",
-                "recommendation": "Calculate flowfield values outside loops when possible, or use temporary tables to cache calculated values.",
-                "example": "// Calculate once outside loop\nTable.CALCFIELDS(FlowField);\nCachedValue := Table.FlowField;\n// Use CachedValue in loop",
+                "explanation": (
+                    f"CALCFIELDS/CALCSUMS called {total_calc_ops} times inside loops. Affected tables: {tables_str}. "
+                    f"Each call triggers expensive aggregate calculations. Impact multiplier: {max_impact_multiplier}x"
+                ),
+                "recommendation": (
+                    "Calculate flowfield values outside loops when possible, or use temporary tables to cache "
+                    "calculated values."
+                ),
+                "example": (
+                    "// Calculate once outside loop\nTable.CALCFIELDS(FlowField);\nCachedValue := "
+                    "Table.FlowField;\n// Use CachedValue in loop"
+                ),
                 "affected_lines": affected_lines,
                 "codeunit": {
                     "file": self.file_path.name,
@@ -211,9 +239,18 @@ class BottleneckDetector:
                     "severity": "medium",
                     "score": 50 + min(modify_count * 5, 30),
                     "procedure": proc_name,
-                    "explanation": f"Procedure contains {modify_count} MODIFY operations. Each MODIFY triggers validation and updates, which can be slow.",
-                    "recommendation": "Consider using MODIFYALL for bulk updates when changing the same field across multiple records.",
-                    "example": "// Instead of loop with MODIFY:\nTable.SETRANGE(Status, 'Pending');\nTable.MODIFYALL(Status, 'Processed');",
+                    "explanation": (
+                        f"Procedure contains {modify_count} MODIFY operations. Each MODIFY triggers validation and "
+                        "updates, which can be slow."
+                    ),
+                    "recommendation": (
+                        "Consider using MODIFYALL for bulk updates when changing the same field across multiple "
+                        "records."
+                    ),
+                    "example": (
+                        "// Instead of loop with MODIFY:\nTable.SETRANGE(Status, 'Pending');\nTable.MODIFYALL(Status, "
+                        "'Processed');"
+                    ),
                     "codeunit": {
                         "file": self.file_path.name,
                         "object_name": self.data.get("object_name"),
@@ -259,9 +296,19 @@ class BottleneckDetector:
                 "severity": severity,
                 "score": adjusted_score,
                 "procedure": proc_name,
-                "explanation": f"Found {len(unfiltered_reads)} unfiltered FINDSET/FIND operations. Affected tables: {tables_str}. Reading entire tables without filters causes full table scans. Impact multiplier: {max_impact_multiplier}x",
-                "recommendation": "Always use SETRANGE or SETFILTER before FINDSET/FIND to limit the dataset. Add appropriate indexes if needed.",
-                "example": "// Add filters:\nTable.SETRANGE(Date, StartDate, EndDate);\nTable.SETRANGE(Status, 'Active');\nIF Table.FINDSET THEN...",
+                "explanation": (
+                    f"Found {len(unfiltered_reads)} unfiltered FINDSET/FIND operations. Affected tables: {tables_str}. "
+                    "Reading entire tables without filters causes full table scans. Impact multiplier: "
+                    f"{max_impact_multiplier}x"
+                ),
+                "recommendation": (
+                    "Always use SETRANGE or SETFILTER before FINDSET/FIND to limit the dataset. Add appropriate "
+                    "indexes if needed."
+                ),
+                "example": (
+                    "// Add filters:\nTable.SETRANGE(Date, StartDate, EndDate);\nTable.SETRANGE(Status, "
+                    "'Active');\nIF Table.FINDSET THEN..."
+                ),
                 "affected_lines": affected_lines,
                 "codeunit": {
                     "file": self.file_path.name,
@@ -282,9 +329,18 @@ class BottleneckDetector:
                     "severity": "critical",
                     "score": 90,
                     "procedure": proc_name,
-                    "explanation": f"Nested loops (depth: {max_loop_depth}) with {len(reads_in_loops)} database operations. Causes exponential performance degradation (O(n²) or worse).",
-                    "recommendation": "Restructure to use single loop with optimized queries. Consider using temporary tables or in-memory processing.",
-                    "example": "// Avoid nested loops with DB ops\n// Load data into temp table first\n// Process in single loop",
+                    "explanation": (
+                        f"Nested loops (depth: {max_loop_depth}) with {len(reads_in_loops)} database operations. "
+                        "Causes exponential performance degradation (O(n²) or worse)."
+                    ),
+                    "recommendation": (
+                        "Restructure to use single loop with optimized queries. Consider using temporary tables or "
+                        "in-memory processing."
+                    ),
+                    "example": (
+                        "// Avoid nested loops with DB ops\n// Load data into temp table first\n// Process in single "
+                        "loop"
+                    ),
                     "codeunit": {
                         "file": self.file_path.name,
                         "object_name": self.data.get("object_name"),
@@ -307,9 +363,18 @@ class BottleneckDetector:
                     "severity": "medium",
                     "score": 50 + min(len(real_reads), 30),
                     "procedure": proc_name,
-                    "explanation": f"Procedure performs {len(real_reads)} database read operations. High read count indicates potential for optimization.",
-                    "recommendation": "Review if all reads are necessary. Consider caching frequently accessed data in temporary tables or using joins/filters more efficiently.",
-                    "example": "// Cache data in temp table\n// Reduce redundant lookups\n// Use SETLOADFIELDS to reduce data transfer",
+                    "explanation": (
+                        f"Procedure performs {len(real_reads)} database read operations. High read count indicates "
+                        "potential for optimization."
+                    ),
+                    "recommendation": (
+                        "Review if all reads are necessary. Consider caching frequently accessed data in temporary "
+                        "tables or using joins/filters more efficiently."
+                    ),
+                    "example": (
+                        "// Cache data in temp table\n// Reduce redundant lookups\n// Use SETLOADFIELDS to reduce "
+                        "data transfer"
+                    ),
                     "codeunit": {
                         "file": self.file_path.name,
                         "object_name": self.data.get("object_name"),
@@ -352,9 +417,18 @@ class BottleneckDetector:
                     "severity": "critical",
                     "score": 95,
                     "procedure": proc_name,
-                    "explanation": f"Multiple anti-patterns detected: {issues_str}. These issues compound each other, causing severe performance degradation.",
-                    "recommendation": "Address all identified anti-patterns. Start with the highest severity issues first. Consider complete refactoring of this procedure.",
-                    "example": "// Requires comprehensive refactoring\n// Prioritize:\n// 1. Remove nested loops\n// 2. Fix N+1 queries\n// 3. Add filters\n// 4. Remove COMMIT",
+                    "explanation": (
+                        f"Multiple anti-patterns detected: {issues_str}. These issues compound each other, causing "
+                        "severe performance degradation."
+                    ),
+                    "recommendation": (
+                        "Address all identified anti-patterns. Start with the highest severity issues first. Consider "
+                        "complete refactoring of this procedure."
+                    ),
+                    "example": (
+                        "// Requires comprehensive refactoring\n// Prioritize:\n// 1. Remove nested loops\n// 2. Fix "
+                        "N+1 queries\n// 3. Add filters\n// 4. Remove COMMIT"
+                    ),
                     "codeunit": {
                         "file": self.file_path.name,
                         "object_name": self.data.get("object_name"),
@@ -374,9 +448,18 @@ class BottleneckDetector:
                     "severity": severity,
                     "score": 65 + min(delete_count * 7, 35),
                     "procedure": proc_name,
-                    "explanation": f"Procedure contains {delete_count} DELETE operations. Individual DELETEs in loops are slow and trigger cascading deletes.",
-                    "recommendation": "Use DELETEALL for bulk deletions when possible. Ensure proper SETRANGE/SETFILTER before DELETEALL.",
-                    "example": "// Instead of loop with DELETE:\nTable.SETRANGE(Status, 'Obsolete');\nTable.DELETEALL(TRUE);  // TRUE = run triggers",
+                    "explanation": (
+                        f"Procedure contains {delete_count} DELETE operations. Individual DELETEs in loops are slow "
+                        "and trigger cascading deletes."
+                    ),
+                    "recommendation": (
+                        "Use DELETEALL for bulk deletions when possible. Ensure proper SETRANGE/SETFILTER before "
+                        "DELETEALL."
+                    ),
+                    "example": (
+                        "// Instead of loop with DELETE:\nTable.SETRANGE(Status, 'Obsolete');\nTable.DELETEALL(TRUE); "
+                        " // TRUE = run triggers"
+                    ),
                     "codeunit": {
                         "file": self.file_path.name,
                         "object_name": self.data.get("object_name"),
@@ -394,9 +477,17 @@ class BottleneckDetector:
                     "severity": "high",
                     "score": 130,
                     "procedure": proc_name,
-                    "explanation": "VALIDATE called inside a loop. Firing field triggers repeatedly inside loops multiplies database load exponentially.",
-                    "recommendation": "Assign values directly if triggers are not required, or cache logic outside the loop.",
-                    "example": "// Assign without firing trigger:\nTable.Field := Value;\n// Then call Table.MODIFY(TRUE); after the loop",
+                    "explanation": (
+                        "VALIDATE called inside a loop. Firing field triggers repeatedly inside loops multiplies "
+                        "database load exponentially."
+                    ),
+                    "recommendation": (
+                        "Assign values directly if triggers are not required, or cache logic outside the loop."
+                    ),
+                    "example": (
+                        "// Assign without firing trigger:\nTable.Field := Value;\n// Then call Table.MODIFY(TRUE); "
+                        "after the loop"
+                    ),
                     "codeunit": {
                         "file": self.file_path.name,
                         "object_name": self.data.get("object_name"),
@@ -417,7 +508,10 @@ class BottleneckDetector:
                     "score": 200,
                     "procedure": proc_name,
                     "explanation": "Calling MODIFY inside an OnModify trigger causes a recursive loop risk.",
-                    "recommendation": "Do not explicitly call MODIFY inside OnModify (or use a different table instance if necessary).",
+                    "recommendation": (
+                        "Do not explicitly call MODIFY inside OnModify (or use a different table instance if "
+                        "necessary)."
+                    ),
                     "example": "Remove the explicitly bare MODIFY call inside OnModify.",
                     "codeunit": {
                         "file": self.file_path.name,
@@ -438,8 +532,12 @@ class BottleneckDetector:
                     "severity": "medium",
                     "score": 70,
                     "procedure": proc_name,
-                    "explanation": f"Multiple GET calls ({len(gets)}) in a single OnValidate. Makes field entry feel sluggish.",
-                    "recommendation": "Cache frequently fetched records or simplify validation checks to minimize lookups.",
+                    "explanation": (
+                        f"Multiple GET calls ({len(gets)}) in a single OnValidate. Makes field entry feel sluggish."
+                    ),
+                    "recommendation": (
+                        "Cache frequently fetched records or simplify validation checks to minimize lookups."
+                    ),
                     "example": "Use Temp Tables, Cache Data Codeunits, or check if the record is already loaded.",
                     "codeunit": {
                         "file": self.file_path.name,
@@ -484,8 +582,12 @@ class BottleneckDetector:
                     "severity": "critical",
                     "score": 180,
                     "procedure": proc_name,
-                    "explanation": "COMMIT inside a page trigger breaks transaction rollback and can corrupt partial writes.",
-                    "recommendation": "Remove COMMIT from page triggers to ensure UI actions can be rolled back on error.",
+                    "explanation": (
+                        "COMMIT inside a page trigger breaks transaction rollback and can corrupt partial writes."
+                    ),
+                    "recommendation": (
+                        "Remove COMMIT from page triggers to ensure UI actions can be rolled back on error."
+                    ),
                     "example": "Remove the COMMIT statement.",
                     "codeunit": {
                         "file": self.file_path.name,
@@ -506,7 +608,10 @@ class BottleneckDetector:
                     "severity": "critical",
                     "score": 160,
                     "procedure": proc_name,
-                    "explanation": f"Multiple GETs ({len(gets)}) in hot trigger. Fires on every record scroll, causing 1 DB round-trip per GET.",
+                    "explanation": (
+                        f"Multiple GETs ({len(gets)}) in hot trigger. Fires on every record scroll, causing 1 DB "
+                        "round-trip per GET."
+                    ),
                     "recommendation": "Use FlowFields, cache records in memory, or use a temporary table.",
                     "example": "Cache records outside the scrolling logic.",
                     "codeunit": {
@@ -532,7 +637,9 @@ class BottleneckDetector:
                     "severity": "high",
                     "score": 110,
                     "procedure": proc_name,
-                    "explanation": f"Multiple CALCFIELDS ({len(calcs)}) in hot trigger (outside loops). Expensive per navigation.",
+                    "explanation": (
+                        f"Multiple CALCFIELDS ({len(calcs)}) in hot trigger (outside loops). Expensive per navigation."
+                    ),
                     "recommendation": "Calculate once before opening if possible, or only on drill-down.",
                     "example": "Change UI to calculate on demand.",
                     "codeunit": {
@@ -558,7 +665,9 @@ class BottleneckDetector:
                     "severity": "high",
                     "score": 120,
                     "procedure": proc_name,
-                    "explanation": "Database write during a navigation/hot trigger causes unexpected saves and performance issues.",
+                    "explanation": (
+                        "Database write during a navigation/hot trigger causes unexpected saves and performance issues."
+                    ),
                     "recommendation": "Move writes to OnAction or explicit save functions.",
                     "example": "Do not write during OnAfterGetRecord.",
                     "codeunit": {
@@ -606,8 +715,13 @@ class BottleneckDetector:
                     "severity": "medium",
                     "score": 70,
                     "procedure": proc_name,
-                    "explanation": f"Multiple DB Writes ({len(writes)}) in OnClosePage. OnClosePage is not transactional; failures are swallowed.",
-                    "recommendation": "Perform heavy writes on an explicit 'Save' or 'Post' action, not silently on close.",
+                    "explanation": (
+                        f"Multiple DB Writes ({len(writes)}) in OnClosePage. OnClosePage is not transactional; "
+                        "failures are swallowed."
+                    ),
+                    "recommendation": (
+                        "Perform heavy writes on an explicit 'Save' or 'Post' action, not silently on close."
+                    ),
                     "example": "Move writes out of OnClosePage.",
                     "codeunit": {
                         "file": self.file_path.name,
@@ -682,7 +796,9 @@ class BottleneckDetector:
                         f"Add {table_name}.SETLOADFIELDS(Field1, Field2, ...) immediately before the "
                         f"{read['operation']} call. Use only the fields actually needed in this procedure."
                     ),
-                    "example": f"{table_name}.SETLOADFIELDS(Field1, Field2);\nIF {table_name}.{read['operation']} THEN ...",
+                    "example": (
+                        f"{table_name}.SETLOADFIELDS(Field1, Field2);\nIF {table_name}.{read['operation']} THEN ..."
+                    ),
                     "codeunit": {
                         "file": self.file_path.name,
                         "object_name": self.data.get("object_name"),
@@ -701,7 +817,10 @@ class BottleneckDetector:
                         "severity": "high",
                         "score": 110,
                         "procedure": proc_name,
-                        "explanation": f"Unfiltered FINDSET detected for table {read.get('tableName', 'Unknown')}. This will pull the entire table into memory.",
+                        "explanation": (
+                            f"Unfiltered FINDSET detected for table {read.get('tableName', 'Unknown')}. This will pull "
+                            "the entire table into memory."
+                        ),
                         "recommendation": "Always apply SETRANGE or SETFILTER before FINDSET.",
                         "example": "Table.SETRANGE(Status, Status::Active);\\nIF Table.FINDSET THEN...",
                         "codeunit": {
@@ -728,8 +847,14 @@ class BottleneckDetector:
                     "severity": severity,
                     "score": score,
                     "procedure": proc_name,
-                    "explanation": "Event Subscribers run synchronously and globally. Found loops or heavy DB operations (FINDSET/CALCFIELDS) inside a subscriber, which drastically degrades entire ERP performance.",
-                    "recommendation": "Offload heavy processing to background tasks via JobQueue or process asynchronously. Event subscribers should exit as fast as possible.",
+                    "explanation": (
+                        "Event Subscribers run synchronously and globally. Found loops or heavy DB operations "
+                        "(FINDSET/CALCFIELDS) inside a subscriber, which drastically degrades entire ERP performance."
+                    ),
+                    "recommendation": (
+                        "Offload heavy processing to background tasks via JobQueue or process asynchronously. Event "
+                        "subscribers should exit as fast as possible."
+                    ),
                     "example": "IF JobQueue.ScheduleTask(...) THEN EXIT;",
                     "codeunit": {
                         "file": self.file_path.name,
@@ -780,7 +905,8 @@ class BottleneckDetector:
             score = int(50 * max_impact)
             severity = "medium"
             explanation = (
-                f"LOCKTABLE on {', '.join(locked_tables)}. Verify it is necessary — Classic NAV locks entire pages/extents. "
+                f"LOCKTABLE on {', '.join(locked_tables)}. Verify it is necessary — Classic NAV locks entire "
+                "pages/extents. "
                 "Consider locking as late and briefly as possible."
             )
 
@@ -929,7 +1055,8 @@ class BottleneckDetector:
                 ),
                 "recommendation": (
                     "Review the key definitions for each filtered table. "
-                    "Ensure your SETRANGE fields appear in the same order as a defined key (including the primary key prefix). "
+                    "Ensure your SETRANGE fields appear in the same order as a defined key (including the primary key "
+                    "prefix). "
                     "Add a secondary key if needed — but weigh the write overhead on high-volume tables."
                 ),
                 "example": (
@@ -994,9 +1121,18 @@ class BottleneckDetector:
                         "severity": severity,
                         "score": score,
                         "procedure": "(codeunit-level)",
-                        "explanation": f"Table '{table}' is read {reads}x but written only {writes}x in this codeunit. A missing index may cause repeated full-table scans.",
-                        "recommendation": f"Consider adding a covering index on the filter columns used when reading '{table}'. Verify with SQL Server DMVs (sys.dm_db_missing_index_details).",
-                        "example": f"// Check SETRANGE/SETFILTER fields before {table}.FINDSET\n// Add index: CREATE INDEX ON [{table}] (FilterCol1, FilterCol2)",
+                        "explanation": (
+                            f"Table '{table}' is read {reads}x but written only {writes}x in this codeunit. A missing "
+                            "index may cause repeated full-table scans."
+                        ),
+                        "recommendation": (
+                            f"Consider adding a covering index on the filter columns used when reading '{table}'. "
+                            "Verify with SQL Server DMVs (sys.dm_db_missing_index_details)."
+                        ),
+                        "example": (
+                            f"// Check SETRANGE/SETFILTER fields before {table}.FINDSET\n// Add index: CREATE INDEX ON "
+                            f"[{table}] (FilterCol1, FilterCol2)"
+                        ),
                         "codeunit": codeunit_ref,
                     }
                 )
@@ -1010,9 +1146,18 @@ class BottleneckDetector:
                         "severity": severity,
                         "score": score,
                         "procedure": "(codeunit-level)",
-                        "explanation": f"Table '{table}' is written {writes}x but read only {reads}x in this codeunit. Extra indexes slow down every INSERT/MODIFY/DELETE.",
-                        "recommendation": f"Review existing indexes on '{table}'. Drop or defer non-essential indexes if this codeunit is a high-frequency write path.",
-                        "example": f"// Audit indexes: SELECT * FROM sys.indexes WHERE object_id = OBJECT_ID('{table}')\n// DROP INDEX if rarely used for reads",
+                        "explanation": (
+                            f"Table '{table}' is written {writes}x but read only {reads}x in this codeunit. Extra "
+                            "indexes slow down every INSERT/MODIFY/DELETE."
+                        ),
+                        "recommendation": (
+                            f"Review existing indexes on '{table}'. Drop or defer non-essential indexes if this "
+                            "codeunit is a high-frequency write path."
+                        ),
+                        "example": (
+                            f"// Audit indexes: SELECT * FROM sys.indexes WHERE object_id = OBJECT_ID('{table}')\n// "
+                            "DROP INDEX if rarely used for reads"
+                        ),
                         "codeunit": codeunit_ref,
                     }
                 )

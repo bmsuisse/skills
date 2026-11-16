@@ -343,7 +343,8 @@ def cmd_scan(output_file: str | None = None, limit: int | None = 25) -> int:
         low_count = data["low"]
 
         print(
-            f"| {idx} | {name} | {file_display} | {obj_id} | {total_score} | {total_issues} | {critical_count} | {high_count} | {medium_count} | {low_count} |"
+            f"| {idx} | {name} | {file_display} | {obj_id} | {total_score} | {total_issues} | {critical_count} | "
+            f"{high_count} | {medium_count} | {low_count} |"
         )
 
     print(f"\n{'=' * 80}")

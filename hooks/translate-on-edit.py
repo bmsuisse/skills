@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""PostToolUse hook (Edit|Write|MultiEdit, Codex apply_patch): regenerate the locale JSON after `translations.toml` is edited.
+"""PostToolUse hook (Edit|Write|MultiEdit, Codex apply_patch): regenerate locale JSON after translations.toml edits.
 
 `translations.toml` is the source of truth; the generated `<lng>.json` files are git-ignored build
 artifacts. Runs `uv run bdt translate` in the nearest parent of the edited file whose `pyproject.toml`
@@ -45,7 +45,7 @@ def is_configured(directory: Path) -> bool:
 
 
 def owning_root(file: Path, project: Path) -> Path | None:
-    """Nearest directory from the file up that configures `bdt translate`, never past the project or its repo/worktree root."""
+    """Nearest directory from the file up that configures `bdt translate`, never past the project or its repo root."""
     if not file.is_relative_to(project):
         return None
     for d in file.parents:

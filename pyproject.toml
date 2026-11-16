@@ -84,6 +84,8 @@ ignore = ["ANN401"]  # `Any` is a warning via the ruff-warn-any prek hook, not a
 # The package directory is named after the skill (hyphenated), imposed by the skill layout.
 "skills/codeunit-analyzer/__init__.py" = ["N999"]
 "skills/codeunit-analyzer/scripts/__init__.py" = ["N999"]
+# The scaffold's embedded file templates must stay verbatim (their text is the generated output).
+"skills/init-app-stack/scripts/create.py" = ["E501"]
 
 [tool.ruff.lint.flake8-tidy-imports]
 ban-relative-imports = "all"

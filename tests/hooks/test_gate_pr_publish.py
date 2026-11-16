@@ -130,7 +130,10 @@ def codex_foreground(tmp_path: Path, command: str, **result: Unpack[BashResultKw
         f'cd /work/wt && codex exec -s read-only --skip-git-repo-check -o /tmp/out.md "{REVIEW_PROMPT}"',
         'codex exec "Do a code review of the staged changes"',
         'codex e "/code-review"',
-        'codex exec "Review the diff of the current branch against main (git diff main...HEAD) for correctness bugs only."',
+        (
+            'codex exec "Review the diff of the current branch against main (git diff main...HEAD) '
+            'for correctness bugs only."'
+        ),
         'timeout 590 codex exec -s read-only "Review this pull request for bugs"',
         'codex exec "Please review my latest commit"',
         "codex review",
@@ -168,7 +171,7 @@ def test_allows_codex_review_run_by_a_subagent(tmp_path: Path) -> None:
 
 
 def background_start(tmp_path: Path, out: Path | None, timestamp: str | None = "2020-01-01T00:00:00Z") -> Path:
-    """The shape of a real run: `nohup codex exec ... -o $S/x.md < /dev/null > log 2>&1 &`, tool_result only says "started"."""
+    """The shape of a real run: `nohup codex exec ... -o $S/x.md < /dev/null > log 2>&1 &`, result says "started"."""
     o = f"-o $S/{out.name} " if out else ""
     command = (
         f'S={tmp_path}; nohup codex exec -C "$PWD" -s read-only --skip-git-repo-check {o}"{REVIEW_PROMPT}" '

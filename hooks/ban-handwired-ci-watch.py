@@ -10,9 +10,10 @@ Azure DevOps and GitHub. Agents still glue their own from `az repos pr show`, `a
 `_apis/build/builds` and a `sleep` loop, which burns context on every poll and misreads the build state. Denied:
 
   - a polling construct (`while`/`until`/`for` loop, `sleep`, `watch`) around a PR or CI status query;
-  - a CI status query on its own: `az pipelines runs list|show`, `az pipelines build list|show`, `gh run list|view|watch`,
-    `gh pr checks`, or the Azure DevOps build API (`_apis/build/builds`, except logs/artifacts/attachments). This one is
-    denied only the first time in a session: the hint is the point, and a one-off query may be legitimate afterwards.
+  - a CI status query on its own: `az pipelines runs list|show`, `az pipelines build list|show`,
+    `gh run list|view|watch`, `gh pr checks`, or the Azure DevOps build API (`_apis/build/builds`, except
+    logs/artifacts/attachments). This one is denied only the first time in a session: the hint is the point, and a
+    one-off query may be legitimate afterwards.
 
 A single `az repos pr show`/`list` or pull request REST call stays allowed (labels, threads and attachments have no
 `bdt` command). Only commands that run something are scanned: `echo`, `git commit -m` or a heredoc written to a file
@@ -84,7 +85,10 @@ POLL_TEXT = re.compile(r"\bsleep\b|\bsetTimeout\b|\bwatch\s+-n\b", re.IGNORECASE
 
 
 def split_heredocs(command: str) -> tuple[str, list[str]]:
-    """Separate heredoc bodies from the command line; bodies fed to an interpreter (`python3 - <<EOF`) run, so they are returned."""
+    """Separate heredoc bodies from the command line.
+
+    Bodies fed to an interpreter (`python3 - <<EOF`) run, so they are returned.
+    """
     out: list[str] = []
     scripts: list[str] = []
     pending: list[tuple[str, bool, bool]] = []
@@ -178,7 +182,7 @@ def first_time_in_session(session_id: str) -> bool:
 
 
 def should_block(command: str, session_id: str) -> str | None:
-    """Return "always" for polling around a query, "once" for a standalone CI query (first time in a session), else None."""
+    """Return "always" for polling around a query, "once" for a standalone CI query (first in a session), else None."""
     polls, pr_query, ci_query = scan(command)
     if polls and (pr_query or ci_query):
         return "always"
@@ -210,10 +214,11 @@ def main() -> None:
         return
 
     reason = (
-        "Blocked: don't hand-wire PR/CI watch scripts (`az repos pr show`, `az pipelines runs`, `curl` on the build API, "
-        "`sleep` loops). Use bdt, it works for Azure DevOps and GitHub: `bdt pr status --wait --timeout 540` waits for "
-        "the checks and lists the failing ones (exit 4 = still running, re-run it; 3 = needs manual approval; 1 = a check "
-        "failed), `bdt pr info [--pr-id N]` gives state, build state and closed issues, `bdt pr retry` re-runs only the "
+        "Blocked: don't hand-wire PR/CI watch scripts (`az repos pr show`, `az pipelines runs`, `curl` on the build "
+        "API, `sleep` loops). Use bdt, it works for Azure DevOps and GitHub: `bdt pr status --wait --timeout 540` "
+        "waits for the checks and lists the failing ones (exit 4 = still running, re-run it; 3 = needs manual "
+        "approval; 1 = a check failed), `bdt pr info [--pr-id N]` gives state, build state and closed issues, "
+        "`bdt pr retry` re-runs only the "
         "failed jobs, `bdt pr watch-deploy --target-branch <branch>` follows the pipeline that runs after the merge. "
         "In the dev-workflow, dispatch the `bms-ci-watch` agent instead of polling yourself. If bdt cannot answer what "
         "you need, say so to the user rather than scripting around it."

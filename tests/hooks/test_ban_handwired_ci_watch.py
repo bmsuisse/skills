@@ -44,7 +44,10 @@ def is_denied(response: dict | None) -> bool:
         "az repos pr show --id 1 && sleep 30 && az repos pr show --id 1",
         "watch -n 30 az repos pr show --id 1",
         "timeout 600 bash -c 'while true; do az repos pr show --id 1; sleep 5; done'",
-        "python3 - <<'EOF'\nimport subprocess, time\nwhile True:\n    subprocess.run(['az', 'repos', 'pr', 'show', '--id', '1'])\n    time.sleep(30)\nEOF",
+        (
+            "python3 - <<'EOF'\nimport subprocess, time\nwhile True:\n"
+            "    subprocess.run(['az', 'repos', 'pr', 'show', '--id', '1'])\n    time.sleep(30)\nEOF"
+        ),
         # CI status queries, polled or not
         "az pipelines runs list --branch refs/pull/1/merge",
         "az pipelines runs show --id 12 --query result",
@@ -53,7 +56,10 @@ def is_denied(response: dict | None) -> bool:
         "gh run list --branch x",
         "gh pr checks 4",
         f'curl -s -u ":$PAT" "{BUILD_API}/123/timeline?api-version=7.1"',
-        f'curl -s "{BUILD_API}?branchName=refs/pull/1/merge" | python3 -c "import sys,json; print(json.load(sys.stdin))"',
+        (
+            f'curl -s "{BUILD_API}?branchName=refs/pull/1/merge" '
+            '| python3 -c "import sys,json; print(json.load(sys.stdin))"'
+        ),
         f"source ~/.devops.env; B='{BUILD_API}'; for id in 1 2; do curl -s \"$B/$id/timeline\"; done",
         "cd repo && AZURE_DEVOPS_EXT_PAT=x az pipelines runs list",
         "az pipelines runs \\\nlist",

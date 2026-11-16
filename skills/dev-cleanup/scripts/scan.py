@@ -56,8 +56,14 @@ def categories() -> list[dict]:
             "id": "podman",
             "label": "Podman VM disk file; real content inside: " + podman_real_gb(),
             "path": HOME / ".local/share/containers",
-            "clean": "podman machine ssh -- sudo fstrim -av  (shrinks the VM disk file), then podman system prune -a -f; --volumes only if user agrees",
-            "risk": "medium: prune -a removes every image not used by a running container; folder size is the VM disk, real gain is often much smaller",
+            "clean": (
+                "podman machine ssh -- sudo fstrim -av  (shrinks the VM disk file), "
+                "then podman system prune -a -f; --volumes only if user agrees"
+            ),
+            "risk": (
+                "medium: prune -a removes every image not used by a running container; "
+                "folder size is the VM disk, real gain is often much smaller"
+            ),
         },
         {
             "id": "docker",

@@ -64,8 +64,8 @@ earlier in the same command (`P="...code review..."; codex exec "$P"`); unresolv
 Codex sessions (transcript = a Codex rollout, whose first row is `session_meta`) use the same publish-command check but
 their own evidence, since Codex has no Skill tool and logs shell commands as `CommandExecution` events. A review
 counts when the rollout shows an explicitly invoked `$bms-code-review`/`$code-review` skill (a `<skill>` message), a
-shell command that read that skill's SKILL.md (cat, sed, ...), a finished Codex `/review` (`exited_review_mode`), or a `codex exec`/
-`codex review` code review run from the session's shell that exited 0 (same rules as above).
+shell command that read that skill's SKILL.md (cat, sed, ...), a finished Codex `/review` (`exited_review_mode`), or a
+`codex exec`/`codex review` code review run from the session's shell that exited 0 (same rules as above).
 
 Promotion PRs are exempt: a PR whose source AND target are both in {dev, test, main} only moves code that was
 already reviewed when it entered `dev` (see the branching-strategy skill, rule 4), so no review is required. The
@@ -74,7 +74,8 @@ current git branch (the source of `create`; `bdt pr create` targets `dev` by def
 `az repos pr show|list` lookup of the PR being published/merged. When the branches cannot be determined the gate
 applies as usual, which also holds when the line has more than one publishing command, a `cd`/`pushd`, a
 --repo/--organization/--project style flag, or a `gh pr merge` whose PR selector can't be told apart from a flag
-value. Only the publishing command's own flags are read. Fix branches into `main` (`fix/*`, `hotfix/*`) are not promotions and still need a review.
+value. Only the publishing command's own flags are read. Fix branches into `main` (`fix/*`, `hotfix/*`) are not
+promotions and still need a review.
 
 Matching is done on shell-tokenized words (via shlex), not a raw substring/regex
 search over the whole command string. This means a phrase like "bdt pr publish"
@@ -757,8 +758,9 @@ def main() -> None:
                 "Blocked before it runs: this codex code review would not count for the PR-publish gate, because the "
                 "Bash result would not show whether codex succeeded (a pipe such as `| tail`/`| tee` without "
                 "`set -o pipefail`, a trailing `; echo`, an `|| true`, or a `&` run without `-o <file>`). Re-run it "
-                "with codex as the last command of the line (`codex exec ... < /dev/null > /tmp/review.log 2>&1`, then read "
-                "the log; always close stdin with `< /dev/null`, or codex can hang on it), or `set -o pipefail;` before the pipe, or in the background with `&` and `-o <file>`."
+                "with codex as the last command of the line (`codex exec ... < /dev/null > /tmp/review.log 2>&1`, then "
+                "read the log; always close stdin with `< /dev/null`, or codex can hang on it), or `set -o pipefail;` "
+                "before the pipe, or in the background with `&` and `-o <file>`."
             )
         return
 

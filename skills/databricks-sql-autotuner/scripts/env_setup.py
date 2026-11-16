@@ -69,7 +69,8 @@ def verify_connection(venv: Path, profile: str, cluster_id: str) -> None:
     print(f"[verify] Testing connection (profile={profile}, cluster={cluster_id})...")
     code = (
         "from databricks.connect import DatabricksSession\n"
-        f"spark = DatabricksSession.builder.profile({json.dumps(profile)}).clusterId({json.dumps(cluster_id)}).getOrCreate()\n"
+        f"spark = DatabricksSession.builder.profile({json.dumps(profile)})"
+        f".clusterId({json.dumps(cluster_id)}).getOrCreate()\n"
         "result = spark.sql('SELECT 1 AS ok').collect()\n"
         "assert result[0]['ok'] == 1, 'Unexpected result from SELECT 1'\n"
         "print(f'[verify] OK \u2014 Spark {spark.version}')\n"

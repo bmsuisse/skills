@@ -137,7 +137,8 @@ def main() -> None:
     )
     for r in rows:
         print(
-            f"{r['size_mb'] / 1024:6.2f} GB  {Path(r['repo']).name}:{r['branch']:<35} {r['verdict']}\n          {r['path']}"
+            f"{r['size_mb'] / 1024:6.2f} GB  {Path(r['repo']).name}:{r['branch']:<35} {r['verdict']}\n"
+            f"          {r['path']}"
         )
 
 

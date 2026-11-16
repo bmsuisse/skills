@@ -77,7 +77,8 @@ def main() -> int:
         return 0  # ponytail: a broken or slow linter must not block editing
     if problems:
         print(
-            f"Lint errors remain in {file.name}. Fix them (targeted `# noqa: CODE  # reason` only if justified):\n{problems}",
+            f"Lint errors remain in {file.name}. Fix them (targeted `# noqa: CODE  # reason` only if justified):\n"
+            f"{problems}",
             file=sys.stderr,
         )
         return 2
