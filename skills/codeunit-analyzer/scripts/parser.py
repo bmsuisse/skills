@@ -135,7 +135,7 @@ class CodeunitParser:
 
             self._extract_navrecord_handles(content)
 
-            for var_name in self.global_variables.keys():
+            for var_name in self.global_variables:
                 if var_name.startswith("Temp") or var_name.startswith("temp"):
                     self.temp_table_vars.add(var_name)
 
@@ -227,10 +227,9 @@ class CodeunitParser:
                     processed.append(current_statement)
                 current_statement = stripped
 
-            if stripped.rstrip().endswith(";"):
-                if current_statement:
-                    processed.append(current_statement)
-                    current_statement = ""
+            if stripped.rstrip().endswith(";") and current_statement:
+                processed.append(current_statement)
+                current_statement = ""
 
         if current_statement:
             processed.append(current_statement)
@@ -438,9 +437,10 @@ class CodeunitParser:
                 if start_pos > 0 and line[start_pos - 1] == ".":
                     continue
 
-                if method_name not in proc_data["calls"]:
-                    if not any(call.endswith(f".{method_name}") for call in proc_data["calls"]):
-                        proc_data["calls"].append(method_name)
+                if method_name not in proc_data["calls"] and not any(
+                    call.endswith(f".{method_name}") for call in proc_data["calls"]
+                ):
+                    proc_data["calls"].append(method_name)
 
     def _detect_operations(self, line: str, proc_data: dict):
         upper_line = line.upper()

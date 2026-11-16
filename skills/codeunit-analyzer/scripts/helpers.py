@@ -15,15 +15,13 @@ def run_in_processpool(func, iterable, max_workers=None, desc=None):
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
         futures = {executor.submit(func, *args): args for args in items}
 
-        completed = 0
-        for future in as_completed(futures):
+        for completed, future in enumerate(as_completed(futures), start=1):
             try:
                 result = future.result()
                 results.append(result)
             except Exception as e:
                 print(f"Error processing {futures[future]}: {e}", file=sys.stderr)
 
-            completed += 1
             pct = completed * 100 // total
             bar = "#" * (pct // 5) + "-" * (20 - pct // 5)
             print(f"\r  {label}[{bar}] {completed}/{total} ({pct}%)", end="", file=sys.stderr, flush=True)

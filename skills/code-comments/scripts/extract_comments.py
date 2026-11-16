@@ -50,19 +50,23 @@ def extract_python(source, lines):
                     "text": tok.string.lstrip("#").strip(),
                 }
             )
-        elif tok.type == tokenize.STRING and prev_significant and prev_significant[1] in (":",):
+        elif (
+            tok.type == tokenize.STRING
+            and prev_significant
+            and prev_significant[1] == ":"
+            and tok.string.startswith(('"""', "'''"))
+        ):
             # crude docstring heuristic: a bare string statement right after a
             # `def ...:` / `class ...:` line, on its own line
-            if tok.string.startswith(('"""', "'''")):
-                line_text = lines[tok.start[0] - 1].strip()
-                if line_text.startswith(('"""', "'''", 'r"""', "r'''")):
-                    results.append(
-                        {
-                            "line": tok.start[0],
-                            "kind": "docstring",
-                            "text": tok.string.strip("\"'").strip(),
-                        }
-                    )
+            line_text = lines[tok.start[0] - 1].strip()
+            if line_text.startswith(('"""', "'''", 'r"""', "r'''")):
+                results.append(
+                    {
+                        "line": tok.start[0],
+                        "kind": "docstring",
+                        "text": tok.string.strip("\"'").strip(),
+                    }
+                )
         if tok.type not in (
             tokenize.NL,
             tokenize.NEWLINE,

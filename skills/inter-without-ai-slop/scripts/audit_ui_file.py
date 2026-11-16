@@ -11,6 +11,7 @@ Usage: audit_ui_file.py <file> [<file> ...]
 import colorsys
 import re
 import sys
+from pathlib import Path
 
 # Known AI-default accents (see SKILL.md #3). Flag anything within this hue
 # distance (out of 360) and reasonably close in saturation/lightness.
@@ -89,7 +90,7 @@ def check_tabular_figures(text):
 
 
 def audit(path):
-    text = open(path, encoding="utf-8").read()
+    text = Path(path).read_text(encoding="utf-8")
     print(f"\n=== {path} ===")
 
     accent = check_accent_tells(text)

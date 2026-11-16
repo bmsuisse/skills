@@ -141,10 +141,7 @@ def is_pr_publish_command(tokens: list[str]) -> bool:
         return True
     if has_subsequence(tokens, ["gh", "pr", "ready"]) and "--undo" not in tokens:
         return True
-    if has_subsequence(tokens, ["gh", "pr", "merge"]):
-        return True
-
-    return False
+    return has_subsequence(tokens, ["gh", "pr", "merge"])
 
 
 # --- promotion PRs (dev -> test -> main) need no review ----------------------------------------------------

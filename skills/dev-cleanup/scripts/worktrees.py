@@ -7,6 +7,7 @@ Remove a `safe` row with:  git -C <main_repo> worktree remove <path>   (branch s
 """
 
 import argparse
+import contextlib
 import json
 import os
 import subprocess
@@ -32,10 +33,8 @@ def main_repos(root: Path, depth: int) -> list[Path]:
             found.append(d)
             continue
         if n < depth:
-            try:
+            with contextlib.suppress(PermissionError):
                 stack += [(c, n + 1) for c in d.iterdir() if c.is_dir() and not c.name.startswith(".")]
-            except PermissionError:
-                pass
     return found
 
 

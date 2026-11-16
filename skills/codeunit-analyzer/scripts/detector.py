@@ -127,10 +127,7 @@ class BottleneckDetector:
         base_severity = "critical" if (len(findset_in_loops) >= 3 or len(get_in_loops) >= 10) else "high"
         adjusted_score = int((85 + min(len(findset_in_loops) * 5, 15)) * max_impact_multiplier)
 
-        if max_impact_multiplier >= 1.5 and base_severity == "high":
-            severity = "critical"
-        else:
-            severity = base_severity
+        severity = "critical" if max_impact_multiplier >= 1.5 and base_severity == "high" else base_severity
 
         affected_lines = [r["line"] for r in (findset_in_loops + get_in_loops)[:5]]
         tables_str = ", ".join(table_size_info) if table_size_info else "Unknown tables"
@@ -179,10 +176,7 @@ class BottleneckDetector:
         base_severity = "critical" if total_calc_ops >= 5 else "high"
         adjusted_score = int((80 + min(total_calc_ops * 5, 20)) * max_impact_multiplier)
 
-        if max_impact_multiplier >= 1.5:
-            severity = "critical"
-        else:
-            severity = base_severity
+        severity = "critical" if max_impact_multiplier >= 1.5 else base_severity
 
         affected_lines = [r["line"] for r in (calcfields_in_loops + calcsums_in_loops)[:5]]
         tables_str = ", ".join(table_size_info) if table_size_info else "Unknown tables"
@@ -252,10 +246,7 @@ class BottleneckDetector:
 
         adjusted_score = int((70 + min(len(unfiltered_reads) * 5, 30)) * max_impact_multiplier)
 
-        if max_impact_multiplier >= 2.0:
-            severity = "critical"
-        else:
-            severity = "high"
+        severity = "critical" if max_impact_multiplier >= 2.0 else "high"
 
         affected_lines = [r["line"] for r in unfiltered_reads[:5]]
         tables_str = ", ".join(table_size_details) if table_size_details else "Unknown tables"
