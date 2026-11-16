@@ -14,6 +14,10 @@ description: >
 For anything bigger than a trivial fix, follow this sequence. Skip steps only
 when the tool genuinely isn't available (say so).
 
+Under Codex there are no agent files: wherever a step dispatches an agent (`bms-test-writer`, `bms-design-review`,
+`bms-ci-watch`, the review agents), follow its card in `references/codex-agents/<name>.md` (a `spawn_agent` call with the
+stated model and effort).
+
 1. **Worktree.** Create one for the task (`EnterWorktree`, or `git worktree add`
    if unavailable). If the repo has a `justfile` with a `worktree` recipe, use
    `just worktree` to set it up instead of doing it by hand.

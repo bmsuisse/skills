@@ -13,17 +13,20 @@
  *    exist in Claude Code (EnterWorktree) are dropped, and the file-edit tools (Edit, Write, ...) also match Codex's
  *    `apply_patch`. The hook scripts themselves handle both agents. Codex runs plugin hooks only after the user has
  *    reviewed them (`/hooks`), or with `--dangerously-bypass-hook-trust`.
- *  - `agents` are dropped: Codex subagents are not Claude Code agent files.
+ *  - `agents` are dropped from the manifest: Codex cannot select agent files. Each agents/*.md instead becomes a
+ *    dispatch card under skills/dev-workflow/references/codex-agents/ (see codex-agents.mjs), shipped with the skill.
  *  - `{ source: "github", repo }` becomes `{ source: "url", url }`, the only form Codex resolves for GitHub repos.
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { dirname, join, relative, resolve } from "path";
 import { fileURLToPath } from "url";
+import { buildCodexAgentCards } from "./codex-agents.mjs";
 
 const root = resolve(fileURLToPath(new URL(".", import.meta.url)), "..");
 const claudePath = join(root, ".claude-plugin", "marketplace.json");
 const codexPath = join(root, ".agents", "plugins", "marketplace.json");
+const cardsDir = join(root, "skills", "dev-workflow", "references", "codex-agents");
 
 function toCodexSource(source) {
   if (source?.source === "github") return { source: "url", url: `https://github.com/${source.repo}.git` };
@@ -72,19 +75,37 @@ function buildCodexMarketplace(claude) {
 }
 
 const expected = `${JSON.stringify(buildCodexMarketplace(JSON.parse(readFileSync(claudePath, "utf8"))), null, 2)}\n`;
+const expectedCards = buildCodexAgentCards(join(root, "agents"));
 const show = (path) => relative(root, path);
 
+/** Paths (relative to the repo) of generated files that are missing, stale or no longer wanted. */
+function outOfSync() {
+  const bad = [];
+  if (!existsSync(codexPath) || readFileSync(codexPath, "utf8") !== expected) bad.push(show(codexPath));
+  for (const [name, content] of Object.entries(expectedCards)) {
+    const path = join(cardsDir, name);
+    if (!existsSync(path) || readFileSync(path, "utf8") !== content) bad.push(show(path));
+  }
+  for (const name of existsSync(cardsDir) ? readdirSync(cardsDir) : []) {
+    if (!(name in expectedCards)) bad.push(show(join(cardsDir, name)));
+  }
+  return bad;
+}
+
 if (process.argv.includes("--check")) {
-  const actual = existsSync(codexPath) ? readFileSync(codexPath, "utf8") : null;
-  if (actual === expected) {
-    console.log(`✅  ${show(codexPath)} is in sync with ${show(claudePath)}`);
+  const bad = outOfSync();
+  if (bad.length === 0) {
+    console.log(`✅  ${show(codexPath)} and ${show(cardsDir)} are in sync with ${show(claudePath)} and agents/`);
   } else {
-    console.error(`❌  ${show(codexPath)} is ${actual === null ? "missing" : `out of sync with ${show(claudePath)}`}.`);
+    console.error(`❌  Out of sync with ${show(claudePath)} / agents/:\n${bad.map((path) => `    ${path}`).join("\n")}`);
     console.error("    Run `node scripts/sync-codex.mjs` and commit the result.");
     process.exit(1);
   }
 } else {
   mkdirSync(dirname(codexPath), { recursive: true });
   writeFileSync(codexPath, expected);
-  console.log(`Wrote ${show(codexPath)}`);
+  rmSync(cardsDir, { recursive: true, force: true });
+  mkdirSync(cardsDir, { recursive: true });
+  for (const [name, content] of Object.entries(expectedCards)) writeFileSync(join(cardsDir, name), content);
+  console.log(`Wrote ${show(codexPath)} and ${Object.keys(expectedCards).length} cards in ${show(cardsDir)}`);
 }

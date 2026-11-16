@@ -97,7 +97,7 @@ codex plugin add bms@bmsuisse-skills
 codex plugin list                      # see all plugins and what is installed
 ```
 
-Skills carry over from every plugin. The `dev-workflow` hooks work in Codex too: the PR-publish gate and the worktree-only edit check (applied to `apply_patch`). Not carried over: the `PreToolUse` command remapping, the review agents (Codex subagents are a different format), the `EnterWorktree` auto-approve (Codex has no such tool), and the `bdt-status` mod.
+Skills carry over from every plugin. The `dev-workflow` hooks work in Codex too: the PR-publish gate and the worktree-only edit check (applied to `apply_patch`). Not carried over: the `PreToolUse` command remapping, the agent files (Codex can't select them; `scripts/sync-codex.mjs` turns each into a dispatch card under `skills/dev-workflow/references/codex-agents/` that the main agent follows with `spawn_agent`, with the Claude model mapped to a Codex model), the `EnterWorktree` auto-approve (Codex has no such tool), and the `bdt-status` mod.
 
 Codex only runs plugin hooks you have reviewed. After installing `dev-workflow`, start `codex` once and trust its hooks in `/hooks`. Without that, they are silently skipped (`codex --dangerously-bypass-hook-trust` skips the review for one run).
 
