@@ -33,7 +33,7 @@ Read [`references/ponytail.md`](references/ponytail.md) first; use it as the yar
    - Tests: `testing-strategy` — HTTP-level first, then Playwright e2e for user flows. The plan must also hold
      **acceptance criteria** (observable behaviours, relevant error cases) and a **contract** (routes with
      request/response shapes and status codes, signatures, `data-testid`s for every UI element a flow touches, auth
-     expectations): `bms-test-writer` (dev-workflow step 3b) writes the tests from nothing else. Missing = Blocking.
+     expectations): `bms-test-writer` (dev-workflow step 3b) writes the tests from nothing else. Missing = Blocking, unless the plan says why step 3b is skipped.
 3. Look for: missing requirements from the issue, wrong or missing layers,
    reinventing something that already exists (in the repo or bmsuisse
    packages), unhandled edge cases, security/auth gaps, perf risks, missing

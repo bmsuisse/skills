@@ -72,7 +72,7 @@ behavior at all.
 ## Who writes the committed tests
 
 In `dev-workflow` the committed HTTP/e2e tests come first, from the plan's acceptance criteria and contract, written by
-a separate agent that doesn't see the implementation (step 3b). Keep them to one test per criterion and don't edit
+a separate agent that doesn't see the implementation (step 3b). Keep them to one test per criterion and tier (trivial criteria stay untested, see below) and don't edit
 them to get green; see `dev-workflow/references/blind-tests.md`.
 
 ## Not everything requires tests

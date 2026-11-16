@@ -12,11 +12,11 @@ Run it for any task that has an implementation plan (step 3). Skip it, and say s
 - the change is a refactor and existing tests already pin the behaviour, or
 - there is no new behaviour worth a committed test (see `testing-strategy`, "Not everything requires tests").
 
-A bug fix from an issue is not a skip: the writer gets the issue and writes the failing reproduction.
+A bug fix from an issue is not a skip even without a full plan: give the writer the issue plus a minimal contract (the failing behaviour and the expected one) and it writes the failing reproduction.
 
 ## What the plan must contain
 
-The writer has nothing else to go on, so `bms-plan-review` blocks a plan without:
+The writer has nothing else to go on, so `bms-plan-review` blocks a plan without the following (unless the plan states why step 3b is skipped):
 
 - **Acceptance criteria**: observable behaviours, including the error cases that matter.
 - **Contract**: routes with request/response shapes and status codes, function signatures, `data-testid`s for every UI element a flow touches, auth expectations.
@@ -38,8 +38,8 @@ The writer has nothing else to go on, so `bms-plan-review` blocks a plan without
 
 ## Check before publish (step 8)
 
-Run `git diff <sha> -- <test paths and the files they depend on>` where `<sha>` is the last `test: contract tests` commit. The diff covers uncommitted changes too. Any difference needs an approved change request in the PR comments; otherwise treat it as a blocking finding. Also check the suite is still collected and run by CI (no deselected files, no new skip/xfail markers).
+Run `git diff <sha> -- <test files and test infrastructure>` where `<sha>` is the last `test: contract tests` commit and the paths are the test files plus the fixtures, seed data and test config they use (not the production stubs, which the implementer fills in). The diff covers uncommitted changes too. Any difference needs an approved change request in the PR comments; otherwise treat it as a blocking finding. Also check the suite is still collected and run by CI (no deselected files, no new skip/xfail markers).
 
 ## Limits
 
-The writer's "don't read the implementation" is an instruction, not a sandbox, and it only fully holds for new code. Two agents reading the same task can misread it the same way; the ambiguity list in step 2 is the mitigation. Codex has no `bms-test-writer`, so under Codex the main agent writes the tests itself and must follow the same rules.
+The writer's "don't read the implementation" is an instruction, not a sandbox, and it only fully holds for new code. Two agents reading the same task can misread it the same way; the ambiguity list in step 2 is the mitigation. Codex has no `bms-test-writer`. There, run the agent file's instructions as a fresh `codex exec` (task, plan and layers in the prompt) so the writer has no implementation context; if that isn't possible, write the tests yourself before reading any implementation and say in the PR that independence is reduced.

@@ -30,7 +30,7 @@ when the tool genuinely isn't available (say so).
    in it (persistent): each output line is a new comment from someone else. Reply with `bdt issue comment add`.
 3. **Implementation Plan**: If your task is more complex, you do an implementation plan first, and you also upload it to PR (using `bdt pr comment --message-file FILE`). You should usually start with Database, then Backend, then Frontend.
    Then run `/bms-plan-review` on the plan and address its findings before implementing.
-3b. **Tests first.** For a task with a plan, dispatch the `bms-test-writer` agent (foreground) with the task, the plan and the layer(s): it writes contract tests from the acceptance criteria and contract, without seeing the implementation, and checks they fail for the right reason. Resolve every ambiguity it lists, commit the tests (`test: contract tests`), push. Details, skip rules and the change-request protocol: `references/blind-tests.md`.
+3b. **Tests first.** For a task with a plan (or a bug fix from an issue), dispatch the `bms-test-writer` agent (foreground) with the task, the plan and the layer(s): it writes contract tests from the acceptance criteria and contract, without seeing the implementation, and checks they fail for the right reason. Resolve every ambiguity it lists, commit the tests (`test: contract tests`), push. Details, skip rules and the change-request protocol: `references/blind-tests.md`.
 4. **Implement** the task. Don't edit the contract tests (or their fixtures/config) to get green; if one looks wrong, post a change request instead. Keep comments at a fix site short — don't inline
    lengthy explanations of a bug or how it was resolved in source code comments.
    Once a step is done, commit&push. Commit early, commit often.
