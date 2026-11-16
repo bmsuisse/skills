@@ -14,6 +14,7 @@ not to be a compiler frontend. JS/TS block-comment detection does a simple
 best-effort skip of string/template literals; it can be fooled by comment-like
 text inside strings on rare inputs. Good enough for review purposes.
 """
+
 import argparse
 import io
 import json
@@ -25,13 +26,13 @@ JS_EXTS = {".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs"}
 PY_EXTS = {".py"}
 
 
-def context_window(lines, line_no, before=2, after=5):
+def context_window(lines: list[str], line_no: int, before: int = 2, after: int = 5) -> str:
     start = max(0, line_no - 1 - before)
     end = min(len(lines), line_no + after)
     return "\n".join(lines[start:end])
 
 
-def extract_python(source, lines):
+def extract_python(source: str, lines: list[str]) -> list[dict]:
     """Use tokenize so comments inside strings are never mistaken for real comments."""
     results = []
     try:
@@ -42,29 +43,43 @@ def extract_python(source, lines):
     prev_significant = None
     for tok in tokens:
         if tok.type == tokenize.COMMENT:
-            results.append({
-                "line": tok.start[0],
-                "kind": "line",
-                "text": tok.string.lstrip("#").strip(),
-            })
-        elif tok.type == tokenize.STRING and prev_significant and prev_significant[1] in (":",):
+            results.append(
+                {
+                    "line": tok.start[0],
+                    "kind": "line",
+                    "text": tok.string.lstrip("#").strip(),
+                }
+            )
+        elif (
+            tok.type == tokenize.STRING
+            and prev_significant
+            and prev_significant[1] == ":"
+            and tok.string.startswith(('"""', "'''"))
+        ):
             # crude docstring heuristic: a bare string statement right after a
             # `def ...:` / `class ...:` line, on its own line
-            if tok.string.startswith(('"""', "'''")):
-                line_text = lines[tok.start[0] - 1].strip()
-                if line_text.startswith(('"""', "'''", 'r"""', "r'''")):
-                    results.append({
+            line_text = lines[tok.start[0] - 1].strip()
+            if line_text.startswith(('"""', "'''", 'r"""', "r'''")):
+                results.append(
+                    {
                         "line": tok.start[0],
                         "kind": "docstring",
                         "text": tok.string.strip("\"'").strip(),
-                    })
-        if tok.type not in (tokenize.NL, tokenize.NEWLINE, tokenize.INDENT,
-                            tokenize.DEDENT, tokenize.COMMENT, tokenize.ENCODING):
+                    }
+                )
+        if tok.type not in (
+            tokenize.NL,
+            tokenize.NEWLINE,
+            tokenize.INDENT,
+            tokenize.DEDENT,
+            tokenize.COMMENT,
+            tokenize.ENCODING,
+        ):
             prev_significant = (tok.type, tok.string)
     return results
 
 
-def extract_js(source):
+def extract_js(source: str) -> list[dict]:
     """Best-effort scan for // and /* */ comments, skipping over string/template literals."""
     results = []
     i = 0
@@ -92,23 +107,27 @@ def extract_js(source):
         if ch == "/" and i + 1 < n and source[i + 1] == "/":
             end = source.find("\n", i)
             end = end if end != -1 else n
-            results.append({
-                "line": line_no,
-                "kind": "line",
-                "text": source[i + 2:end].strip(),
-            })
+            results.append(
+                {
+                    "line": line_no,
+                    "kind": "line",
+                    "text": source[i + 2 : end].strip(),
+                }
+            )
             i = end
             continue
         if ch == "/" and i + 1 < n and source[i + 1] == "*":
             end = source.find("*/", i + 2)
             end = end if end != -1 else n
-            comment_text = source[i + 2:end]
-            kind = "docstring" if source[i:i + 3] == "/**" else "block"
-            results.append({
-                "line": line_no,
-                "kind": kind,
-                "text": comment_text.strip(),
-            })
+            comment_text = source[i + 2 : end]
+            kind = "docstring" if source[i : i + 3] == "/**" else "block"
+            results.append(
+                {
+                    "line": line_no,
+                    "kind": kind,
+                    "text": comment_text.strip(),
+                }
+            )
             line_no += comment_text.count("\n")
             i = end + 2
             continue
@@ -116,7 +135,7 @@ def extract_js(source):
     return results
 
 
-def process_file(path, before, after):
+def process_file(path: str | Path, before: int, after: int) -> list[dict]:
     ext = Path(path).suffix.lower()
     source = Path(path).read_text(encoding="utf-8", errors="replace")
     lines = source.splitlines()
@@ -134,7 +153,7 @@ def process_file(path, before, after):
     return raw
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("files", nargs="+")
     parser.add_argument("--before", type=int, default=2, help="lines of context before the comment")

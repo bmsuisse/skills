@@ -4,6 +4,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+from typing import TypeGuard
 
 import pytest
 
@@ -12,11 +13,13 @@ HOOK = Path(__file__).resolve().parents[2] / "hooks" / "ban-az-pr-create.py"
 
 def run_hook(command: str, tool_name: str = "Bash") -> dict | None:
     payload = json.dumps({"tool_name": tool_name, "tool_input": {"command": command}})
-    result = subprocess.run([sys.executable, str(HOOK)], input=payload, capture_output=True, text=True, timeout=10)
+    result = subprocess.run(
+        [sys.executable, str(HOOK)], input=payload, capture_output=True, text=True, timeout=10, check=False
+    )
     return json.loads(result.stdout) if result.stdout.strip() else None
 
 
-def is_denied(response: dict | None) -> bool:
+def is_denied(response: dict | None) -> TypeGuard[dict]:
     return response is not None and response["hookSpecificOutput"]["permissionDecision"] == "deny"
 
 

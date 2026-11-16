@@ -8,11 +8,13 @@ Usage:
     python3 scripts/check_quality.py --file mymodule.py --json
     python3 scripts/check_quality.py --file mymodule.py --fix   # auto-fix ruff violations
 """
+
 from __future__ import annotations
 
 import argparse
 import json
 import subprocess
+from typing import Any
 
 
 def run_ruff(file: str, fix: bool = False) -> dict:
@@ -20,19 +22,21 @@ def run_ruff(file: str, fix: bool = False) -> dict:
     if fix:
         cmd.append("--fix")
 
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
 
-    violations = []
+    violations: list[dict[str, Any]] = []
     try:
         raw = json.loads(result.stdout) if result.stdout.strip() else []
-        for v in raw:
-            violations.append({
+        violations.extend(
+            {
                 "code": v.get("code", ""),
                 "message": v.get("message", ""),
                 "line": v.get("location", {}).get("row", 0),
                 "col": v.get("location", {}).get("column", 0),
                 "fixable": v.get("fix") is not None,
-            })
+            }
+            for v in raw
+        )
     except json.JSONDecodeError:
         pass
 
@@ -55,12 +59,13 @@ def run_ty(file: str) -> dict:
         ["ty", "check", file],
         capture_output=True,
         text=True,
+        check=False,
     )
 
     errors = []
     # ty outputs lines like: path/to/file.py:LINE:COL: error [rule] message
-    for line in (result.stdout + result.stderr).splitlines():
-        line = line.strip()
+    for raw_line in (result.stdout + result.stderr).splitlines():
+        line = raw_line.strip()
         if not line or line.startswith("Found"):
             continue
         # Parse "file.py:10:5: error [rule] message"

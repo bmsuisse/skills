@@ -7,9 +7,11 @@ replacement for reading the file.
 
 Usage: audit_ui_file.py <file> [<file> ...]
 """
+
+import colorsys
 import re
 import sys
-import colorsys
+from pathlib import Path
 
 # Known AI-default accents (see SKILL.md #3). Flag anything within this hue
 # distance (out of 360) and reasonably close in saturation/lightness.
@@ -21,30 +23,30 @@ KNOWN_TELLS = {
 HUE_THRESHOLD_DEG = 18
 
 
-def hex_to_hsl(hex_color):
+def hex_to_hsl(hex_color: str) -> tuple[float, float, float]:
     hex_color = hex_color.lstrip("#")
     if len(hex_color) == 3:
         hex_color = "".join(c * 2 for c in hex_color)
     r, g, b = (int(hex_color[i : i + 2], 16) / 255 for i in (0, 2, 4))
-    h, l, s = colorsys.rgb_to_hls(r, g, b)
-    return h * 360, s, l
+    h, light, s = colorsys.rgb_to_hls(r, g, b)
+    return h * 360, s, light
 
 
-def find_hex_colors(text):
-    return set(m.group(0) for m in re.finditer(r"#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})\b", text))
+def find_hex_colors(text: str) -> set[str]:
+    return {m.group(0) for m in re.finditer(r"#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})\b", text)}
 
 
-def check_accent_tells(text):
+def check_accent_tells(text: str) -> list[str]:
     findings = []
     for hex_color in find_hex_colors(text):
         try:
-            h, s, l = hex_to_hsl(hex_color)
+            h, s, light = hex_to_hsl(hex_color)
         except ValueError:
             continue
-        if s < 0.35 or l < 0.15 or l > 0.85:
+        if s < 0.35 or light < 0.15 or light > 0.85:
             continue  # too desaturated/dark/light to read as "the accent"
         for name, tell_hex in KNOWN_TELLS.items():
-            th, ts, tl = hex_to_hsl(tell_hex)
+            th, _ts, _tl = hex_to_hsl(tell_hex)
             hue_dist = min(abs(h - th), 360 - abs(h - th))
             if hue_dist <= HUE_THRESHOLD_DEG:
                 findings.append(f"{hex_color} is close to the {name} tell (hue distance {hue_dist:.0f}°)")
@@ -60,7 +62,7 @@ PILL_PATTERNS = [
 ]
 
 
-def count_pill_shapes(text):
+def count_pill_shapes(text: str) -> tuple[int, set[str]]:
     # Distinct className/style value combos that look like a pill container,
     # not just the count of the word "rounded-full" (one component reused
     # many times for the same semantic thing is fine; the tell is *distinct*
@@ -79,7 +81,7 @@ NUMERIC_COLUMN_HINT = re.compile(
 TABULAR_HINT = re.compile(r"tabular-nums|font-feature-settings.*tnum|font-variant-numeric.*tabular", re.IGNORECASE)
 
 
-def check_tabular_figures(text):
+def check_tabular_figures(text: str) -> list[str]:
     has_numeric_hint = bool(NUMERIC_COLUMN_HINT.search(text))
     has_tabular = bool(TABULAR_HINT.search(text))
     if has_numeric_hint and not has_tabular:
@@ -87,8 +89,8 @@ def check_tabular_figures(text):
     return []
 
 
-def audit(path):
-    text = open(path, encoding="utf-8").read()
+def audit(path: str) -> None:
+    text = Path(path).read_text(encoding="utf-8")
     print(f"\n=== {path} ===")
 
     accent = check_accent_tells(text)
@@ -100,9 +102,15 @@ def audit(path):
         print("Accent color: no known AI-default tells found in hex literals.")
 
     pill_lines, colors = count_pill_shapes(text)
-    print(f"Pill/badge-shaped lines: {pill_lines}, distinct color hints used: {len(colors)} {sorted(colors) if colors else ''}")
+    print(
+        f"Pill/badge-shaped lines: {pill_lines}, "
+        f"distinct color hints used: {len(colors)} {sorted(colors) if colors else ''}"
+    )
     if len(colors) > 3:
-        print("  -> more than 3 distinct pill colors/shapes; check they map to genuinely different semantic categories (see SKILL.md #2), not decoration.")
+        print(
+            "  -> more than 3 distinct pill colors/shapes; check they map to genuinely different semantic "
+            "categories (see SKILL.md #2), not decoration."
+        )
 
     tabular = check_tabular_figures(text)
     for f in tabular:
@@ -111,7 +119,7 @@ def audit(path):
         print("Tabular figures: no obvious gap detected (or no numeric-looking columns found).")
 
 
-def main():
+def main() -> None:
     if len(sys.argv) < 2:
         print(__doc__)
         sys.exit(2)

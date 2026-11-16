@@ -4,6 +4,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+from typing import TypeGuard
 
 import pytest
 
@@ -21,12 +22,14 @@ def isolated_state(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
 
 def run_hook(command: str, tool_name: str = "Bash", session_id: str = "s1") -> dict | None:
     payload = json.dumps({"tool_name": tool_name, "tool_input": {"command": command}, "session_id": session_id})
-    result = subprocess.run([sys.executable, str(HOOK)], input=payload, capture_output=True, text=True, timeout=10)
+    result = subprocess.run(
+        [sys.executable, str(HOOK)], input=payload, capture_output=True, text=True, timeout=10, check=False
+    )
     assert result.returncode == 0, result.stderr
     return json.loads(result.stdout) if result.stdout.strip() else None
 
 
-def is_denied(response: dict | None) -> bool:
+def is_denied(response: dict | None) -> TypeGuard[dict]:
     return response is not None and response["hookSpecificOutput"]["permissionDecision"] == "deny"
 
 
@@ -35,14 +38,17 @@ def is_denied(response: dict | None) -> bool:
     [
         # polling loops around a PR or CI query
         "while true; do az repos pr show --id 1 --query status; sleep 30; done",
-        "until [ \"$(az repos pr show --id 1 --query status -o tsv)\" = completed ]; do sleep 20; done",
+        'until [ "$(az repos pr show --id 1 --query status -o tsv)" = completed ]; do sleep 20; done',
         "for i in 1 2 3; do az repos pr list --status active; sleep 60; done",
         f'while true; do curl -s -u ":$PAT" "{PR_API}/12?api-version=7.1"; sleep 30; done',
         "while sleep 30; do gh pr view 3 --json state; done",
         "az repos pr show --id 1 && sleep 30 && az repos pr show --id 1",
         "watch -n 30 az repos pr show --id 1",
         "timeout 600 bash -c 'while true; do az repos pr show --id 1; sleep 5; done'",
-        "python3 - <<'EOF'\nimport subprocess, time\nwhile True:\n    subprocess.run(['az', 'repos', 'pr', 'show', '--id', '1'])\n    time.sleep(30)\nEOF",
+        (
+            "python3 - <<'EOF'\nimport subprocess, time\nwhile True:\n"
+            "    subprocess.run(['az', 'repos', 'pr', 'show', '--id', '1'])\n    time.sleep(30)\nEOF"
+        ),
         # CI status queries, polled or not
         "az pipelines runs list --branch refs/pull/1/merge",
         "az pipelines runs show --id 12 --query result",
@@ -51,7 +57,10 @@ def is_denied(response: dict | None) -> bool:
         "gh run list --branch x",
         "gh pr checks 4",
         f'curl -s -u ":$PAT" "{BUILD_API}/123/timeline?api-version=7.1"',
-        f'curl -s "{BUILD_API}?branchName=refs/pull/1/merge" | python3 -c "import sys,json; print(json.load(sys.stdin))"',
+        (
+            f'curl -s "{BUILD_API}?branchName=refs/pull/1/merge" '
+            '| python3 -c "import sys,json; print(json.load(sys.stdin))"'
+        ),
         f"source ~/.devops.env; B='{BUILD_API}'; for id in 1 2; do curl -s \"$B/$id/timeline\"; done",
         "cd repo && AZURE_DEVOPS_EXT_PAT=x az pipelines runs list",
         "az pipelines runs \\\nlist",
@@ -147,5 +156,9 @@ def test_ignores_non_bash_tools() -> None:
 def test_hints_install_when_bdt_is_missing(tmp_path: Path) -> None:
     payload = json.dumps({"tool_name": "Bash", "tool_input": {"command": "az pipelines runs list"}})
     env = {"PATH": str(tmp_path), "HOME": str(tmp_path), "TMPDIR": str(tmp_path)}
-    result = subprocess.run([sys.executable, str(HOOK)], input=payload, capture_output=True, text=True, timeout=10, env=env)
-    assert "uv tool install bmsdna-devtools" in json.loads(result.stdout)["hookSpecificOutput"]["permissionDecisionReason"]
+    result = subprocess.run(
+        [sys.executable, str(HOOK)], input=payload, capture_output=True, text=True, timeout=10, env=env, check=False
+    )
+    assert (
+        "uv tool install bmsdna-devtools" in json.loads(result.stdout)["hookSpecificOutput"]["permissionDecisionReason"]
+    )

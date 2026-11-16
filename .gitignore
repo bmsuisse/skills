@@ -30,3 +30,7 @@ tmp_alperf
 
 .playwright-cli
 .tmp-check
+# Git worktrees and code index (local only)
+.worktrees/
+.claude/worktrees/
+.codegraph/

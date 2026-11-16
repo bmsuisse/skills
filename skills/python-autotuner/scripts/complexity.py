@@ -9,12 +9,12 @@ Usage:
     python3 scripts/complexity.py --file mymodule.py --json
     python3 scripts/complexity.py --file mymodule.py --per-function --json
 """
+
 from __future__ import annotations
 
 import argparse
 import ast
 import json
-import sys
 from pathlib import Path
 
 
@@ -31,8 +31,14 @@ def count_loc(source: str) -> int:
 def max_nesting_depth(tree: ast.AST) -> int:
     """Find the maximum nesting depth of control flow structures."""
     nesting_nodes = (
-        ast.If, ast.For, ast.While, ast.With, ast.Try,
-        ast.ExceptHandler, ast.AsyncFor, ast.AsyncWith,
+        ast.If,
+        ast.For,
+        ast.While,
+        ast.With,
+        ast.Try,
+        ast.ExceptHandler,
+        ast.AsyncFor,
+        ast.AsyncWith,
     )
 
     def _depth(node: ast.AST, current: int) -> int:
@@ -49,20 +55,19 @@ def max_nesting_depth(tree: ast.AST) -> int:
 def cyclomatic_complexity(func_node: ast.FunctionDef | ast.AsyncFunctionDef) -> int:
     """Cyclomatic complexity for a single function: 1 + number of branches."""
     branch_nodes = (
-        ast.If, ast.For, ast.While, ast.ExceptHandler,
-        ast.With, ast.AsyncFor, ast.AsyncWith,
-        ast.Assert, ast.comprehension,
+        ast.If,
+        ast.For,
+        ast.While,
+        ast.ExceptHandler,
+        ast.With,
+        ast.AsyncFor,
+        ast.AsyncWith,
+        ast.Assert,
+        ast.comprehension,
     )
-    branches = sum(
-        1 for node in ast.walk(func_node)
-        if isinstance(node, branch_nodes)
-    )
+    branches = sum(1 for node in ast.walk(func_node) if isinstance(node, branch_nodes))
     # Also count boolean operators (and/or add branches)
-    bool_ops = sum(
-        len(node.values) - 1
-        for node in ast.walk(func_node)
-        if isinstance(node, ast.BoolOp)
-    )
+    bool_ops = sum(len(node.values) - 1 for node in ast.walk(func_node) if isinstance(node, ast.BoolOp))
     return 1 + branches + bool_ops
 
 
@@ -72,12 +77,14 @@ def per_function_scores(tree: ast.AST) -> list[dict]:
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             cc = cyclomatic_complexity(node)
             func_source_lines = (node.end_lineno or 0) - node.lineno + 1
-            results.append({
-                "function": node.name,
-                "line": node.lineno,
-                "cyclomatic": cc,
-                "loc": func_source_lines,
-            })
+            results.append(
+                {
+                    "function": node.name,
+                    "line": node.lineno,
+                    "cyclomatic": cc,
+                    "loc": func_source_lines,
+                }
+            )
     return sorted(results, key=lambda x: x["cyclomatic"], reverse=True)
 
 

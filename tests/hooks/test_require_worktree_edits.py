@@ -4,6 +4,7 @@ import json
 import subprocess
 import sys
 import tempfile
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
@@ -12,7 +13,7 @@ HOOK = Path(__file__).resolve().parents[2] / "hooks" / "require-worktree-edits.p
 
 
 @pytest.fixture
-def repo_dir():
+def repo_dir() -> Iterator[Path]:
     # /tmp itself is an always-allowed path prefix (see ALLOWED_PREFIX), so the
     # path-based gate tests need a directory outside it to actually exercise
     # the git-based checks.
@@ -29,6 +30,7 @@ def run_hook(file_path: str, cwd: Path) -> dict | None:
         text=True,
         cwd=cwd,
         timeout=10,
+        check=False,
     )
     if not result.stdout.strip():
         return None
@@ -159,6 +161,7 @@ def test_no_op_when_no_file_path_given(tmp_path: Path) -> None:
         text=True,
         cwd=tmp_path,
         timeout=10,
+        check=False,
     )
     assert result.stdout.strip() == ""
 
@@ -170,7 +173,9 @@ def test_no_op_when_no_file_path_given(tmp_path: Path) -> None:
 
 def run_apply_patch(patch: str, cwd: Path) -> dict | None:
     payload = json.dumps({"tool_name": "apply_patch", "cwd": str(cwd), "tool_input": {"command": patch}})
-    result = subprocess.run([sys.executable, str(HOOK)], input=payload, capture_output=True, text=True, timeout=10)
+    result = subprocess.run(
+        [sys.executable, str(HOOK)], input=payload, capture_output=True, text=True, timeout=10, check=False
+    )
     return json.loads(result.stdout) if result.stdout.strip() else None
 
 

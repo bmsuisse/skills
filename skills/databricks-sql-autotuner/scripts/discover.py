@@ -10,6 +10,7 @@ Usage:
     python3 scripts/discover.py --profile p --cluster-id 0123-456789-abc  # full detail only
     python3 scripts/discover.py --profile p --cluster-name my-cluster
 """
+
 from __future__ import annotations
 
 import argparse
@@ -18,10 +19,10 @@ import re
 import subprocess
 import sys
 
-
 # ---------------------------------------------------------------------------
 # CLI helpers
 # ---------------------------------------------------------------------------
+
 
 def _run(*args: str) -> dict | list | None:
     """Run a databricks CLI command and return parsed JSON, or None on failure."""
@@ -29,6 +30,7 @@ def _run(*args: str) -> dict | list | None:
         ["databricks", *args, "--output", "json"],
         capture_output=True,
         text=True,
+        check=False,
     )
     if result.returncode != 0:
         return None
@@ -56,6 +58,7 @@ def _require(*args: str) -> dict | list:
 # Discovery steps
 # ---------------------------------------------------------------------------
 
+
 def list_profiles() -> list[dict]:
     data = _require("auth", "profiles")
     profiles = data if isinstance(data, list) else data.get("profiles", [])
@@ -71,14 +74,15 @@ def list_clusters(profile: str) -> list[dict]:
             "cluster_name": c.get("cluster_name"),
             "state": c.get("state"),
             "spark_version": c.get("spark_version", ""),
-            "dbr_version": _parse_dbr((c.get("spark_version") or "")),
+            "dbr_version": _parse_dbr(c.get("spark_version") or ""),
         }
         for c in clusters
     ]
 
 
 def get_cluster_detail(profile: str, cluster_id: str) -> dict | None:
-    return _run("clusters", "get", cluster_id, "--profile", profile)
+    detail = _run("clusters", "get", cluster_id, "--profile", profile)
+    return detail if isinstance(detail, dict) else None
 
 
 def extract_catalog_schema(detail: dict) -> tuple[str, str]:
@@ -91,6 +95,7 @@ def extract_catalog_schema(detail: dict) -> tuple[str, str]:
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(
@@ -117,8 +122,7 @@ def main() -> None:
                 # All profiles point to the same workspace — pick premium, else first
                 selected_profile = preferred or profiles[0]["name"]
                 print(
-                    f"[profile] Auto-selected '{selected_profile}' "
-                    f"(all {len(profiles)} profiles share the same host)",
+                    f"[profile] Auto-selected '{selected_profile}' (all {len(profiles)} profiles share the same host)",
                     file=sys.stderr,
                 )
             else:
@@ -151,8 +155,7 @@ def main() -> None:
         if len(running) == 1:
             selected_cluster_id = running[0]["cluster_id"]
             print(
-                f"[cluster] Auto-selected running cluster: "
-                f"{running[0]['cluster_name']} ({selected_cluster_id})",
+                f"[cluster] Auto-selected running cluster: {running[0]['cluster_name']} ({selected_cluster_id})",
                 file=sys.stderr,
             )
         else:
@@ -195,8 +198,7 @@ def main() -> None:
 
     if state == "TERMINATED":
         print(
-            f"\n[warn] Cluster '{cluster_name}' is TERMINATED. "
-            "Start it before running env_setup.py:",
+            f"\n[warn] Cluster '{cluster_name}' is TERMINATED. Start it before running env_setup.py:",
             file=sys.stderr,
         )
         print(

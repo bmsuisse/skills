@@ -34,11 +34,26 @@ import re
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from pyspark.sql.types import (
-    ArrayType, BooleanType, ByteType, DecimalType, DoubleType, FloatType,
-    IntegerType, LongType, MapType, ShortType, StructType,
-)
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+from pyspark.sql.types import (
+    ArrayType,
+    BooleanType,
+    ByteType,
+    DecimalType,
+    DoubleType,
+    FloatType,
+    IntegerType,
+    LongType,
+    MapType,
+    ShortType,
+    StructType,
+)
+
+if TYPE_CHECKING:
+    from pyspark.sql import SparkSession
+    from pyspark.sql.types import DataType
 
 
 def _progress(done: int, total: int, label: str, elapsed: float | None = None) -> None:
@@ -51,12 +66,13 @@ def _progress(done: int, total: int, label: str, elapsed: float | None = None) -
     print(f"  [{bar}] {done}/{total} {label}{suffix}\033[K", end=end, file=sys.stderr, flush=True)
 
 
-def get_spark(profile: str, cluster_id: str):
+def get_spark(profile: str, cluster_id: str) -> SparkSession:
     from databricks.connect import DatabricksSession
+
     return DatabricksSession.builder.profile(profile).clusterId(cluster_id).getOrCreate()
 
 
-def set_context(spark, catalog: str | None, schema: str | None) -> None:
+def set_context(spark: SparkSession, catalog: str | None, schema: str | None) -> None:
     if catalog:
         spark.sql(f"USE CATALOG {catalog}")
         print(f"[context] USE CATALOG {catalog}", file=sys.stderr)
@@ -65,7 +81,7 @@ def set_context(spark, catalog: str | None, schema: str | None) -> None:
         print(f"[context] USE SCHEMA {schema}", file=sys.stderr)
 
 
-def load_session_udfs(spark) -> None:
+def load_session_udfs(spark: SparkSession) -> None:
     udf_file = Path("udf_setup.py")
     if not udf_file.exists():
         return
@@ -93,12 +109,12 @@ def load_query(arg: str) -> str:
     return arg.strip()
 
 
-def explain_query(spark, query: str) -> str:
+def explain_query(spark: SparkSession, query: str) -> str:
     rows = spark.sql(f"EXPLAIN EXTENDED {query}").collect()
     return "\n".join(str(r[0]) for r in rows)
 
 
-def _safe_sql(spark, sql: str) -> list:
+def _safe_sql(spark: SparkSession, sql: str) -> list:
     try:
         return spark.sql(sql).collect()
     except Exception as e:
@@ -106,7 +122,7 @@ def _safe_sql(spark, sql: str) -> list:
         return []
 
 
-def collect_table_stats(spark, table_ref: str) -> dict:
+def collect_table_stats(spark: SparkSession, table_ref: str) -> dict:
     result: dict = {"table": table_ref}
 
     desc_rows = _safe_sql(spark, f"DESCRIBE EXTENDED {table_ref}")
@@ -138,9 +154,7 @@ def collect_table_stats(spark, table_ref: str) -> dict:
     result["columns"] = columns
     result["partition_columns"] = partition_cols
     result["table_stats_from_describe"] = {
-        k: detail_buffer[k]
-        for k in ("Statistics", "Num Rows", "Total Size", "Raw Data Size")
-        if k in detail_buffer
+        k: detail_buffer[k] for k in ("Statistics", "Num Rows", "Total Size", "Raw Data Size") if k in detail_buffer
     }
 
     detail_rows = _safe_sql(spark, f"DESCRIBE DETAIL {table_ref}")
@@ -153,11 +167,7 @@ def collect_table_stats(spark, table_ref: str) -> dict:
             "numFiles": num_files,
             "sizeInBytes": size_bytes,
             "sizeMB": round(size_bytes / 1024 / 1024, 1) if size_bytes else None,
-            "avgFileSizeMB": (
-                round(size_bytes / num_files / 1024 / 1024, 2)
-                if num_files and size_bytes
-                else None
-            ),
+            "avgFileSizeMB": (round(size_bytes / num_files / 1024 / 1024, 2) if num_files and size_bytes else None),
             "location": r.get("location"),
             "partitionColumns": r.get("partitionColumns"),
         }
@@ -230,7 +240,7 @@ def format_table_stats_report(stats_list: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def time_query(spark, query: str, n_runs: int, label: str, timing_count: bool = False) -> list[float]:
+def time_query(spark: SparkSession, query: str, n_runs: int, label: str, timing_count: bool = False) -> list[float]:
     exec_sql = f"SELECT COUNT(*) AS n FROM ({query})" if timing_count else query
     times: list[float] = []
     _progress(0, n_runs, label)
@@ -255,7 +265,7 @@ def is_significant(orig: dict, opt: dict) -> bool:
     return (opt["mean_s"] + opt["std_s"]) < (orig["mean_s"] - orig["std_s"])
 
 
-def _normalize_expr(expr: str, dtype) -> str:
+def _normalize_expr(expr: str, dtype: DataType) -> str:
     """Recursively build a deterministic SQL expression for non-deterministic types.
 
     - ArrayType  → array_sort(transform(expr, x -> normalize(x)))
@@ -268,18 +278,15 @@ def _normalize_expr(expr: str, dtype) -> str:
         if inner == "x":
             return f"array_sort({expr})"
         return f"array_sort(transform({expr}, x -> {inner}))"
-    elif isinstance(dtype, MapType):
+    if isinstance(dtype, MapType):
         return f"cast({expr} AS STRING)"
-    elif isinstance(dtype, StructType):
-        fields = ", ".join(
-            f"{_normalize_expr(f'{expr}.`{f.name}`', f.dataType)} AS `{f.name}`"
-            for f in dtype.fields
-        )
+    if isinstance(dtype, StructType):
+        fields = ", ".join(f"{_normalize_expr(f'{expr}.`{f.name}`', f.dataType)} AS `{f.name}`" for f in dtype.fields)
         return f"struct({fields})"
     return expr
 
 
-def _normalized_select(schema) -> str:
+def _normalized_select(schema: StructType) -> str:
     """SELECT clause that normalizes array/map/struct columns for deterministic EXCEPT ALL comparison."""
     parts = []
     for field in schema.fields:
@@ -289,7 +296,7 @@ def _normalized_select(schema) -> str:
     return ", ".join(parts)
 
 
-def validate_queries(spark, original: str, optimized: str) -> dict:
+def validate_queries(spark: SparkSession, original: str, optimized: str) -> dict:
     spark.sql(f"CREATE OR REPLACE TEMP VIEW _tuner_original AS {original}")
     spark.sql(f"CREATE OR REPLACE TEMP VIEW _tuner_optimized AS {optimized}")
 
@@ -306,11 +313,15 @@ def validate_queries(spark, original: str, optimized: str) -> dict:
 
     schema = spark.sql("SELECT * FROM _tuner_original LIMIT 0").schema
     sel = _normalized_select(schema)
-    diff_rows = spark.sql(f"""
+    diff_rows = (
+        spark.sql(f"""
         SELECT {sel} FROM _tuner_original EXCEPT ALL SELECT {sel} FROM _tuner_optimized
         UNION ALL
         SELECT {sel} FROM _tuner_optimized EXCEPT ALL SELECT {sel} FROM _tuner_original
-    """).limit(10).collect()
+    """)
+        .limit(10)
+        .collect()
+    )
 
     if diff_rows:
         return {
@@ -323,7 +334,7 @@ def validate_queries(spark, original: str, optimized: str) -> dict:
     return {"passed": True, "row_count": orig_count}
 
 
-def validate_queries_global_temp(spark, original: str, optimized: str) -> dict:
+def validate_queries_global_temp(spark: SparkSession, original: str, optimized: str) -> dict:
     """Validate via global temp tables — results are cached on the cluster, nothing collected to driver."""
     spark.sql(f"CREATE OR REPLACE GLOBAL TEMP VIEW _tuner_original AS {original}")
     spark.sql(f"CREATE OR REPLACE GLOBAL TEMP VIEW _tuner_optimized AS {optimized}")
@@ -343,11 +354,15 @@ def validate_queries_global_temp(spark, original: str, optimized: str) -> dict:
 
     schema = spark.sql("SELECT * FROM global_temp._tuner_original LIMIT 0").schema
     sel = _normalized_select(schema)
-    diff_rows = spark.sql(f"""
+    diff_rows = (
+        spark.sql(f"""
         SELECT {sel} FROM global_temp._tuner_original EXCEPT ALL SELECT {sel} FROM global_temp._tuner_optimized
         UNION ALL
         SELECT {sel} FROM global_temp._tuner_optimized EXCEPT ALL SELECT {sel} FROM global_temp._tuner_original
-    """).limit(10).collect()
+    """)
+        .limit(10)
+        .collect()
+    )
 
     if diff_rows:
         return {
@@ -360,13 +375,13 @@ def validate_queries_global_temp(spark, original: str, optimized: str) -> dict:
     return {"passed": True, "row_count": orig_count}
 
 
-def validate_queries_checksum(spark, original: str, optimized: str) -> dict:
+def validate_queries_checksum(spark: SparkSession, original: str, optimized: str) -> dict:
     """Validate by comparing aggregate checksums on numeric and boolean columns only.
 
     Suitable for large tables where full EXCEPT ALL is too expensive.
     Checks row count, then SUM + COUNT of every numeric/boolean column.
     """
-    _NUMERIC = (ByteType, ShortType, IntegerType, LongType, FloatType, DoubleType, DecimalType)
+    numeric_types = (ByteType, ShortType, IntegerType, LongType, FloatType, DoubleType, DecimalType)
 
     spark.sql(f"CREATE OR REPLACE TEMP VIEW _tuner_original AS {original}")
     spark.sql(f"CREATE OR REPLACE TEMP VIEW _tuner_optimized AS {optimized}")
@@ -390,7 +405,7 @@ def validate_queries_checksum(spark, original: str, optimized: str) -> dict:
     for field in schema.fields:
         col = f"`{field.name}`"
         safe = re.sub(r"[^a-zA-Z0-9]", "_", field.name)
-        if isinstance(field.dataType, _NUMERIC):
+        if isinstance(field.dataType, numeric_types):
             agg_exprs += [f"SUM({col}) AS sum_{safe}", f"COUNT({col}) AS cnt_{safe}"]
             checksum_cols.append(field.name)
         elif isinstance(field.dataType, BooleanType):
@@ -409,11 +424,7 @@ def validate_queries_checksum(spark, original: str, optimized: str) -> dict:
     orig_agg = spark.sql(f"SELECT {agg_sql} FROM _tuner_original").collect()[0].asDict()
     opt_agg = spark.sql(f"SELECT {agg_sql} FROM _tuner_optimized").collect()[0].asDict()
 
-    mismatches = {
-        k: {"original": orig_agg[k], "optimized": opt_agg[k]}
-        for k in orig_agg
-        if orig_agg[k] != opt_agg[k]
-    }
+    mismatches = {k: {"original": orig_agg[k], "optimized": opt_agg[k]} for k in orig_agg if orig_agg[k] != opt_agg[k]}
 
     if mismatches:
         return {
@@ -428,7 +439,7 @@ def validate_queries_checksum(spark, original: str, optimized: str) -> dict:
     return {"passed": True, "row_count": orig_count, "strategy": "checksum", "columns_checked": checksum_cols}
 
 
-def validate_queries_row_hash(spark, original: str, optimized: str) -> dict:
+def validate_queries_row_hash(spark: SparkSession, original: str, optimized: str) -> dict:
     """Validate using a commutative row hash for huge tables.
 
     Computes SUM(xxhash64(col1, col2, ...)) across all rows — a single aggregation
@@ -468,7 +479,7 @@ def validate_queries_row_hash(spark, original: str, optimized: str) -> dict:
     return {"passed": True, "row_count": orig_count, "strategy": "row_hash"}
 
 
-def time_query_global_temp(spark, query: str, n_runs: int, label: str) -> list[float]:
+def time_query_global_temp(spark: SparkSession, query: str, n_runs: int, label: str) -> list[float]:
     """Time query by materializing into a cached global temp table — avoids driver collection."""
     name = f"_tuner_{label}"
     times: list[float] = []
@@ -498,11 +509,19 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--schema")
     p.add_argument("--n-runs", type=int, default=3, dest="n_runs")
     p.add_argument("--explain-only", action="store_true", dest="explain_only")
-    p.add_argument("--timing-count", action="store_true", dest="timing_count",
-                   help="Wrap timing runs in COUNT(*) to avoid collecting large result sets to the driver")
-    p.add_argument("--global-temp", action="store_true", dest="global_temp",
-                   help="Materialize results into cached global temp tables on the cluster instead of "
-                        "collecting to the driver (use when result sets are too large even for COUNT(*))")
+    p.add_argument(
+        "--timing-count",
+        action="store_true",
+        dest="timing_count",
+        help="Wrap timing runs in COUNT(*) to avoid collecting large result sets to the driver",
+    )
+    p.add_argument(
+        "--global-temp",
+        action="store_true",
+        dest="global_temp",
+        help="Materialize results into cached global temp tables on the cluster instead of "
+        "collecting to the driver (use when result sets are too large even for COUNT(*))",
+    )
     p.add_argument(
         "--compare-strategy",
         dest="compare_strategy",
@@ -516,8 +535,13 @@ def build_parser() -> argparse.ArgumentParser:
             "'row_hash' = SUM(xxhash64(all_cols)) single-pass (huge tables, fastest)."
         ),
     )
-    p.add_argument("--table-stats", nargs="+", dest="table_stats", metavar="TABLE",
-                   help="Collect metadata + stats for tables (fully qualified or unqualified)")
+    p.add_argument(
+        "--table-stats",
+        nargs="+",
+        dest="table_stats",
+        metavar="TABLE",
+        help="Collect metadata + stats for tables (fully qualified or unqualified)",
+    )
     return p
 
 
@@ -544,7 +568,10 @@ def main() -> None:
 
     if args.table_stats:
         tables = args.table_stats
-        print(f"\n[stats] Collecting metadata for {len(tables)} table(s) in parallel: {', '.join(tables)}", file=sys.stderr)
+        print(
+            f"\n[stats] Collecting metadata for {len(tables)} table(s) in parallel: {', '.join(tables)}",
+            file=sys.stderr,
+        )
         raw: dict[str, dict] = {}
         done = 0
         _progress(0, len(tables), "collecting table stats")
@@ -616,14 +643,21 @@ def main() -> None:
         speedup = orig_stats["mean_s"] / opt_stats["mean_s"] if opt_stats["mean_s"] > 0 else None
 
         print(f"\n{'=' * 60}", file=sys.stderr)
-        print(json.dumps({
-            "explain_plan": plan,
-            "validation": validation,
-            "original": orig_stats,
-            "optimized": opt_stats,
-            "speedup": round(speedup, 3) if speedup else None,
-            "statistically_significant": is_significant(orig_stats, opt_stats) if speedup and speedup > 1 else False,
-        }, indent=2))
+        print(
+            json.dumps(
+                {
+                    "explain_plan": plan,
+                    "validation": validation,
+                    "original": orig_stats,
+                    "optimized": opt_stats,
+                    "speedup": round(speedup, 3) if speedup else None,
+                    "statistically_significant": is_significant(orig_stats, opt_stats)
+                    if speedup and speedup > 1
+                    else False,
+                },
+                indent=2,
+            )
+        )
     finally:
         if args.global_temp:
             print("[cleanup] Dropping global temp tables...", file=sys.stderr)

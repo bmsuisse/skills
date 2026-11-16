@@ -11,7 +11,7 @@ from pathlib import Path
 
 def _cli(profile: str, method: str, path: str, body: dict) -> dict:
     cmd = ["databricks", "api", method, path, "--profile", profile, "--json", json.dumps(body)]
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
     if result.returncode != 0:
         print(f"[error] CLI call failed:\n{result.stderr}", file=sys.stderr)
         sys.exit(1)
@@ -84,14 +84,11 @@ def format_markdown_table(columns: list[str], rows: list[list[str]]) -> str:
         for i, val in enumerate(row):
             if i < len(widths):
                 widths[i] = max(widths[i], len(val))
-    header = "| " + " | ".join(c.ljust(w) for c, w in zip(columns, widths)) + " |"
+    header = "| " + " | ".join(c.ljust(w) for c, w in zip(columns, widths, strict=False)) + " |"
     separator = "|" + "|".join("-" * (w + 2) for w in widths) + "|"
     lines = [header, separator]
     for row in rows:
-        line = "| " + " | ".join(
-            (row[i] if i < len(row) else "").ljust(w)
-            for i, w in enumerate(widths)
-        ) + " |"
+        line = "| " + " | ".join((row[i] if i < len(row) else "").ljust(w) for i, w in enumerate(widths)) + " |"
         lines.append(line)
     return "\n".join(lines)
 

@@ -12,13 +12,15 @@ dependencies = [
 dev = [
     "pyright>=1.1.261",
     "pytest>=8,<9",
+    "ruff>=0.17.4",
+    "ty>=0.0.100",
 ]
 format = [
     "autoflake >=2.3.1,<3",
     "deptry>=0.23.1",
     "isort >=5.13.2,<6",
     "pycln >=2.4.0,<3",
-    "ruff >=0.4.3",
+    "ruff >=0.17.4",
     "shandy-sqlfmt >=0.23.2",
     "yamlfix >=1.14.0",
 ]
@@ -37,9 +39,84 @@ exclude = [
 reportMissingImports = false
 reportMissingModuleSource = false
 
+[tool.pytest.ini_options]
+testpaths = ["tests", "skills/history-lessons/scripts"]
+# codeunit-analyzer's scripts import their sibling modules by bare name
+pythonpath = ["skills/codeunit-analyzer", "skills/codeunit-analyzer/scripts", "skills/databricks-cli/scripts"]
+
 [tool.ruff]
-line-length = 119
+line-length = 120
+indent-width = 4
 target-version = "py311"
+# "*.md": ruff 0.16+ also lints/formats Python blocks in Markdown (skill docs and scaffold templates must stay verbatim).
+# evals fixtures: deliberately broken/unidiomatic code that the skill evals analyse; "fixing" them would invalidate the evals.
+extend-exclude = ["*.md", ".worktrees", ".claude", "skills/*/evals/fixtures"]
+
+[tool.ruff.format]
+indent-style = "space"
+quote-style = "double"
+line-ending = "auto"
+
+[tool.ruff.lint]
+select = [
+    "E", "F", "I",   # pycodestyle, pyflakes, isort
+    "UP",            # pyupgrade - X | None, modern syntax
+    "B",             # bugbear - mutable defaults etc.
+    "ANN",           # full type annotations
+    "SIM", "C4",     # simplifiable code, needless comprehensions/casts
+    "PERF", "FURB",  # needless loops, manual list/dict building
+    "ASYNC",         # blocking calls inside async def
+    "RUF",
+    "N",             # PEP 8 naming
+    "PTH",           # pathlib instead of os.path
+    "TID",           # absolute imports only, banned APIs
+    "RET", "PIE",    # consistent returns, misc simplifications
+    "A",             # no shadowing builtins
+    "T20",           # no print()
+    "LOG",           # logging API misuse
+    "DTZ",           # timezone-aware datetimes
+    "FLY",           # f-string instead of str.join on literals
+    "PLE", "PLW",    # pylint errors + warnings
+]
+ignore = ["ANN401"]  # `Any` is a warning via the ruff-warn-any prek hook, not an error
+
+[tool.ruff.lint.per-file-ignores]
+# Files whose product is stdout (CLI entrypoints, hook scripts, skill scripts)
+"scripts/**" = ["T20"]
+"hooks/**" = ["T20"]
+"skills/*/scripts/**" = ["T20"]
+"skills/*/hooks/**" = ["T20"]
+# The package directory is named after the skill (hyphenated), imposed by the skill layout.
+"skills/codeunit-analyzer/__init__.py" = ["N999"]
+"skills/codeunit-analyzer/scripts/__init__.py" = ["N999"]
+# The scaffold's embedded file templates must stay verbatim (their text is the generated output).
+"skills/init-app-stack/scripts/create.py" = ["E501"]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[tool.ty.src]
+exclude = [".worktrees", ".claude", "skills/*/evals/fixtures"]
+
+[tool.ty.environment]
+# Skill scripts import their sibling modules by bare name (they are run as `python scripts/<name>.py`).
+extra-paths = ["skills/codeunit-analyzer", "skills/codeunit-analyzer/scripts", "skills/databricks-cli/scripts"]
+
+[tool.ty.analysis]
+# Third-party packages that individual skill scripts need are installed on demand when a skill runs
+# (`uv run --with ...`), they are not dependencies of this repository.
+allowed-unresolved-imports = [
+    "bs4",
+    "databricks.**",
+    "networkx",
+    "playwright.**",
+    "plotly.**",
+    "pyspark.**",
+    "scholarly",
+    "sqlglot.**",
+    "tqdm",
+    "yaml",
+]
 
 [tool.yamlfix]
 line_length = 119
@@ -60,3 +137,5 @@ exclude = ["_init__.py"]
 [tool.uv]
 native-tls = true
 keyring-provider = "subprocess"
+# Dependency cooldown: releases younger than 5 days are not resolved (no BMS-owned PyPI packages in this project).
+exclude-newer = "5 days"

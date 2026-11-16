@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""PostToolUse hook (Edit|Write|MultiEdit, Codex apply_patch): regenerate the locale JSON after `translations.toml` is edited.
+"""PostToolUse hook (Edit|Write|MultiEdit, Codex apply_patch): regenerate locale JSON after translations.toml edits.
 
 `translations.toml` is the source of truth; the generated `<lng>.json` files are git-ignored build
 artifacts. Runs `uv run bdt translate` in the nearest parent of the edited file whose `pyproject.toml`
@@ -45,7 +45,7 @@ def is_configured(directory: Path) -> bool:
 
 
 def owning_root(file: Path, project: Path) -> Path | None:
-    """Nearest directory from the file up that configures `bdt translate`, never past the project or its repo/worktree root."""
+    """Nearest directory from the file up that configures `bdt translate`, never past the project or its repo root."""
     if not file.is_relative_to(project):
         return None
     for d in file.parents:
@@ -63,13 +63,13 @@ def edited_files(data: dict) -> list[Path]:
     paths = [tool_input.get("file_path")]
     if isinstance(tool_input.get("command"), str):
         paths += PATCH_FILE_HEADER.findall(tool_input["command"])
-    base = Path(data.get("cwd") or os.getcwd())
+    base = Path(data.get("cwd") or Path.cwd())
     return [(base / p).resolve() for p in paths if isinstance(p, str) and p and Path(p).name == TARGET]
 
 
 def run(cmd: list[str], cwd: Path) -> tuple[int, str]:
     try:
-        p = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=120)
+        p = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=120, check=False)
     except subprocess.TimeoutExpired:
         return 1, f"`{' '.join(cmd)}` timed out after 120s"
     return p.returncode, (p.stdout + p.stderr).strip()

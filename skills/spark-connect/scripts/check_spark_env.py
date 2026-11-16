@@ -8,6 +8,7 @@ Usage:
 
 Reads DATABRICKS_PROFILE and DATABRICKS_CLUSTER_ID from .env or environment.
 """
+
 from __future__ import annotations
 
 import json
@@ -22,8 +23,8 @@ def load_dotenv(path: str = ".env") -> None:
     env_file = Path(path)
     if not env_file.exists():
         return
-    for line in env_file.read_text().splitlines():
-        line = line.strip()
+    for raw_line in env_file.read_text().splitlines():
+        line = raw_line.strip()
         if not line or line.startswith("#") or "=" not in line:
             continue
         key, _, value = line.partition("=")
@@ -33,7 +34,9 @@ def load_dotenv(path: str = ".env") -> None:
 def get_cluster_dbr(profile: str, cluster_id: str) -> str:
     result = subprocess.run(
         ["databricks", "clusters", "get", "--cluster-id", cluster_id, "--profile", profile],
-        capture_output=True, text=True, check=True,
+        capture_output=True,
+        text=True,
+        check=True,
     )
     data = json.loads(result.stdout)
     spark_version: str = data["spark_version"]  # e.g. "17.4.x-scala2.12"
@@ -47,7 +50,9 @@ def get_installed_connect_version(python_bin: Path | None = None) -> str | None:
     exe = str(python_bin) if python_bin else sys.executable
     result = subprocess.run(
         [exe, "-m", "pip", "show", "databricks-connect"],
-        capture_output=True, text=True,
+        capture_output=True,
+        text=True,
+        check=False,
     )
     if result.returncode != 0:
         return None
@@ -72,8 +77,7 @@ def setup_venv(dbr: str, venv_path: Path) -> None:
     print(f"\nCreating {venv_path} with databricks-connect=={dbr}.*")
     subprocess.run(["uv", "venv", str(venv_path)], check=True)
     subprocess.run(
-        ["uv", "pip", "install", f"databricks-connect=={dbr}.*",
-         "--python", str(python_in_venv(venv_path))],
+        ["uv", "pip", "install", f"databricks-connect=={dbr}.*", "--python", str(python_in_venv(venv_path))],
         check=True,
     )
     _print_activate(venv_path)

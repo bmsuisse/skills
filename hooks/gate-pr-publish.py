@@ -64,8 +64,8 @@ earlier in the same command (`P="...code review..."; codex exec "$P"`); unresolv
 Codex sessions (transcript = a Codex rollout, whose first row is `session_meta`) use the same publish-command check but
 their own evidence, since Codex has no Skill tool and logs shell commands as `CommandExecution` events. A review
 counts when the rollout shows an explicitly invoked `$bms-code-review`/`$code-review` skill (a `<skill>` message), a
-shell command that read that skill's SKILL.md (cat, sed, ...), a finished Codex `/review` (`exited_review_mode`), or a `codex exec`/
-`codex review` code review run from the session's shell that exited 0 (same rules as above).
+shell command that read that skill's SKILL.md (cat, sed, ...), a finished Codex `/review` (`exited_review_mode`), or a
+`codex exec`/`codex review` code review run from the session's shell that exited 0 (same rules as above).
 
 Promotion PRs are exempt: a PR whose source AND target are both in {dev, test, main} only moves code that was
 already reviewed when it entered `dev` (see the branching-strategy skill, rule 4), so no review is required. The
@@ -74,7 +74,8 @@ current git branch (the source of `create`; `bdt pr create` targets `dev` by def
 `az repos pr show|list` lookup of the PR being published/merged. When the branches cannot be determined the gate
 applies as usual, which also holds when the line has more than one publishing command, a `cd`/`pushd`, a
 --repo/--organization/--project style flag, or a `gh pr merge` whose PR selector can't be told apart from a flag
-value. Only the publishing command's own flags are read. Fix branches into `main` (`fix/*`, `hotfix/*`) are not promotions and still need a review.
+value. Only the publishing command's own flags are read. Fix branches into `main` (`fix/*`, `hotfix/*`) are not
+promotions and still need a review.
 
 Matching is done on shell-tokenized words (via shlex), not a raw substring/regex
 search over the whole command string. This means a phrase like "bdt pr publish"
@@ -83,7 +84,7 @@ token and does not look like an actual invocation - only real, unquoted, adjacen
 command words trigger the gate.
 """
 
-import glob
+import contextlib
 import json
 import os
 import re
@@ -92,6 +93,7 @@ import subprocess
 import sys
 from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
 
 # Accepts the built-in /code-review and BMS's /bms-code-review, optionally plugin-prefixed
 # ("plugin:code-review").
@@ -141,10 +143,7 @@ def is_pr_publish_command(tokens: list[str]) -> bool:
         return True
     if has_subsequence(tokens, ["gh", "pr", "ready"]) and "--undo" not in tokens:
         return True
-    if has_subsequence(tokens, ["gh", "pr", "merge"]):
-        return True
-
-    return False
+    return has_subsequence(tokens, ["gh", "pr", "merge"])
 
 
 # --- promotion PRs (dev -> test -> main) need no review ----------------------------------------------------
@@ -170,7 +169,9 @@ def flag_value(tokens: list[str], *names: str) -> str | None:
 def run_lookup(argv: list[str], cwd: str) -> str | None:
     """stdout of a read-only CLI lookup, or None when it is unavailable or fails."""
     try:
-        result = subprocess.run(argv, cwd=cwd, capture_output=True, text=True, timeout=LOOKUP_TIMEOUT_SECONDS)
+        result = subprocess.run(
+            argv, cwd=cwd, capture_output=True, text=True, timeout=LOOKUP_TIMEOUT_SECONDS, check=False
+        )
     except (OSError, subprocess.SubprocessError):
         return None
     return result.stdout.strip() if result.returncode == 0 else None
@@ -407,7 +408,9 @@ def expand_vars(text: str, env: dict[str, str], use_environ: bool = False) -> st
 
 def expand_path(path: str, env: dict[str, str]) -> str | None:
     """Expand variables (assignments seen in the command, then the environment) and ~."""
-    path = os.path.expanduser(expand_vars(path, env, use_environ=True))
+    path = expand_vars(path, env, use_environ=True)
+    with contextlib.suppress(RuntimeError):  # unknown `~user`: keep the text as it is
+        path = str(Path(path).expanduser())
     return None if "$" in path or "`" in path else path
 
 
@@ -447,8 +450,8 @@ def codex_reviews_in_command(command: str, depth: int = 0, pipefail: bool = Fals
     reviews: list[CodexReview] = []
     env: dict[str, str] = {}
     segments = split_simple_commands(command)
-    for idx, (words, connector) in enumerate(segments):
-        words = list(words)
+    for idx, (segment_words, _connector) in enumerate(segments):
+        words = list(segment_words)
         if words[:1] == ["export"]:
             words = words[1:]
         assigned: dict[str, str] = {}
@@ -464,23 +467,23 @@ def codex_reviews_in_command(command: str, depth: int = 0, pipefail: bool = Fals
                     pipefail = m.group(1) == "-"
             continue
         # nohup / env / timeout 600 / npx -y ... in front of codex
-        while words and os.path.basename(words[0]) in WRAPPER_COMMANDS:
+        while words and Path(words[0]).name in WRAPPER_COMMANDS:
             words.pop(0)
             while words and (words[0].startswith("-") or re.match(r"[A-Za-z_]\w*=|\d+[smhd]?$", words[0])):
                 words.pop(0)
         if not words:
             continue
-        start, end = list_bounds(segments, idx)
+        _start, end = list_bounds(segments, idx)
         shell_background = segments[end][1] == "&"
         visible = status_is_codex(segments, idx, pipefail)
-        exe = os.path.basename(words[0])
+        exe = Path(words[0]).name
         if exe in SHELLS and depth < 2 and "-c" in words[1:-1]:  # bash -c "codex exec ..."
             inner = words[words.index("-c") + 1]
             inner_pipefail = "pipefail" in words and "-o" in words  # bash -o pipefail -c ...
-            for r in codex_reviews_in_command(inner, depth + 1, inner_pipefail):
-                reviews.append(
-                    CodexReview(r.output_file, r.background or shell_background, r.status_visible and visible)
-                )
+            reviews.extend(
+                CodexReview(r.output_file, r.background or shell_background, r.status_visible and visible)
+                for r in codex_reviews_in_command(inner, depth + 1, inner_pipefail)
+            )
             continue
         if exe != "codex":
             continue
@@ -523,9 +526,9 @@ def output_file_written(path: str, cwd: str, started: float | None) -> bool:
     """codex writes `-o <file>` when the review is done: it must exist, be non-empty and be newer than the call."""
     if started is None:  # without the call's timestamp "newer than the call" cannot be told
         return False
-    full = path if os.path.isabs(path) else os.path.join(cwd, path)
+    full = Path(path) if Path(path).is_absolute() else Path(cwd) / path
     try:
-        st = os.stat(full)
+        st = full.stat()
     except (OSError, ValueError):  # ValueError: embedded NUL byte
         return False
     return st.st_size > 0 and st.st_mtime >= started
@@ -550,7 +553,7 @@ def codex_review_ran_in(path: str) -> bool:
     errors: dict[str, bool] = {}  # tool_use id -> tool_result is_error
     notifications: dict[str, str] = {}  # tool_use id -> task-notification status
     try:
-        with open(path, "r", errors="ignore") as fh:
+        with Path(path).open(errors="ignore") as fh:
             for line in fh:
                 if "codex" not in line and "tool_result" not in line and "task-notification" not in line:
                     continue
@@ -599,7 +602,7 @@ def scan_row(row: object, calls: dict, errors: dict[str, bool], notifications: d
                 calls[tool_id] = (
                     reviews,
                     bool(tool_input.get("run_in_background")),
-                    str(row.get("cwd") or os.getcwd()),
+                    str(row.get("cwd") or Path.cwd()),
                     started,
                 )
         elif block.get("type") == "tool_result" and str(block.get("tool_use_id")) in calls:
@@ -616,7 +619,7 @@ CODEX_SKILL_FILE = re.compile(r"skills/(?:bms-)?code-review/SKILL\.md")
 
 def is_codex_transcript(path: str) -> bool:
     try:
-        with open(path, "r", errors="ignore") as fh:
+        with Path(path).open(errors="ignore") as fh:
             first = json.loads(fh.readline())
     except (OSError, ValueError):
         return False
@@ -628,7 +631,7 @@ def shell_command_of(argv: object) -> str:
     if not isinstance(argv, list):
         return str(argv or "")
     words = [str(w) for w in argv]
-    if len(words) >= 3 and os.path.basename(words[0]) in SHELLS and words[1] in ("-c", "-lc", "-cl"):
+    if len(words) >= 3 and Path(words[0]).name in SHELLS and words[1] in ("-c", "-lc", "-cl"):
         return words[2]
     return shlex.join(words)
 
@@ -639,7 +642,7 @@ FILE_READERS = {"cat", "sed", "head", "tail", "less", "more", "bat", "nl", "awk"
 def reads_review_skill(command: str) -> bool:
     """True when a simple command of `command` is a file reader (cat, sed, ...) given the review skill's SKILL.md."""
     return any(
-        os.path.basename(words[0]).lower() in FILE_READERS and any(CODEX_SKILL_FILE.search(w) for w in words[1:])
+        Path(words[0]).name.lower() in FILE_READERS and any(CODEX_SKILL_FILE.search(w) for w in words[1:])
         for words, _ in split_simple_commands(command)
         if words
     )
@@ -667,7 +670,7 @@ def codex_row_shows_review(row: dict) -> bool:
     if reads_review_skill(command):
         return True
     started = item.get("started_at_ms") or payload.get("started_at_ms")
-    cwd = str(item.get("cwd") or "").removeprefix("file://") or os.getcwd()
+    cwd = str(item.get("cwd") or "").removeprefix("file://") or str(Path.cwd())
     return any(
         review_finished(review, False, None, False, cwd, started / 1000 if isinstance(started, (int, float)) else None)
         for review in codex_reviews_in_command(command)
@@ -676,7 +679,7 @@ def codex_row_shows_review(row: dict) -> bool:
 
 def codex_session_review_ran(path: str) -> bool:
     try:
-        with open(path, "r", errors="ignore") as fh:
+        with Path(path).open(errors="ignore") as fh:
             for line in fh:
                 if not any(k in line for k in ("code-review", "code_review", "codex", "review_mode")):
                     continue
@@ -692,7 +695,7 @@ def codex_session_review_ran(path: str) -> bool:
 
 
 def code_review_ran(transcript_path: str) -> bool:
-    if not transcript_path or not os.path.exists(transcript_path):
+    if not transcript_path or not Path(transcript_path).exists():
         return False
     if is_codex_transcript(transcript_path):
         return codex_session_review_ran(transcript_path)
@@ -700,11 +703,11 @@ def code_review_ran(transcript_path: str) -> bool:
     files = [transcript_path]
     if transcript_path.endswith(".jsonl"):
         session_dir = transcript_path[: -len(".jsonl")]
-        files += glob.glob(os.path.join(session_dir, "subagents", "*.jsonl"))
+        files += [str(p) for p in (Path(session_dir) / "subagents").glob("*.jsonl")]
 
     for path in files:
         try:
-            with open(path, "r", errors="ignore") as fh:
+            with Path(path).open(errors="ignore") as fh:
                 for line in fh:
                     if CODE_REVIEW_SKILL.search(line):
                         return True
@@ -758,23 +761,24 @@ def main() -> None:
                 "Blocked before it runs: this codex code review would not count for the PR-publish gate, because the "
                 "Bash result would not show whether codex succeeded (a pipe such as `| tail`/`| tee` without "
                 "`set -o pipefail`, a trailing `; echo`, an `|| true`, or a `&` run without `-o <file>`). Re-run it "
-                "with codex as the last command of the line (`codex exec ... < /dev/null > /tmp/review.log 2>&1`, then read "
-                "the log; always close stdin with `< /dev/null`, or codex can hang on it), or `set -o pipefail;` before the pipe, or in the background with `&` and `-o <file>`."
+                "with codex as the last command of the line (`codex exec ... < /dev/null > /tmp/review.log 2>&1`, then "
+                "read the log; always close stdin with `< /dev/null`, or codex can hang on it), or `set -o pipefail;` "
+                "before the pipe, or in the background with `&` and `-o <file>`."
             )
         return
 
     if code_review_ran(data.get("transcript_path", "")):
         return
 
-    if is_promotion_pr(command, str(data.get("cwd") or os.getcwd())):
+    if is_promotion_pr(command, str(data.get("cwd") or Path.cwd())):
         return
 
     deny(
         "Blocked: this command publishes/completes a PR, but neither /code-review nor "
         "/bms-code-review has been run yet in this session (directly or via a subagent), and no completed "
         "`codex exec`/`codex review` code review was found either. Run one of them first, then retry. "
-        "A `codex exec` prompt is only recognised as a review when it says \"code review\" (or names the "
-        "bms-code-review skill), or says \"review\" together with diff, branch, PR, pull request, changes or commit. "
+        'A `codex exec` prompt is only recognised as a review when it says "code review" (or names the '
+        'bms-code-review skill), or says "review" together with diff, branch, PR, pull request, changes or commit. '
         "A codex review counts once it has finished: run it in the foreground as the last command of the line "
         "(no `| tee`, `; echo` or `|| true` after it, which would hide a failure), or backgrounded with `&` "
         "and `-o <file>` so the output file proves completion (a literal path, or `$VAR` assigned earlier in the same "

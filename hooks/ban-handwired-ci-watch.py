@@ -10,9 +10,10 @@ Azure DevOps and GitHub. Agents still glue their own from `az repos pr show`, `a
 `_apis/build/builds` and a `sleep` loop, which burns context on every poll and misreads the build state. Denied:
 
   - a polling construct (`while`/`until`/`for` loop, `sleep`, `watch`) around a PR or CI status query;
-  - a CI status query on its own: `az pipelines runs list|show`, `az pipelines build list|show`, `gh run list|view|watch`,
-    `gh pr checks`, or the Azure DevOps build API (`_apis/build/builds`, except logs/artifacts/attachments). This one is
-    denied only the first time in a session: the hint is the point, and a one-off query may be legitimate afterwards.
+  - a CI status query on its own: `az pipelines runs list|show`, `az pipelines build list|show`,
+    `gh run list|view|watch`, `gh pr checks`, or the Azure DevOps build API (`_apis/build/builds`, except
+    logs/artifacts/attachments). This one is denied only the first time in a session: the hint is the point, and a
+    one-off query may be legitimate afterwards.
 
 A single `az repos pr show`/`list` or pull request REST call stays allowed (labels, threads and attachments have no
 `bdt` command). Only commands that run something are scanned: `echo`, `git commit -m` or a heredoc written to a file
@@ -27,6 +28,7 @@ import shlex
 import shutil
 import sys
 import tempfile
+from pathlib import Path
 
 ASSIGNMENT = re.compile(r"[A-Za-z_]\w*=")
 HEREDOC = re.compile(r"(?<!<)<<(?!<)-?\s*(['\"]?)([A-Za-z_]\w*)\1")
@@ -35,7 +37,25 @@ KEYWORDS = {"if", "then", "else", "elif", "do", "!", "{", "}"}
 LOOPS = {"while", "until", "for"}
 SHELL_PUNCT = set(";&|()\n")
 # commands that run what they are given, so what they are given is worth scanning
-RUNNERS = {"eval", "az", "curl", "wget", "http", "https", "gh", "python", "python3", "uv", "uvx", "bun", "bunx", "node", "bash", "sh", "zsh"}
+RUNNERS = {
+    "eval",
+    "az",
+    "curl",
+    "wget",
+    "http",
+    "https",
+    "gh",
+    "python",
+    "python3",
+    "uv",
+    "uvx",
+    "bun",
+    "bunx",
+    "node",
+    "bash",
+    "sh",
+    "zsh",
+}
 INTERPRETERS = re.compile(r"\b(python3?|bash|sh|zsh|node|bun|uv)\b")
 
 # words may be separated by whitespace or by the quotes/commas of an argument list (`['az', 'repos', 'pr', 'show']`)
@@ -65,7 +85,10 @@ POLL_TEXT = re.compile(r"\bsleep\b|\bsetTimeout\b|\bwatch\s+-n\b", re.IGNORECASE
 
 
 def split_heredocs(command: str) -> tuple[str, list[str]]:
-    """Separate heredoc bodies from the command line; bodies fed to an interpreter (`python3 - <<EOF`) run, so they are returned."""
+    """Separate heredoc bodies from the command line.
+
+    Bodies fed to an interpreter (`python3 - <<EOF`) run, so they are returned.
+    """
     out: list[str] = []
     scripts: list[str] = []
     pending: list[tuple[str, bool, bool]] = []
@@ -122,7 +145,8 @@ def scan(command: str) -> tuple[bool, bool, bool]:
         polls = polls or found[0] or (depth > 0 and (found[1] or found[2]))
         pr_query, ci_query = pr_query or found[1], ci_query or found[2]
 
-    for tokens in simple:
+    for simple_command in simple:
+        tokens = simple_command
         while tokens and (ASSIGNMENT.match(tokens[0]) or tokens[0] in KEYWORDS or tokens[0] in LOOPS):
             depth += tokens[0] in LOOPS
             tokens = tokens[1:]
@@ -148,17 +172,17 @@ def scan(command: str) -> tuple[bool, bool, bool]:
 
 def first_time_in_session(session_id: str) -> bool:
     """True only for the first call with this session id; later calls find the marker and return False."""
-    marker_dir = os.path.join(tempfile.gettempdir(), f"ban-handwired-ci-watch-{os.getuid()}")
-    os.makedirs(marker_dir, mode=0o700, exist_ok=True)
+    marker_dir = Path(tempfile.gettempdir()) / f"ban-handwired-ci-watch-{os.getuid()}"
+    marker_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
     try:
-        os.close(os.open(os.path.join(marker_dir, hashlib.sha256(session_id.encode()).hexdigest()), os.O_CREAT | os.O_EXCL))
+        os.close(os.open(marker_dir / hashlib.sha256(session_id.encode()).hexdigest(), os.O_CREAT | os.O_EXCL))
     except FileExistsError:
         return False
     return True
 
 
 def should_block(command: str, session_id: str) -> str | None:
-    """Return "always" for polling around a query, "once" for a standalone CI query (first time in a session), else None."""
+    """Return "always" for polling around a query, "once" for a standalone CI query (first in a session), else None."""
     polls, pr_query, ci_query = scan(command)
     if polls and (pr_query or ci_query):
         return "always"
@@ -171,8 +195,8 @@ def should_block(command: str, session_id: str) -> str | None:
 def bdt_hint() -> str:
     if shutil.which("bdt"):
         return ""
-    if os.path.exists(os.path.expanduser("~/.local/bin/bdt")):
-        return " `bdt` is installed in ~/.local/bin but not on PATH: `export PATH=\"$HOME/.local/bin:$PATH\"`."
+    if Path("~/.local/bin/bdt").expanduser().exists():
+        return ' `bdt` is installed in ~/.local/bin but not on PATH: `export PATH="$HOME/.local/bin:$PATH"`.'
     return " `bdt` is not installed: `uv tool install bmsdna-devtools` (update with `uv tool upgrade bmsdna-devtools`)."
 
 
@@ -190,14 +214,19 @@ def main() -> None:
         return
 
     reason = (
-        "Blocked: don't hand-wire PR/CI watch scripts (`az repos pr show`, `az pipelines runs`, `curl` on the build API, "
-        "`sleep` loops). Use bdt, it works for Azure DevOps and GitHub: `bdt pr status --wait --timeout 540` waits for "
-        "the checks and lists the failing ones (exit 4 = still running, re-run it; 3 = needs manual approval; 1 = a check "
-        "failed), `bdt pr info [--pr-id N]` gives state, build state and closed issues, `bdt pr retry` re-runs only the "
+        "Blocked: don't hand-wire PR/CI watch scripts (`az repos pr show`, `az pipelines runs`, `curl` on the build "
+        "API, `sleep` loops). Use bdt, it works for Azure DevOps and GitHub: `bdt pr status --wait --timeout 540` "
+        "waits for the checks and lists the failing ones (exit 4 = still running, re-run it; 3 = needs manual "
+        "approval; 1 = a check failed), `bdt pr info [--pr-id N]` gives state, build state and closed issues, "
+        "`bdt pr retry` re-runs only the "
         "failed jobs, `bdt pr watch-deploy --target-branch <branch>` follows the pipeline that runs after the merge. "
         "In the dev-workflow, dispatch the `bms-ci-watch` agent instead of polling yourself. If bdt cannot answer what "
         "you need, say so to the user rather than scripting around it."
-        + (" This is shown once per session: if you still need this one query after reading it, run it again." if verdict == "once" else "")
+        + (
+            " This is shown once per session: if you still need this one query after reading it, run it again."
+            if verdict == "once"
+            else ""
+        )
         + bdt_hint()
     )
     print(

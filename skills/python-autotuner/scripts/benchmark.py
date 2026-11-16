@@ -30,6 +30,7 @@ Usage
     # Compare against a saved baseline
     python3 scripts/benchmark.py --file processor.py --compare baseline.json --json
 """
+
 from __future__ import annotations
 
 import argparse
@@ -37,10 +38,12 @@ import importlib.util
 import json
 import statistics
 import sys
+from collections.abc import Callable
 from pathlib import Path
-
+from types import ModuleType
 
 # ── stats ──────────────────────────────────────────────────────────────────────
+
 
 def _stats(times_s: list[float]) -> dict:
     """Compute timing stats from a list of per-call wall-clock seconds."""
@@ -66,7 +69,8 @@ def _ci_no_overlap(a: dict, b: dict) -> bool:
 
 # ── module loading ─────────────────────────────────────────────────────────────
 
-def _load_module_from_path(path: Path):
+
+def _load_module_from_path(path: Path) -> ModuleType:
     """Import a .py file as a module by path, without installing it."""
     parent = str(path.parent.resolve())
     if parent not in sys.path:
@@ -121,7 +125,8 @@ def _load_spec(target_file: str) -> dict:
 
 # ── timing ─────────────────────────────────────────────────────────────────────
 
-def _time_callable(fn, n_warmup: int, n_runs: int) -> list[float]:
+
+def _time_callable(fn: Callable[[], object], n_warmup: int, n_runs: int) -> list[float]:
     """Time a zero-arg callable. Returns per-call wall-clock seconds."""
     import timeit
 
@@ -132,6 +137,7 @@ def _time_callable(fn, n_warmup: int, n_runs: int) -> list[float]:
 
 
 # ── comparison ─────────────────────────────────────────────────────────────────
+
 
 def _compare(baseline: dict, optimized: dict) -> list[dict]:
     """Compute speedup for each benchmark present in both runs."""
@@ -145,23 +151,24 @@ def _compare(baseline: dict, optimized: dict) -> list[dict]:
         opt = o_map[name]
         speedup = orig["mean_ms"] / opt["mean_ms"] if opt["mean_ms"] > 0 else 1.0
         sig = _ci_no_overlap(orig, opt)
-        comparisons.append({
-            "name": name,
-            "original_mean_ms": orig["mean_ms"],
-            "optimized_mean_ms": opt["mean_ms"],
-            "speedup": round(speedup, 3),
-            "statistically_significant": sig,
-            "improved": speedup > 1.0 and sig,
-        })
+        comparisons.append(
+            {
+                "name": name,
+                "original_mean_ms": orig["mean_ms"],
+                "optimized_mean_ms": opt["mean_ms"],
+                "speedup": round(speedup, 3),
+                "statistically_significant": sig,
+                "improved": speedup > 1.0 and sig,
+            }
+        )
     return sorted(comparisons, key=lambda c: -c["speedup"])
 
 
 # ── main ───────────────────────────────────────────────────────────────────────
 
+
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Benchmark Python functions with timeit. No pytest fixtures needed."
-    )
+    parser = argparse.ArgumentParser(description="Benchmark Python functions with timeit. No pytest fixtures needed.")
     parser.add_argument("--file", required=True, help="Target .py file being tuned")
     parser.add_argument("--function", help="Filter: only run benchmarks whose name contains this")
     parser.add_argument("--n-runs", type=int, default=10, help="Timed iterations per benchmark (default 10)")
@@ -193,7 +200,7 @@ def main() -> None:
     output: dict = {"benchmarks": results}
 
     if args.compare:
-        with open(args.compare) as f:
+        with Path(args.compare).open() as f:
             baseline = json.load(f)
         output["comparison"] = _compare(baseline, output)
         if not args.as_json:

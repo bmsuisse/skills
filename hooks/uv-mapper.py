@@ -71,12 +71,16 @@ def main() -> None:
 
     if new_cmd != cmd:
         data["tool_input"]["command"] = new_cmd
-        print(json.dumps({
-            "hookSpecificOutput": {
-                "hookEventName": "PreToolUse",
-                "updatedInput": data["tool_input"],
-            }
-        }))
+        print(
+            json.dumps(
+                {
+                    "hookSpecificOutput": {
+                        "hookEventName": "PreToolUse",
+                        "updatedInput": data["tool_input"],
+                    }
+                }
+            )
+        )
 
 
 if __name__ == "__main__":

@@ -8,19 +8,18 @@ Usage:
     python3 scripts/complexity.py query.sql
     python3 scripts/complexity.py --json query.sql   # machine-readable output
 """
+
 from __future__ import annotations
 
 import argparse
 import json
 import re
-import sys
 from pathlib import Path
 
 
 def strip_comments(sql: str) -> str:
     sql = re.sub(r"--[^\n]*", "", sql)
-    sql = re.sub(r"/\*.*?\*/", "", sql, flags=re.DOTALL)
-    return sql
+    return re.sub(r"/\*.*?\*/", "", sql, flags=re.DOTALL)
 
 
 def count_lines(sql: str) -> int:
@@ -42,7 +41,6 @@ def count_subqueries(sql: str) -> int:
     # Count SELECT keywords that appear inside parentheses (i.e. not the outermost one)
     depth = 0
     count = 0
-    i = 0
     tokens = re.split(r"(\(|\)|\bSELECT\b)", sql, flags=re.IGNORECASE)
     for token in tokens:
         if token == "(":

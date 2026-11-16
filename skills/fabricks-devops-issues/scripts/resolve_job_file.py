@@ -15,6 +15,7 @@ Usage: resolve_job_file.py <repo_root> <title>
 Prints the resolved file path (a sibling `{item}.sql` if one exists,
 otherwise the `_config.*.yml` itself) or exits non-zero if no match is found.
 """
+
 import sys
 from pathlib import Path
 
@@ -30,7 +31,7 @@ def parse_title(title: str) -> tuple[str, str] | None:
     return step, topic_item
 
 
-def find_job_config(title: str, repo_root: Path):
+def find_job_config(title: str, repo_root: Path) -> tuple[Path, dict] | None:
     parsed = parse_title(title)
     if not parsed:
         return None

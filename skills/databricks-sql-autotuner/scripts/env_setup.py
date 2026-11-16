@@ -32,7 +32,7 @@ def venv_python(venv: Path) -> Path:
 
 
 def check_uv() -> None:
-    result = subprocess.run(["uv", "--version"], capture_output=True, text=True)
+    result = subprocess.run(["uv", "--version"], capture_output=True, text=True, check=False)
     if result.returncode != 0:
         print("[error] uv is not installed or not on PATH.", file=sys.stderr)
         print("Install: curl -LsSf https://astral.sh/uv/install.sh | sh", file=sys.stderr)
@@ -69,7 +69,8 @@ def verify_connection(venv: Path, profile: str, cluster_id: str) -> None:
     print(f"[verify] Testing connection (profile={profile}, cluster={cluster_id})...")
     code = (
         "from databricks.connect import DatabricksSession\n"
-        f"spark = DatabricksSession.builder.profile({json.dumps(profile)}).clusterId({json.dumps(cluster_id)}).getOrCreate()\n"
+        f"spark = DatabricksSession.builder.profile({json.dumps(profile)})"
+        f".clusterId({json.dumps(cluster_id)}).getOrCreate()\n"
         "result = spark.sql('SELECT 1 AS ok').collect()\n"
         "assert result[0]['ok'] == 1, 'Unexpected result from SELECT 1'\n"
         "print(f'[verify] OK \u2014 Spark {spark.version}')\n"
@@ -79,6 +80,7 @@ def verify_connection(venv: Path, profile: str, cluster_id: str) -> None:
         [str(venv_python(venv)), "-c", code],
         capture_output=True,
         text=True,
+        check=False,
     )
     print(proc.stdout, end="")
     if proc.returncode != 0:
@@ -89,12 +91,9 @@ def verify_connection(venv: Path, profile: str, cluster_id: str) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Set up the SQL autotuner venv.")
-    parser.add_argument("--dbr-version", required=True, metavar="VER",
-                        help="Databricks Runtime version, e.g. 17.3")
-    parser.add_argument("--profile", required=True,
-                        help="Databricks CLI profile name")
-    parser.add_argument("--cluster-id", required=True, dest="cluster_id",
-                        help="Target cluster ID")
+    parser.add_argument("--dbr-version", required=True, metavar="VER", help="Databricks Runtime version, e.g. 17.3")
+    parser.add_argument("--profile", required=True, help="Databricks CLI profile name")
+    parser.add_argument("--cluster-id", required=True, dest="cluster_id", help="Target cluster ID")
     args = parser.parse_args()
 
     check_uv()
@@ -104,9 +103,8 @@ def main() -> None:
     verify_connection(venv, args.profile, args.cluster_id)
 
     python_path = venv_python(venv)
-    print(f"\n[setup] Done. Run tune.py with:")
-    print(f"  {python_path} scripts/tune.py "
-          f"--profile {args.profile} --cluster-id {args.cluster_id} ...")
+    print("\n[setup] Done. Run tune.py with:")
+    print(f"  {python_path} scripts/tune.py --profile {args.profile} --cluster-id {args.cluster_id} ...")
 
 
 if __name__ == "__main__":

@@ -18,7 +18,6 @@ import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 
-
 CROSSREF_API = "https://api.crossref.org/works"
 USER_AGENT = "AIActionPlan-CitationChecker/1.0 (mailto:citation-checker@example.com)"
 SIMILARITY_THRESHOLD = 0.5
@@ -65,8 +64,8 @@ def extract_bibliography(text: str) -> list[BibEntry]:
         return []
 
     entries: list[BibEntry] = []
-    for line in lines[bib_start:]:
-        line = line.strip()
+    for raw_line in lines[bib_start:]:
+        line = raw_line.strip()
         if not line or line.startswith(("#", "-", ">")):
             continue
 
@@ -76,7 +75,7 @@ def extract_bibliography(text: str) -> list[BibEntry]:
 
         year = year_match.group(1)
         authors = line[: year_match.start()].strip().rstrip(",").rstrip(".")
-        rest = line[year_match.end():].strip().lstrip(".").strip()
+        rest = line[year_match.end() :].strip().lstrip(".").strip()
 
         title_match = re.match(r"\*([^*]+)\*", rest)
         if title_match:
@@ -103,15 +102,28 @@ def similarity(a: str, b: str) -> float:
 
 
 def is_book(entry: BibEntry) -> bool:
-    after_year = entry.full_line[entry.full_line.find(entry.year):]
+    after_year = entry.full_line[entry.full_line.find(entry.year) :]
     return "*" in after_year and any(
         p in entry.full_line
-        for p in ["Press", "Media", "Publications", "Springer", "Wiley", "Business", "SIAM", "Leanpub", "Crown", "Digital Press"]
+        for p in [
+            "Press",
+            "Media",
+            "Publications",
+            "Springer",
+            "Wiley",
+            "Business",
+            "SIAM",
+            "Leanpub",
+            "Crown",
+            "Digital Press",
+        ]
     )
 
 
 def is_software(entry: BibEntry) -> bool:
-    return any(kw in entry.full_line.lower() for kw in ["github.com", "google.com/", "software", "or-tools", "langchain"])
+    return any(
+        kw in entry.full_line.lower() for kw in ["github.com", "google.com/", "software", "or-tools", "langchain"]
+    )
 
 
 def _fallback_result(entry: BibEntry, *, api_error: str = "") -> VerificationResult:
@@ -125,7 +137,10 @@ def _fallback_result(entry: BibEntry, *, api_error: str = "") -> VerificationRes
 
     if api_error:
         return VerificationResult(
-            entry=entry, status="error", confidence="low", confidence_score=0.2,
+            entry=entry,
+            status="error",
+            confidence="low",
+            confidence_score=0.2,
             note=f"API error: {api_error}. {note}",
         )
     return VerificationResult(entry=entry, status="not_found", confidence=conf, confidence_score=score, note=note)
@@ -134,11 +149,13 @@ def _fallback_result(entry: BibEntry, *, api_error: str = "") -> VerificationRes
 def query_crossref(entry: BibEntry) -> VerificationResult:
     """Query CrossRef API for a bibliography entry."""
     query = f"{entry.authors.split(',')[0]} {entry.title}"
-    params = urllib.parse.urlencode({
-        "query.bibliographic": query,
-        "rows": "3",
-        "select": "title,author,published-print,published-online,DOI,type",
-    })
+    params = urllib.parse.urlencode(
+        {
+            "query.bibliographic": query,
+            "rows": "3",
+            "select": "title,author,published-print,published-online,DOI,type",
+        }
+    )
     req = urllib.request.Request(f"{CROSSREF_API}?{params}", headers={"User-Agent": USER_AGENT})
 
     try:
@@ -225,7 +242,11 @@ def generate_report(results: list[VerificationResult], output_path: Path) -> Non
     ]
 
     sections = [
-        ("Low Confidence — Manual Check Required", sorted(by_conf["low"] + by_conf["none"], key=lambda x: x.confidence_score), True),
+        (
+            "Low Confidence — Manual Check Required",
+            sorted(by_conf["low"] + by_conf["none"], key=lambda x: x.confidence_score),
+            True,
+        ),
         ("Medium Confidence — Worth Reviewing", sorted(by_conf["medium"], key=lambda x: x.confidence_score), False),
     ]
     for label, section, show_full_ref in sections:

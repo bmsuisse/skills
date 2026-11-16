@@ -39,7 +39,7 @@ def tool(root: Path, name: str) -> list[str] | None:
 
 
 def run(cmd: list[str], cwd: Path) -> tuple[int, str]:
-    p = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=60)
+    p = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=60, check=False)
     return p.returncode, (p.stdout + p.stderr).strip()
 
 
@@ -55,8 +55,8 @@ def lint(file: Path) -> str:
         return out if code == 1 else ""  # 1 = violations; 2 = ruff/config error, which must not block edits
     if file.suffix in JS:
         root = find_up(file.parent, ("biome.json", "biome.jsonc"))
-        biome = root and tool(root, "biome")
-        if not biome:
+        biome = tool(root, "biome") if root else None
+        if root is None or not biome:
             return ""
         code, out = run([*biome, "check", "--write", "--colors=off", "--no-errors-on-unmatched", str(file)], root)
         return out if code == 1 else ""
@@ -76,7 +76,11 @@ def main() -> int:
     except (OSError, ValueError, subprocess.TimeoutExpired):  # ValueError: unreadable/non-UTF-8 config
         return 0  # ponytail: a broken or slow linter must not block editing
     if problems:
-        print(f"Lint errors remain in {file.name}. Fix them (targeted `# noqa: CODE  # reason` only if justified):\n{problems}", file=sys.stderr)
+        print(
+            f"Lint errors remain in {file.name}. Fix them (targeted `# noqa: CODE  # reason` only if justified):\n"
+            f"{problems}",
+            file=sys.stderr,
+        )
         return 2
     return 0
 

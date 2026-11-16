@@ -15,27 +15,94 @@ import re
 import sys
 from pathlib import Path
 
-
 _STOPWORDS = {
     # German
-    "kapitel", "abbildung", "tabelle", "stufe", "schritt", "phase", "seit",
-    "januar", "februar", "märz", "april", "mai", "juni", "juli", "august",
-    "september", "oktober", "november", "dezember", "lag", "version", "stand",
-    "regulation", "abschnitt", "abs", "quartal", "monat", "woche", "tag",
-    "jahr", "kurzfristig", "mittelfristig", "langfristig",
+    "kapitel",
+    "abbildung",
+    "tabelle",
+    "stufe",
+    "schritt",
+    "phase",
+    "seit",
+    "januar",
+    "februar",
+    "märz",
+    "april",
+    "mai",
+    "juni",
+    "juli",
+    "august",
+    "september",
+    "oktober",
+    "november",
+    "dezember",
+    "lag",
+    "version",
+    "stand",
+    "regulation",
+    "abschnitt",
+    "abs",
+    "quartal",
+    "monat",
+    "woche",
+    "tag",
+    "jahr",
+    "kurzfristig",
+    "mittelfristig",
+    "langfristig",
     # English
-    "figure", "table", "chapter", "section", "appendix", "equation", "exhibit",
-    "january", "february", "march", "april", "june", "july",
-    "september", "october", "november", "december", "version", "phase", "step",
+    "figure",
+    "table",
+    "chapter",
+    "section",
+    "appendix",
+    "equation",
+    "exhibit",
+    "january",
+    "february",
+    "march",
+    "june",
+    "july",
+    "october",
+    "december",
+    "step",
     # French
-    "janvier", "février", "mars", "avril", "juin", "juillet", "août",
-    "chapitre", "tableau", "figure", "annexe", "paragraphe", "partie",
-    "résumé", "étude", "introduction", "conclusion",
+    "janvier",
+    "février",
+    "mars",
+    "avril",
+    "juin",
+    "juillet",
+    "août",
+    "chapitre",
+    "tableau",
+    "annexe",
+    "paragraphe",
+    "partie",
+    "résumé",
+    "étude",
+    "introduction",
+    "conclusion",
     # Italian
-    "gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno",
-    "luglio", "agosto", "ottobre", "dicembre",
-    "capitolo", "tabella", "sezione", "appendice", "paragrafo", "parte",
-    "studio", "introduzione", "conclusione",
+    "gennaio",
+    "febbraio",
+    "marzo",
+    "aprile",
+    "maggio",
+    "giugno",
+    "luglio",
+    "agosto",
+    "ottobre",
+    "dicembre",
+    "capitolo",
+    "tabella",
+    "sezione",
+    "appendice",
+    "paragrafo",
+    "parte",
+    "studio",
+    "introduzione",
+    "conclusione",
 }
 
 
@@ -88,10 +155,12 @@ def extract_inline_citations(body: str) -> set[str]:
     citations: set[str] = set()
 
     for m in re.compile(r"\(([^)]+,\s*\d{4}(?:\s*;\s*[^)]+,\s*\d{4})*)\)").finditer(body):
-        for part in re.split(r"\s*;\s*", m.group(1)):
+        for raw_part in re.split(r"\s*;\s*", m.group(1)):
             part = re.sub(
                 r"^(?:vgl\.|siehe|e\.g\.,?|z\.B\.,?|cf\.|voir|ibid\.|op\.\s*cit\.|cfr\.)\s+",
-                "", part.strip(), flags=re.IGNORECASE,
+                "",
+                raw_part.strip(),
+                flags=re.IGNORECASE,
             )
             year_match = re.search(r",\s*(\d{4})$", part)
             if year_match:
@@ -100,25 +169,23 @@ def extract_inline_citations(body: str) -> set[str]:
                     citations.add(key)
 
     # Character class covering EN/DE/FR/IT surnames (accented letters in body of name)
-    _CAP = r"[A-ZÄÖÜÀÂÇÉÈÊËÎÏÔÛÙÜŸŒÆÌÒÚ]"
-    _LOW = r"[a-zäöüéèàâçêëîïôûùüÿœæìòú\-]"
-    _SUR = rf"(?:Mc|Mac)?{_CAP}{_LOW}+"
+    cap_re = r"[A-ZÄÖÜÀÂÇÉÈÊËÎÏÔÛÙÜŸŒÆÌÒÚ]"
+    low_re = r"[a-zäöüéèàâçêëîïôûùüÿœæìòú\-]"
+    sur_re = rf"(?:Mc|Mac)?{cap_re}{low_re}+"
 
     # Narrative two-author: EN "and", DE "und", FR "et" (≠ "et al."), IT "e"
     for m in re.compile(
-        rf"({_SUR})\s+(?:und|and|et(?!\s+al\.?\b)|e(?=\s+{_CAP}))\s+({_SUR})\s+\((\d{{4}})\)"
+        rf"({sur_re})\s+(?:und|and|et(?!\s+al\.?\b)|e(?=\s+{cap_re}))\s+({sur_re})\s+\((\d{{4}})\)"
     ).finditer(body):
         citations.add(f"{m.group(1).lower()} & {m.group(2).lower()}, {m.group(3)}")
 
     # Narrative et al.: "Author et al. (Year)"
-    for m in re.compile(rf"({_SUR})\s+et\s+al\.\s+\((\d{{4}})\)").finditer(body):
+    for m in re.compile(rf"({sur_re})\s+et\s+al\.\s+\((\d{{4}})\)").finditer(body):
         citations.add(f"{m.group(1).lower()} et al., {m.group(2)}")
 
     # Narrative with preposition — German, French, Italian
-    _PREP = r"(?:nach|von|laut|bei|selon|d'apr[eè]s|par|secondo|stando\s+a)"
-    for m in re.compile(
-        rf"{_PREP}\s+({_SUR}(?:\s+et\s+al\.)?)\s+\((\d{{4}})\)"
-    ).finditer(body):
+    prep_re = r"(?:nach|von|laut|bei|selon|d'apr[eè]s|par|secondo|stando\s+a)"
+    for m in re.compile(rf"{prep_re}\s+({sur_re}(?:\s+et\s+al\.)?)\s+\((\d{{4}})\)").finditer(body):
         author_raw, year = m.group(1).strip(), m.group(2)
         if "et al." in author_raw:
             citations.add(f"{author_raw.split()[0].lower()} et al., {year}")
@@ -127,11 +194,11 @@ def extract_inline_citations(body: str) -> set[str]:
 
     # Simple narrative: "Author (Year)"
     # Skip second-author words already captured by the two-author pattern above.
-    for m in re.compile(rf"(?<![(\w])({_SUR})\s+\((\d{{4}})\)").finditer(body):
+    for m in re.compile(rf"(?<![(\w])({sur_re})\s+\((\d{{4}})\)").finditer(body):
         author = m.group(1)
         if author.lower() in _STOPWORDS:
             continue
-        preceding = body[max(0, m.start(1) - 6): m.start(1)].rstrip()
+        preceding = body[max(0, m.start(1) - 6) : m.start(1)].rstrip()
         if preceding.endswith(("&", "und", "and", "et", " e")):
             continue
         citations.add(f"{author.lower()}, {m.group(2)}")
@@ -143,8 +210,8 @@ def extract_bibliography(bib_text: str) -> dict[str, str]:
     """Extract bibliography entries. Returns {normalized_key: full_line}."""
     entries: dict[str, str] = {}
 
-    for line in bib_text.splitlines():
-        line = line.strip()
+    for raw_line in bib_text.splitlines():
+        line = raw_line.strip()
         if not line or line.startswith(("#", "-", ">")):
             continue
 
@@ -155,18 +222,16 @@ def extract_bibliography(bib_text: str) -> dict[str, str]:
         year = year_match.group(1)
         author_part = line[: year_match.start()].strip().rstrip(",").rstrip(".")
 
-        _BIB_CAP = r"[A-ZÄÖÜÀÂÇÉÈÊËÎÏÔÛÙÜÌÒÚ]"
-        _BIB_LOW = r"[a-zäöüéèàâçêëîïôûùüìòú\-]"
+        bib_cap = r"[A-ZÄÖÜÀÂÇÉÈÊËÎÏÔÛÙÜÌÒÚ]"
+        bib_low = r"[a-zäöüéèàâçêëîïôûùüìòú\-]"
         authors: list[str] = []
         for part in re.split(r"\s*&\s*", author_part):
-            surname_matches = re.findall(
-                rf"((?:Mc|Mac)?{_BIB_CAP}{_BIB_LOW}+),\s*{_BIB_CAP}", part
-            )
+            surname_matches = re.findall(rf"((?:Mc|Mac)?{bib_cap}{bib_low}+),\s*{bib_cap}", part)
             if surname_matches:
                 authors.extend(surname_matches)
             else:
                 m = re.match(
-                    rf"((?:Mc|Mac)?{_BIB_CAP}[{_BIB_CAP[1:-1]}a-zäöüéèàâçêëîïôûùüìòú\- ]+)",
+                    rf"((?:Mc|Mac)?{bib_cap}[{bib_cap[1:-1]}a-zäöüéèàâçêëîïôûùüìòú\- ]+)",
                     part.strip(),
                 )
                 if m:
@@ -205,9 +270,7 @@ def find_bib_start(text: str) -> int:
     return -1
 
 
-def _suggest_alternatives(
-    missing_key: str, bibliography: dict[str, str], n: int = 3
-) -> list[tuple[str, str]]:
+def _suggest_alternatives(missing_key: str, bibliography: dict[str, str], n: int = 3) -> list[tuple[str, str]]:
     """Return up to n bibliography entries that might match a missing citation.
 
     Ranks by: same year (score +2) + overlapping surname token (score +1).
@@ -220,7 +283,9 @@ def _suggest_alternatives(
     for bk, full_line in bibliography.items():
         bk_year = bk.split(",")[-1].strip()
         bk_surname = bk.split(",")[0].split("&")[0].split("et al")[0].strip()
-        score = (2 if bk_year == year else 0) + (1 if surname and (surname in bk_surname or bk_surname in surname) else 0)
+        score = (2 if bk_year == year else 0) + (
+            1 if surname and (surname in bk_surname or bk_surname in surname) else 0
+        )
         if score > 0:
             scored.append((score, bk, full_line))
 
@@ -265,7 +330,7 @@ def main() -> None:
             print(f"  x {c}")
             suggestions = _suggest_alternatives(c, bibliography)
             if suggestions:
-                print(f"    Did you mean:")
+                print("    Did you mean:")
                 for bk, short in suggestions:
                     print(f"      - {bk}  [{short}]")
     else:

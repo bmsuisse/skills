@@ -9,7 +9,7 @@ import sys
 
 def _run(profile: str, *args: str) -> dict | list:
     cmd = ["databricks", *args, "--profile", profile, "--output", "json"]
-    r = subprocess.run(cmd, capture_output=True, text=True)
+    r = subprocess.run(cmd, capture_output=True, text=True, check=False)
     if r.returncode != 0:
         print(f"[error] {r.stderr.strip()}", file=sys.stderr)
         sys.exit(1)
@@ -59,6 +59,6 @@ def search(profile: str, keyword: str, catalog: str | None = None) -> None:
     )
 
     cmd = ["databricks", "experimental", "aitools", "tools", "query", sql, "--profile", profile]
-    r = subprocess.run(cmd)
+    r = subprocess.run(cmd, check=False)
     if r.returncode != 0:
         sys.exit(r.returncode)

@@ -10,19 +10,24 @@ performance improvements, optionally fetching EXPLAIN COST plans.
 from __future__ import annotations
 
 import argparse
+import io
 import json
 import re
 import sys
 from collections import defaultdict
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import networkx as nx
 import sqlglot
 import sqlglot.expressions as exp
 from tqdm import tqdm
 
-if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
-    sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
+if TYPE_CHECKING:
+    from databricks.sdk import WorkspaceClient
+
+if isinstance(sys.stdout, io.TextIOWrapper) and sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 ROOT = Path(__file__).parent.parent.parent.parent
 
@@ -96,7 +101,7 @@ def extract_tables(sql: str) -> set[str]:
 
 
 def build_graph(sql_files: list[Path]) -> tuple[nx.DiGraph, dict[Path, str | None]]:
-    G: nx.DiGraph = nx.DiGraph()
+    graph: nx.DiGraph = nx.DiGraph()
     file_table_map: dict[Path, str | None] = {}
 
     for path in tqdm(sql_files, desc="Parsing & building graph", unit="file", ncols=80):
@@ -105,16 +110,16 @@ def build_graph(sql_files: list[Path]) -> tuple[nx.DiGraph, dict[Path, str | Non
         output = file_to_table(path)
         file_table_map[path] = output
 
-        src = output if output else str(path.relative_to(ROOT))
-        G.add_node(src, kind="table" if output else "file", path=str(path.relative_to(ROOT)))
+        src = output or str(path.relative_to(ROOT))
+        graph.add_node(src, kind="table" if output else "file", path=str(path.relative_to(ROOT)))
 
         for dep in deps:
             if dep == src:
                 continue
-            G.add_node(dep, kind="table")
-            G.add_edge(src, dep)
+            graph.add_node(dep, kind="table")
+            graph.add_edge(src, dep)
 
-    return G, file_table_map
+    return graph, file_table_map
 
 
 # ---------------------------------------------------------------------------
@@ -122,8 +127,8 @@ def build_graph(sql_files: list[Path]) -> tuple[nx.DiGraph, dict[Path, str | Non
 # ---------------------------------------------------------------------------
 
 
-def top_depended(G: nx.DiGraph, n: int | None = 10) -> list[tuple[str, int]]:
-    in_deg = [(node, G.in_degree(node)) for node in G.nodes()]
+def top_depended(graph: nx.DiGraph, n: int | None = 10) -> list[tuple[str, int]]:
+    in_deg = [(node, graph.in_degree(node)) for node in graph.nodes()]
     ranked = sorted(in_deg, key=lambda x: -x[1])
     return ranked[:n] if n else ranked
 
@@ -133,7 +138,7 @@ def top_depended(G: nx.DiGraph, n: int | None = 10) -> list[tuple[str, int]]:
 # ---------------------------------------------------------------------------
 
 
-def _get_workspace_client(profile: str):  # type: ignore[no-untyped-def]
+def _get_workspace_client(profile: str) -> WorkspaceClient:
     from databricks.sdk import WorkspaceClient
 
     return WorkspaceClient(profile=profile)
@@ -159,7 +164,7 @@ def fetch_row_counts(
         warehouses = [wh for wh in w.warehouses.list() if wh.state and wh.state.name in ("RUNNING", "STARTING")]
         if not warehouses:
             print("  [row-count] No running SQL warehouse found -- skipping row counts")
-            return {t: None for t in tables}
+            return dict.fromkeys(tables)
 
         warehouse_id = warehouses[0].id
         tqdm.write(f"  Using warehouse: {warehouses[0].name} ({warehouse_id})")
@@ -204,7 +209,7 @@ def fetch_row_counts(
 
     except Exception as e:
         print(f"  [row-count] Could not connect to Databricks: {e}")
-        return {t: None for t in tables}
+        return dict.fromkeys(tables)
 
     return result
 
@@ -348,7 +353,7 @@ def analyze_sql(sql: str) -> list[tuple[str, str]]:
         if pattern.search(sql):
             warnings.append((name, f"[{name}] {msg}"))
 
-    # Repeated source scan (≥2×)
+    # Repeated source scan (>=2x)
     sources = re.findall(r"\bfrom\s+(\w+\.\w+)", sql, re.IGNORECASE)
     sources += re.findall(r"\bjoin\s+(\w+\.\w+)", sql, re.IGNORECASE)
     counts: dict[str, int] = defaultdict(int)
@@ -359,7 +364,7 @@ def analyze_sql(sql: str) -> list[tuple[str, str]]:
             warnings.append(
                 (
                     "Repeated scan",
-                    f"[Repeated scan] '{tbl}' referenced {cnt}× — consider materializing as a CTE",
+                    f"[Repeated scan] '{tbl}' referenced {cnt}\u00d7 — consider materializing as a CTE",
                 )
             )
 
@@ -377,15 +382,15 @@ def compute_impact_score(dep_count: int, row_count: int | None, warning_names: l
 # ---------------------------------------------------------------------------
 
 
-def graph_stats(G: nx.DiGraph) -> dict[str, int]:
+def graph_stats(graph: nx.DiGraph) -> dict[str, int]:
     try:
-        cycles = len(list(nx.simple_cycles(G)))
+        cycles = len(list(nx.simple_cycles(graph)))
     except Exception:
         cycles = -1
     return {
-        "nodes": G.number_of_nodes(),
-        "edges": G.number_of_edges(),
-        "weakly_connected_components": nx.number_weakly_connected_components(G),
+        "nodes": graph.number_of_nodes(),
+        "edges": graph.number_of_edges(),
+        "weakly_connected_components": nx.number_weakly_connected_components(graph),
         "cycles": cycles,
     }
 
@@ -396,7 +401,7 @@ def graph_stats(G: nx.DiGraph) -> dict[str, int]:
 
 
 def render_graph(
-    G: nx.DiGraph,
+    graph: nx.DiGraph,
     top_tables: list[tuple[str, int]],
     row_counts: dict[str, int | None] | None = None,
     output_path: str | None = None,
@@ -430,9 +435,9 @@ def render_graph(
     visible: set[str] = set(top_nodes)
     for node in top_nodes:
         for _ in range(depth):
-            visible.update(G.predecessors(node))
-            visible.update(G.successors(node))
-    sub = G.subgraph(visible).copy()
+            visible.update(graph.predecessors(node))
+            visible.update(graph.successors(node))
+    sub = graph.subgraph(visible).copy()
 
     # --- layout ----------------------------------------------------------
     try:
@@ -449,9 +454,9 @@ def render_graph(
     tier_hi = sorted_degs[int(n * 0.66)] if n >= 3 else sorted_degs[-1]
     tier_mid = sorted_degs[int(n * 0.33)] if n >= 3 else 0
 
-    COLOR_HOT = "#e05252"
-    COLOR_WARM = "#f0a830"
-    COLOR_COOL = "#4a90d9"
+    color_hot = "#e05252"
+    color_warm = "#f0a830"
+    color_cool = "#4a90d9"
 
     node_list = list(sub.nodes())
     node_x = [pos[nd][0] for nd in node_list]
@@ -467,13 +472,13 @@ def render_graph(
         rc_str = f"{rc:,}" if rc is not None else "n/a"
 
         if deg >= tier_hi:
-            node_colors.append(COLOR_HOT)
+            node_colors.append(color_hot)
         elif deg >= tier_mid:
-            node_colors.append(COLOR_WARM)
+            node_colors.append(color_warm)
         else:
-            node_colors.append(COLOR_COOL)
+            node_colors.append(color_cool)
 
-        # size: 18–60 px, linear in in-degree
+        # size: 18-60 px, linear in in-degree
         node_sizes.append(18 + 42 * deg / max_deg)
 
         node_text.append(f"<b>{nd}</b><br>In-degree (dependents): {deg}<br>Row count: {rc_str}")
@@ -499,22 +504,22 @@ def render_graph(
         )
         # arrowhead annotation
         annotations.append(
-            dict(
-                ax=x0,
-                ay=y0,
-                x=x1,
-                y=y1,
-                xref="x",
-                yref="y",
-                axref="x",
-                ayref="y",
-                showarrow=True,
-                arrowhead=3,
-                arrowsize=1.2,
-                arrowwidth=1.0,
-                arrowcolor="#8888aa",
-                opacity=0.6,
-            )
+            {
+                "ax": x0,
+                "ay": y0,
+                "x": x1,
+                "y": y1,
+                "xref": "x",
+                "yref": "y",
+                "axref": "x",
+                "ayref": "y",
+                "showarrow": True,
+                "arrowhead": 3,
+                "arrowsize": 1.2,
+                "arrowwidth": 1.0,
+                "arrowcolor": "#8888aa",
+                "opacity": 0.6,
+            }
         )
 
     # --- node trace -------------------------------------------------------
@@ -527,12 +532,12 @@ def render_graph(
         text=node_labels,
         textposition="top center",
         textfont={"size": 9, "color": "#ffffff"},
-        marker=dict(
-            color=node_colors,
-            size=node_sizes,
-            line={"width": 1, "color": "#ffffff44"},
-            opacity=0.92,
-        ),
+        marker={
+            "color": node_colors,
+            "size": node_sizes,
+            "line": {"width": 1, "color": "#ffffff44"},
+            "opacity": 0.92,
+        },
         showlegend=False,
     )
 
@@ -542,21 +547,21 @@ def render_graph(
             x=[None],
             y=[None],
             mode="markers",
-            marker={"color": COLOR_HOT, "size": 12},
+            marker={"color": color_hot, "size": 12},
             name="High in-degree (hot)",
         ),
         go.Scatter(
             x=[None],
             y=[None],
             mode="markers",
-            marker={"color": COLOR_WARM, "size": 12},
+            marker={"color": color_warm, "size": 12},
             name="Medium in-degree",
         ),
         go.Scatter(
             x=[None],
             y=[None],
             mode="markers",
-            marker={"color": COLOR_COOL, "size": 12},
+            marker={"color": color_cool, "size": 12},
             name="Low in-degree",
         ),
     ]
@@ -565,20 +570,20 @@ def render_graph(
     fig = go.Figure(
         data=[*edge_traces, node_trace, *legend_traces],
         layout=go.Layout(
-            title=dict(
-                text=(f"Fabricks SQL Dependency Graph — Top {len(top_nodes)} tables + {depth}-hop neighbours"),
-                font={"size": 16, "color": "#e0e0ff"},
-            ),
+            title={
+                "text": (f"Fabricks SQL Dependency Graph — Top {len(top_nodes)} tables + {depth}-hop neighbours"),
+                "font": {"size": 16, "color": "#e0e0ff"},
+            },
             paper_bgcolor="#1a1a2e",
             plot_bgcolor="#1a1a2e",
             font={"color": "#ccccee"},
             showlegend=True,
-            legend=dict(
-                bgcolor="#22224a",
-                bordercolor="#444466",
-                borderwidth=1,
-                font={"size": 11},
-            ),
+            legend={
+                "bgcolor": "#22224a",
+                "bordercolor": "#444466",
+                "borderwidth": 1,
+                "font": {"size": 11},
+            },
             hovermode="closest",
             xaxis={"showgrid": False, "zeroline": False, "showticklabels": False},
             yaxis={"showgrid": False, "zeroline": False, "showticklabels": False},
@@ -663,9 +668,9 @@ def main() -> None:
     sql_files = collect_sql_files()
     print(f"\nFound {len(sql_files)} SQL files")
 
-    G, file_table_map = build_graph(sql_files)
+    graph, file_table_map = build_graph(sql_files)
 
-    stats = graph_stats(G)
+    stats = graph_stats(graph)
     print(
         f"Graph: {stats['nodes']} nodes, {stats['edges']} edges, "
         f"{stats['weakly_connected_components']} components, {stats['cycles']} cycles"
@@ -673,16 +678,16 @@ def main() -> None:
 
     if args.ancestors:
         node = args.ancestors
-        if node not in G:
+        if node not in graph:
             print(f"\nNode '{node}' not found in graph.")
         else:
-            ancestors = nx.ancestors(G, node)
+            ancestors = nx.ancestors(graph, node)
             print(f"\nTransitive dependencies of '{node}' ({len(ancestors)} nodes):")
             for a in sorted(ancestors):
                 print(f"  {a}")
         return
 
-    top_all: list[tuple[str, int]] = top_depended(G, n=None)
+    top_all: list[tuple[str, int]] = top_depended(graph, n=None)
     print(f"\n{'TABLE':<55} {'DEPENDENTS':>10}")
     print(SEP)
     for tbl, cnt in top_all[:30]:
@@ -701,8 +706,8 @@ def main() -> None:
         table_names = [t for t, _ in candidate_tables]
         row_counts = fetch_row_counts(table_names, profile=args.profile, skip_views=True)
         for tbl, cnt in row_counts.items():
-            if tbl in G:
-                G.nodes[tbl]["row_count"] = cnt
+            if tbl in graph:
+                graph.nodes[tbl]["row_count"] = cnt
 
     results: list[dict] = []
 
@@ -719,7 +724,7 @@ def main() -> None:
         print(f"#{rank}  {table}  ({dep_count} dependents{rc_str})")
         print(SEP)
 
-        direct_deps = sorted(G.predecessors(table))
+        direct_deps = sorted(graph.predecessors(table))
         print(f"  Direct dependents ({len(direct_deps)}):")
         for d in direct_deps[:10]:
             print(f"    + {d}")
@@ -727,7 +732,7 @@ def main() -> None:
             print(f"    ... and {len(direct_deps) - 10} more")
 
         try:
-            transitive = nx.ancestors(G, table)
+            transitive = nx.ancestors(graph, table)
         except Exception:
             transitive = set()
 
@@ -794,7 +799,7 @@ def main() -> None:
     if args.graph:
         print(f"\n[graph] Rendering subgraph for top {len(candidate_tables)} tables ...")
         render_graph(
-            G,
+            graph,
             top_tables=candidate_tables,
             row_counts=row_counts if args.row_counts else None,
             output_path=args.graph_output,

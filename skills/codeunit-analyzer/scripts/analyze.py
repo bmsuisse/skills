@@ -2,18 +2,18 @@
 """C-AL codeunit, table, and page analyzer.
 
 Sub-commands:
-  list                 – list all available .cs/.c-al files
-  analyze <file>       – deep-dive into one file
-  scan                 – project-wide bottleneck scan
-  optimize <file>      – phased optimization suggestions
-  setloadfields        – dedicated SETLOADFIELDS / SELECT-* audit
+  list                 - list all available .cs/.c-al files
+  analyze <file>       - deep-dive into one file
+  scan                 - project-wide bottleneck scan
+  optimize <file>      - phased optimization suggestions
+  setloadfields        - dedicated SETLOADFIELDS / SELECT-* audit
 """
 
 import argparse
 import json
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 from detector import BottleneckDetector
 from helpers import run_in_processpool
@@ -21,19 +21,21 @@ from parser import CodeunitParser
 from table_metadata import TableMetadataLoader
 
 
-def get_project_dirs():
+def get_project_dirs() -> tuple[Path, Path, Path]:
     import os
+
     env_dir = os.environ.get("CODEUNITS_DIR")
     if env_dir:
         base_dir = Path(env_dir).parent
         return Path(env_dir), base_dir / "tables", base_dir / "pages"
-    else:
-        # __file__ is in scripts/analyze.py
-        data_dir = Path(__file__).parent.parent.parent.parent / "data"
-        return data_dir / "codeunits", data_dir / "tables", data_dir / "pages"
+    # __file__ is in scripts/analyze.py
+    data_dir = Path(__file__).parent.parent.parent.parent / "data"
+    return data_dir / "codeunits", data_dir / "tables", data_dir / "pages"
 
 
-def _parse_codeunit_file(file, source_type="unknown", table_metadata=None):
+def _parse_codeunit_file(
+    file: Path, source_type: str = "unknown", table_metadata: dict[str, Any] | None = None
+) -> dict[str, Any]:
     try:
         parser = CodeunitParser(file, table_metadata=table_metadata)
         data = parser.parse()
@@ -46,32 +48,39 @@ def _parse_codeunit_file(file, source_type="unknown", table_metadata=None):
         }
 
     except Exception:
-        return {"path": file, "name": file.name, "object_name": "Error parsing", "object_id": "N/A", "source_type": source_type}
+        return {
+            "path": file,
+            "name": file.name,
+            "object_name": "Error parsing",
+            "object_id": "N/A",
+            "source_type": source_type,
+        }
 
 
-def list_codeunits():
+def list_codeunits() -> list[dict[str, Any]]:
     codeunits_dir, tables_dir, pages_dir = get_project_dirs()
 
     tagged_files = []
     if codeunits_dir.exists():
-        for f in list(codeunits_dir.rglob("*.cs")) + list(codeunits_dir.rglob("*.c-al")):
-            tagged_files.append((f, "codeunit"))
+        tagged_files.extend(
+            (f, "codeunit") for f in list(codeunits_dir.rglob("*.cs")) + list(codeunits_dir.rglob("*.c-al"))
+        )
     if tables_dir.exists():
-        for f in list(tables_dir.rglob("*.cs")) + list(tables_dir.rglob("*.c-al")):
-            tagged_files.append((f, "table"))
+        tagged_files.extend((f, "table") for f in list(tables_dir.rglob("*.cs")) + list(tables_dir.rglob("*.c-al")))
     if pages_dir.exists():
-        for f in list(pages_dir.rglob("*.cs")) + list(pages_dir.rglob("*.c-al")):
-            tagged_files.append((f, "page"))
+        tagged_files.extend((f, "page") for f in list(pages_dir.rglob("*.cs")) + list(pages_dir.rglob("*.c-al")))
 
     if not tagged_files:
         return []
 
     table_metadata = TableMetadataLoader.load_metadata()
-    results = run_in_processpool(_parse_codeunit_file, ((f, st, table_metadata) for f, st in tagged_files), desc="Listing")
+    results = run_in_processpool(
+        _parse_codeunit_file, ((f, st, table_metadata) for f, st in tagged_files), desc="Listing"
+    )
     return sorted(results, key=lambda x: x["name"])
 
 
-def analyze_codeunit(filename, table_metadata=None):
+def analyze_codeunit(filename: str | Path, table_metadata: dict[str, Any] | None = None) -> dict[str, Any]:
     codeunits_dir, tables_dir, pages_dir = get_project_dirs()
     file_path = Path(filename)
     if not file_path.exists():
@@ -98,7 +107,7 @@ def analyze_codeunit(filename, table_metadata=None):
     return {"object": data, "bottlenecks": bottlenecks}
 
 
-def _analyze_codeunit_for_scan(file_info, table_metadata):
+def _analyze_codeunit_for_scan(file_info: dict[str, Any], table_metadata: dict[str, Any]) -> list[dict[str, Any]]:
     try:
         # Pass the absolute path to analyze_codeunit so it doesn't need to re-rglob it
         result = analyze_codeunit(file_info["path"], table_metadata=table_metadata)
@@ -115,7 +124,7 @@ def _analyze_codeunit_for_scan(file_info, table_metadata):
         return []
 
 
-def scan_all_bottlenecks():
+def scan_all_bottlenecks() -> list[dict[str, Any]]:
     files = list_codeunits()
     table_metadata = TableMetadataLoader.load_metadata()
     results = run_in_processpool(_analyze_codeunit_for_scan, ((f, table_metadata) for f in files), desc="Scanning")
@@ -124,7 +133,7 @@ def scan_all_bottlenecks():
     return all_bottlenecks
 
 
-def format_severity_badge(severity):
+def format_severity_badge(severity: str) -> str:
     badges = {
         "critical": "[CRITICAL]",
         "high": "[HIGH]",
@@ -134,7 +143,7 @@ def format_severity_badge(severity):
     return badges.get(severity, "[" + severity.upper() + "]")
 
 
-def format_bottleneck(bottleneck, index):
+def format_bottleneck(bottleneck: dict[str, Any], index: int) -> str:
     pattern = bottleneck.get("pattern", "unknown").replace("_", " ").title()
     severity = format_severity_badge(bottleneck.get("severity", "low"))
     procedure = bottleneck.get("procedure", "N/A")
@@ -161,7 +170,7 @@ def format_bottleneck(bottleneck, index):
     return "\n".join(output)
 
 
-def cmd_list():
+def cmd_list() -> int:
     print("Fetching codeunits...\n")
 
     files = list_codeunits()
@@ -185,7 +194,7 @@ def cmd_list():
     return 0
 
 
-def cmd_analyze(filename, with_ai=False):
+def cmd_analyze(filename: str | Path, with_ai: bool = False) -> int:
     print(f"Analyzing {filename}...\n")
 
     try:
@@ -250,7 +259,7 @@ def cmd_analyze(filename, with_ai=False):
     return 0
 
 
-def cmd_scan(output_file=None, limit: int | None = 25):
+def cmd_scan(output_file: str | None = None, limit: int | None = 25) -> int:
     print("Scanning all codeunits for performance bottlenecks...\n")
 
     files = list_codeunits()
@@ -278,7 +287,7 @@ def cmd_scan(output_file=None, limit: int | None = 25):
     print(f"  Medium: {len(medium)}")
     print(f"  Low: {len(low)}")
 
-    by_codeunit = {}
+    by_codeunit: dict[str, dict[str, Any]] = {}
     for b in all_bottlenecks:
         file = b.get("codeunit", {}).get("file") or "Unknown"
         name = b.get("codeunit", {}).get("object_name") or file
@@ -334,7 +343,8 @@ def cmd_scan(output_file=None, limit: int | None = 25):
         low_count = data["low"]
 
         print(
-            f"| {idx} | {name} | {file_display} | {obj_id} | {total_score} | {total_issues} | {critical_count} | {high_count} | {medium_count} | {low_count} |"
+            f"| {idx} | {name} | {file_display} | {obj_id} | {total_score} | {total_issues} | {critical_count} | "
+            f"{high_count} | {medium_count} | {low_count} |"
         )
 
     print(f"\n{'=' * 80}")
@@ -376,7 +386,7 @@ def cmd_scan(output_file=None, limit: int | None = 25):
                 }
             )
 
-        with open(output_file, "w") as f:
+        with Path(output_file).open("w") as f:
             json.dump(output_data, f, indent=2)
 
         print(f"\n\nFull report saved to: {output_file}")
@@ -384,7 +394,7 @@ def cmd_scan(output_file=None, limit: int | None = 25):
     return 0
 
 
-def cmd_optimize(filename):
+def cmd_optimize(filename: str | Path) -> int:
     print(f"Generating optimization plan for {filename}...\n")
 
     try:
@@ -489,14 +499,15 @@ def cmd_optimize(filename):
 # SETLOADFIELDS sub-command
 # ---------------------------------------------------------------------------
 
-def _compute_setloadfields_urgency(read: Dict[str, Any], table_info: Dict[str, Any]) -> int:
+
+def _compute_setloadfields_urgency(read: dict[str, Any], table_info: dict[str, Any]) -> int:
     """Compute a per-read urgency score for a missing SETLOADFIELDS.
 
     Factors:
       - Base                    40 pts   (any read without SETLOADFIELDS costs something)
-      - Loop penalty           +20 pts   (fired once per iteration → N× cost)
-      - Row impact multiplier  ×row_mult (large tables → more data on wire)
-      - Column width multiplier×col_mult (wide tables → more bytes per row)
+      - Loop penalty           +20 pts   (fired once per iteration → Nx cost)
+      - Row impact multiplier  xrow_mult (large tables → more data on wire)
+      - Column width multiplierxcol_mult (wide tables → more bytes per row)
       - FlowField bonus        +15 pts   (without SETLOADFIELDS BC calculates ALL FlowFields)
     """
     base = 40
@@ -506,26 +517,25 @@ def _compute_setloadfields_urgency(read: Dict[str, Any], table_info: Dict[str, A
     row_mult = table_info.get("impactMultiplier", 1.0)
     col_mult = table_info.get("columnWidthMultiplier", 1.0)
 
-    score = int((base + loop_bonus) * row_mult * col_mult + flow_bonus)
-    return score
+    return int((base + loop_bonus) * row_mult * col_mult + flow_bonus)
 
 
-def _audit_setloadfields_in_file(file_path: Path, table_metadata: Dict[str, Any]) -> List[Dict[str, Any]]:
+def _audit_setloadfields_in_file(file_path: Path, table_metadata: dict[str, Any]) -> list[dict[str, Any]]:
     """Parse one file and return a list of SETLOADFIELDS audit findings."""
     try:
         parser = CodeunitParser(file_path, table_metadata=table_metadata)
         data = parser.parse()
-    except Exception as e:
+    except Exception:
         return []
 
-    READ_OPS = {"FINDSET", "FINDFIRST", "FIND", "FINDLAST", "GET"}
-    findings: List[Dict[str, Any]] = []
+    read_ops = {"FINDSET", "FINDFIRST", "FIND", "FINDLAST", "GET"}
+    findings: list[dict[str, Any]] = []
 
     for proc_name, proc_data in data.get("procedures", {}).items():
         for read in proc_data.get("reads", []):
             if read.get("isTemporary"):
                 continue
-            if read.get("operation") not in READ_OPS:
+            if read.get("operation") not in read_ops:
                 continue
             if read.get("hasLoadFields"):
                 continue  # already has SETLOADFIELDS — no issue
@@ -542,9 +552,9 @@ def _audit_setloadfields_in_file(file_path: Path, table_metadata: Dict[str, Any]
             in_loop = read.get("inLoop", False)
             has_ff = table_info.get("hasFlowFields", False)
 
-            reasons: List[str] = []
+            reasons: list[str] = []
             if in_loop:
-                reasons.append("inside loop (×N cost)")
+                reasons.append("inside loop (\u00d7N cost)")
             if has_ff:
                 reasons.append("table has FlowFields (BC calculates ALL on SELECT *)")
             if field_count > 30:
@@ -561,40 +571,42 @@ def _audit_setloadfields_in_file(file_path: Path, table_metadata: Dict[str, Any]
                 f"IF {table_name}.{read['operation']} THEN ..."
             )
 
-            findings.append({
-                "pattern": "missing_setloadfields",
-                "urgency": urgency,
-                "procedure": proc_name,
-                "operation": read["operation"],
-                "table_name": table_name,
-                "in_loop": in_loop,
-                "has_flow_fields": has_ff,
-                "field_count": field_count,
-                "column_category": col_category,
-                "row_info": row_info,
-                "reasons": reasons,
-                "example": example,
-                "line": read.get("line"),
-                "codeunit": {
-                    "file": file_path.name,
-                    "object_name": data.get("object_name"),
-                    "object_id": data.get("object_id"),
-                },
-            })
+            findings.append(
+                {
+                    "pattern": "missing_setloadfields",
+                    "urgency": urgency,
+                    "procedure": proc_name,
+                    "operation": read["operation"],
+                    "table_name": table_name,
+                    "in_loop": in_loop,
+                    "has_flow_fields": has_ff,
+                    "field_count": field_count,
+                    "column_category": col_category,
+                    "row_info": row_info,
+                    "reasons": reasons,
+                    "example": example,
+                    "line": read.get("line"),
+                    "codeunit": {
+                        "file": file_path.name,
+                        "object_name": data.get("object_name"),
+                        "object_id": data.get("object_id"),
+                    },
+                }
+            )
 
     return findings
 
 
-def _audit_file_wrapper(file_info: Dict[str, Any], table_metadata: Dict[str, Any]) -> List[Dict[str, Any]]:
+def _audit_file_wrapper(file_info: dict[str, Any], table_metadata: dict[str, Any]) -> list[dict[str, Any]]:
     findings = _audit_setloadfields_in_file(file_info["path"], table_metadata)
     for f in findings:
         f["codeunit"]["file"] = file_info["name"]
     return findings
 
 
-def _aggregate_by_table(findings: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def _aggregate_by_table(findings: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Group findings by table name and compute aggregate urgency per table."""
-    by_table: Dict[str, Dict[str, Any]] = {}
+    by_table: dict[str, dict[str, Any]] = {}
     for f in findings:
         table = f["table_name"]
         if table not in by_table:
@@ -627,7 +639,7 @@ def _aggregate_by_table(findings: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     return result
 
 
-def _print_setloadfields_report(findings: List[Dict[str, Any]], top: int | None) -> None:
+def _print_setloadfields_report(findings: list[dict[str, Any]], top: int | None) -> None:
     """Print a human-readable SETLOADFIELDS audit report."""
     if not findings:
         print("\n[OK] No missing SETLOADFIELDS detected!")
@@ -665,7 +677,7 @@ def _print_setloadfields_report(findings: List[Dict[str, Any]], top: int | None)
         fields = entry["field_count"] or "?"
         col_cat = entry["column_category"][:10]
         rows = entry["row_info"][:30]
-        print(f"{rank:<5} {table:<35} {urgency:>8} {occ:>5} {in_loop:>7} {str(fields):>7} {col_cat:<12} {rows}")
+        print(f"{rank:<5} {table:<35} {urgency:>8} {occ:>5} {in_loop:>7} {fields!s:>7} {col_cat:<12} {rows}")
 
     print()
     print("=" * 80)
@@ -679,7 +691,7 @@ def _print_setloadfields_report(findings: List[Dict[str, Any]], top: int | None)
         print(f"     File      : {f['codeunit']['file']}")
         print(f"     Procedure : {f['procedure']}")
         print(f"     Why urgent: {', '.join(f['reasons'])}")
-        print(f"     Fix:")
+        print("     Fix:")
         for line in f["example"].split("\n"):
             print(f"       {line}")
 
@@ -718,7 +730,9 @@ def cmd_setloadfields(filename: str | None, top: int | None, output_file: str | 
             print("No codeunits or tables found.")
             return 1
         print(f"Auditing {len(files)} files...\n")
-        results = run_in_processpool(_audit_file_wrapper, ((f, table_metadata) for f in files), desc="SETLOADFIELDS audit")
+        results = run_in_processpool(
+            _audit_file_wrapper, ((f, table_metadata) for f in files), desc="SETLOADFIELDS audit"
+        )
         findings = [item for sublist in results for item in sublist]
 
     findings.sort(key=lambda x: x["urgency"], reverse=True)
@@ -729,14 +743,14 @@ def cmd_setloadfields(filename: str | None, top: int | None, output_file: str | 
         _print_setloadfields_report(findings, top)
 
     if output_file:
-        with open(output_file, "w") as fh:
+        with Path(output_file).open("w") as fh:
             json.dump(findings, fh, indent=2)
         print(f"\nFull findings saved to: {output_file}")
 
     return 0
 
 
-def main():
+def main() -> int | None:
     parser = argparse.ArgumentParser(description="Analyze C-AL codeunits for performance issues")
     subparsers = parser.add_subparsers(dest="command", help="Command to run")
 
@@ -756,7 +770,7 @@ def main():
     slf_parser = subparsers.add_parser(
         "setloadfields",
         help="Dedicated SETLOADFIELDS / SELECT-* audit: finds every read without SETLOADFIELDS, "
-             "ranks tables by urgency (wide tables with many columns and FlowFields score highest).",
+        "ranks tables by urgency (wide tables with many columns and FlowFields score highest).",
     )
     slf_parser.add_argument(
         "filename",
@@ -778,7 +792,8 @@ def main():
         help="Output raw JSON instead of human-readable report.",
     )
     slf_parser.add_argument(
-        "-o", "--output",
+        "-o",
+        "--output",
         help="Save full findings to a JSON file.",
         metavar="FILE",
     )
@@ -791,19 +806,20 @@ def main():
 
     if args.command == "list":
         return cmd_list()
-    elif args.command == "analyze":
+    if args.command == "analyze":
         return cmd_analyze(args.filename)
-    elif args.command == "scan":
+    if args.command == "scan":
         return cmd_scan(output_file=args.output, limit=args.limit)
-    elif args.command == "optimize":
+    if args.command == "optimize":
         return cmd_optimize(args.filename)
-    elif args.command == "setloadfields":
+    if args.command == "setloadfields":
         return cmd_setloadfields(
             filename=args.filename,
             top=args.top,
             output_file=args.output,
             as_json=args.as_json,
         )
+    return None
 
 
 if __name__ == "__main__":

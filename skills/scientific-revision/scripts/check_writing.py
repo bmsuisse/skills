@@ -20,7 +20,6 @@ import sys
 from collections import Counter
 from pathlib import Path
 
-
 _PATTERNS_FILE = Path(__file__).parent.parent / "references" / "slop_patterns.md"
 
 
@@ -32,8 +31,8 @@ def _load_patterns(ref_path: Path) -> list[tuple[str, str, str]]:
     """
     patterns: list[tuple[str, str, str]] = []
     current_category = ""
-    for line in ref_path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
+    for raw_line in ref_path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
         if line.startswith("## "):
             current_category = line[3:].strip()
         elif line.startswith("- ") and current_category:
@@ -53,7 +52,8 @@ def _extract_body(text: str) -> str:
     for i, line in enumerate(text.splitlines()):
         if re.match(
             r"^#+\s*(References|Bibliography|Works\s+Cited|Literaturverzeichnis|Literatur|Bibliographie|R[eé]f[eé]rences)",
-            line, re.IGNORECASE,
+            line,
+            re.IGNORECASE,
         ):
             return "\n".join(text.splitlines()[:i])
     return text
@@ -77,12 +77,12 @@ def check_terminology(body: str) -> list[tuple[str, list[str]]]:
     Returns list of (normalized_term, [variants_found]).
     """
     variant_groups: list[tuple[str, list[str]]] = [
-        ("dataset",         [r"\bdataset\b", r"\bdata set\b", r"\bdata-set\b"]),
-        ("machine learning",["r\bmachine learning\b", r"\bML\b"]),
+        ("dataset", [r"\bdataset\b", r"\bdata set\b", r"\bdata-set\b"]),
+        ("machine learning", ["r\bmachine learning\b", r"\bML\b"]),
         ("artificial intelligence", [r"\bartificial intelligence\b", r"\bAI\b"]),
-        ("deep learning",   [r"\bdeep learning\b", r"\bDL\b"]),
-        ("neural network",  [r"\bneural network\b", r"\bNN\b"]),
-        ("Datenqualität",   [r"\bDatenqualität\b", r"\bDaten-Qualität\b"]),
+        ("deep learning", [r"\bdeep learning\b", r"\bDL\b"]),
+        ("neural network", [r"\bneural network\b", r"\bNN\b"]),
+        ("Datenqualität", [r"\bDatenqualität\b", r"\bDaten-Qualität\b"]),
         ("Maschinelles Lernen", [r"\bMaschinelles Lernen\b", r"\bML\b"]),
     ]
 
@@ -143,7 +143,7 @@ def main() -> None:
             for label, line_nums in entries:
                 nums = ", ".join(str(n) for n in line_nums[:5])
                 suffix = " ..." if len(line_nums) > 5 else ""
-                print(f"  x  \"{label}\"  — line{'s' if len(line_nums) > 1 else ''} {nums}{suffix}")
+                print(f'  x  "{label}"  — line{"s" if len(line_nums) > 1 else ""} {nums}{suffix}')
     else:
         print("\n  No common AI slop patterns detected.")
 
@@ -152,17 +152,17 @@ def main() -> None:
         print("TERMINOLOGY INCONSISTENCIES:")
         print(f"{'─' * 70}")
         for term, variants in term_issues:
-            print(f"  ? \"{term}\" — used in {len(variants)} forms: {', '.join(variants)}")
-            print(f"    Pick one form and use it consistently throughout.")
+            print(f'  ? "{term}" — used in {len(variants)} forms: {", ".join(variants)}')
+            print("    Pick one form and use it consistently throughout.")
     else:
-        print(f"\n  No terminology inconsistencies detected.")
+        print("\n  No terminology inconsistencies detected.")
 
     if starter_issues:
         print(f"\n{'─' * 70}")
         print("REPETITIVE SENTENCE/PARAGRAPH STARTERS:")
         print(f"{'─' * 70}")
         for word, count in starter_issues:
-            print(f"  ? \"{word}\" starts {count} paragraphs/sentences — vary your openings.")
+            print(f'  ? "{word}" starts {count} paragraphs/sentences — vary your openings.')
 
     print()
     sys.exit(1 if slop_hits or term_issues else 0)

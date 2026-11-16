@@ -42,7 +42,7 @@ def _bunfig_cooldown() -> str:
 
 def run(cmd: list[str], cwd: Path, label: str) -> None:
     print(f"  → {label}")
-    result = subprocess.run(cmd, cwd=cwd)
+    result = subprocess.run(cmd, cwd=cwd, check=False)
     if result.returncode != 0:
         print(f"❌ Failed: {label}", file=sys.stderr)
         sys.exit(result.returncode)
@@ -89,7 +89,7 @@ def _assert_pyproject_tables(pyproject: Path) -> None:
 def run_soft(cmd: list[str], cwd: Path, label: str) -> None:
     """Like run(), but warns instead of aborting — for checks after everything is already written."""
     print(f"  → {label}")
-    if subprocess.run(cmd, cwd=cwd).returncode != 0:
+    if subprocess.run(cmd, cwd=cwd, check=False).returncode != 0:
         print(f"⚠️  {label} reported problems — fix them before committing.", file=sys.stderr)
 
 
@@ -109,11 +109,13 @@ def main() -> None:
     be = root / "backend"
 
     import re
+
     # Filesystem/state-file-safe slug (agent_preview.py's /tmp state file names) --
     # project names are free text, state file names aren't.
     project_slug = re.sub(r"[^a-z0-9-]+", "-", project.lower()).strip("-") or "app"
 
     import random
+
     rng = random.Random(project)  # deterministic per project name
     fe_port = rng.randint(10000, 59999)
     be_port = rng.randint(10000, 59999)
@@ -135,7 +137,8 @@ def main() -> None:
     run(["bun", "install"], fe, "bun install")
     run(
         [
-            "bun", "add",
+            "bun",
+            "add",
             "@tanstack/react-router",
             "@tanstack/react-query",
             "@tanstack/react-form",
@@ -157,7 +160,9 @@ def main() -> None:
     )
     run(
         [
-            "bun", "add", "-d",
+            "bun",
+            "add",
+            "-d",
             "@tanstack/router-plugin",
             "@tanstack/react-devtools",
             "@tanstack/react-router-devtools",
@@ -520,7 +525,7 @@ def main() -> None:
     def load_jsonc(p: Path) -> dict:
         raw = p.read_text(encoding="utf-8")
         stripped = re.sub(r"//[^\n]*", "", raw)
-        stripped = re.sub(r"/\*.*?\*/", "", stripped, flags=re.S)
+        stripped = re.sub(r"/\*.*?\*/", "", stripped, flags=re.DOTALL)
         return json.loads(stripped)
 
     def patch_tsconfig_paths(p: Path) -> None:
@@ -556,8 +561,17 @@ def main() -> None:
         "vcs": {"enabled": True, "clientKind": "git", "useIgnoreFile": True},
         "files": {
             "includes": [
-                "**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx", "**/*.json", "**/*.css",
-                "!**/generated", "!**/*.generated.*", "!**/*.gen.ts", "!**/openapi.json", "!**/dist",
+                "**/*.ts",
+                "**/*.tsx",
+                "**/*.js",
+                "**/*.jsx",
+                "**/*.json",
+                "**/*.css",
+                "!**/generated",
+                "!**/*.generated.*",
+                "!**/*.gen.ts",
+                "!**/openapi.json",
+                "!**/dist",
             ]
         },
         "formatter": {"enabled": True, "indentStyle": "space", "indentWidth": 4, "lineWidth": 120},
@@ -599,9 +613,12 @@ def main() -> None:
                         "options": {
                             "strictCase": False,
                             "conventions": [
-                                {"selector": {"kind": kind}, "formats": ["camelCase", "snake_case", "CONSTANT_CASE", "PascalCase"]}
+                                {
+                                    "selector": {"kind": kind},
+                                    "formats": ["camelCase", "snake_case", "CONSTANT_CASE", "PascalCase"],
+                                }
                                 for kind in ("objectLiteralProperty", "typeProperty", "classProperty")
-                            ]
+                            ],
                         },
                     },
                 },
@@ -866,7 +883,9 @@ def main() -> None:
             ).replace("__UV_COOLDOWN__\n", _uv_cooldown_lines())
             pyproject.write_text(content, encoding="utf-8")
             if not had_src:
-                shutil.rmtree(root / "src", ignore_errors=True)  # uv init's package stub, unused (app lives in backend/)
+                shutil.rmtree(
+                    root / "src", ignore_errors=True
+                )  # uv init's package stub, unused (app lives in backend/)
         content = pyproject.read_text(encoding="utf-8")
         if "[tool.bdt.translate]" not in content:
             content += textwrap.dedent(
@@ -1400,7 +1419,11 @@ def main() -> None:
     run(["uv", "run", "ruff", "format", "--quiet"], root, "ruff format (re-format after import sorting)")
     # Biome finds ../biome.json from frontend/. --write applies safe fixes, formatting and import sorting;
     # the second `check` warns if anything the fixer can't resolve is left.
-    run_soft(["bunx", "--bun", "biome", "check", "--write", "."], fe, "biome check --write (normalize generated frontend code)")
+    run_soft(
+        ["bunx", "--bun", "biome", "check", "--write", "."],
+        fe,
+        "biome check --write (normalize generated frontend code)",
+    )
     run_soft(["bunx", "--bun", "biome", "check", "."], fe, "biome check (verify lint-clean)")
 
     print(f"""
