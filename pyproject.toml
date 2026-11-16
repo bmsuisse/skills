@@ -60,3 +60,5 @@ exclude = ["_init__.py"]
 [tool.uv]
 native-tls = true
 keyring-provider = "subprocess"
+# Dependency cooldown: releases younger than 5 days are not resolved (no BMS-owned PyPI packages in this project).
+exclude-newer = "5 days"
