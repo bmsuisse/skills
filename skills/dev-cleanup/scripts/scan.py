@@ -52,98 +52,112 @@ def podman_real_gb() -> str:
 def categories() -> list[dict]:
     """Each: id, label, path (sized with du), clean (command to run after user confirms), risk."""
     c = [
-        dict(
-            id="podman",
-            label="Podman VM disk file; real content inside: " + podman_real_gb(),
-            path=HOME / ".local/share/containers",
-            clean="podman machine ssh -- sudo fstrim -av  (shrinks the VM disk file), then podman system prune -a -f; --volumes only if user agrees",
-            risk="medium: prune -a removes every image not used by a running container; folder size is the VM disk, real gain is often much smaller",
-        ),
-        dict(
-            id="docker",
-            label="Docker Desktop data",
-            path=HOME / "Library/Containers/com.docker.docker",
-            clean="docker system prune -a -f",
-            risk="medium",
-        ),
-        dict(
-            id="uv",
-            label="uv cache",
-            path=cache_dir("uv", "cache", "dir", fallback=HOME / ".cache/uv"),
-            clean="uv cache clean",
-            risk="low: re-downloaded on next sync",
-        ),
-        dict(id="npm", label="npm cache", path=HOME / ".npm", clean="npm cache clean --force", risk="low"),
-        dict(
-            id="bun", label="bun install cache", path=HOME / ".bun/install/cache", clean="bun pm cache rm", risk="low"
-        ),
-        dict(id="pnpm", label="pnpm store", path=HOME / "Library/pnpm/store", clean="pnpm store prune", risk="low"),
-        dict(
-            id="pip",
-            label="pip cache",
-            path=HOME / "Library/Caches/pip",
-            clean="rm -rf ~/Library/Caches/pip",
-            risk="low",
-        ),
-        dict(
-            id="cargo",
-            label="cargo registry + git checkouts",
-            path=HOME / ".cargo/registry",
-            clean="rm -rf ~/.cargo/registry/cache ~/.cargo/git/checkouts",
-            risk="low: re-downloaded on build",
-        ),
-        dict(
-            id="gradle",
-            label="gradle caches",
-            path=HOME / ".gradle/caches",
-            clean="rm -rf ~/.gradle/caches",
-            risk="low: slow next build",
-        ),
-        dict(
-            id="huggingface",
-            label="HuggingFace model cache",
-            path=HOME / ".cache/huggingface",
-            clean="rm -rf ~/.cache/huggingface/<model>   # list models first, they can be many GB",
-            risk="medium: models must be re-downloaded",
-        ),
-        dict(
-            id="playwright",
-            label="Playwright browsers",
-            path=HOME / "Library/Caches/ms-playwright",
-            clean="rm -rf ~/Library/Caches/ms-playwright",
-            risk="low: `playwright install` restores",
-        ),
-        dict(
-            id="homebrew",
-            label="Homebrew downloads",
-            path=Path(cmd_out("brew", "--cache") or HOME / "Library/Caches/Homebrew"),
-            clean="brew cleanup --prune=all",
-            risk="low",
-        ),
-        dict(
-            id="xcode-derived",
-            label="Xcode DerivedData",
-            path=HOME / "Library/Developer/Xcode/DerivedData",
-            clean="rm -rf ~/Library/Developer/Xcode/DerivedData",
-            risk="low: rebuilt",
-        ),
-        dict(
-            id="xcode-sim",
-            label="Xcode simulators (unavailable)",
-            path=HOME / "Library/Developer/CoreSimulator",
-            clean="xcrun simctl delete unavailable",
-            risk="low",
-        ),
-        dict(
-            id="trash",
-            label="Trash",
-            path=HOME / ".Trash",
-            clean="empty Trash (user does it in Finder)",
-            risk="check first",
-        ),
-        dict(
-            id="logs", label="~/Library/Logs", path=HOME / "Library/Logs", clean="rm -rf ~/Library/Logs/*", risk="low"
-        ),
+        {
+            "id": "podman",
+            "label": "Podman VM disk file; real content inside: " + podman_real_gb(),
+            "path": HOME / ".local/share/containers",
+            "clean": "podman machine ssh -- sudo fstrim -av  (shrinks the VM disk file), then podman system prune -a -f; --volumes only if user agrees",
+            "risk": "medium: prune -a removes every image not used by a running container; folder size is the VM disk, real gain is often much smaller",
+        },
+        {
+            "id": "docker",
+            "label": "Docker Desktop data",
+            "path": HOME / "Library/Containers/com.docker.docker",
+            "clean": "docker system prune -a -f",
+            "risk": "medium",
+        },
+        {
+            "id": "uv",
+            "label": "uv cache",
+            "path": cache_dir("uv", "cache", "dir", fallback=HOME / ".cache/uv"),
+            "clean": "uv cache clean",
+            "risk": "low: re-downloaded on next sync",
+        },
+        {"id": "npm", "label": "npm cache", "path": HOME / ".npm", "clean": "npm cache clean --force", "risk": "low"},
+        {
+            "id": "bun",
+            "label": "bun install cache",
+            "path": HOME / ".bun/install/cache",
+            "clean": "bun pm cache rm",
+            "risk": "low",
+        },
+        {
+            "id": "pnpm",
+            "label": "pnpm store",
+            "path": HOME / "Library/pnpm/store",
+            "clean": "pnpm store prune",
+            "risk": "low",
+        },
+        {
+            "id": "pip",
+            "label": "pip cache",
+            "path": HOME / "Library/Caches/pip",
+            "clean": "rm -rf ~/Library/Caches/pip",
+            "risk": "low",
+        },
+        {
+            "id": "cargo",
+            "label": "cargo registry + git checkouts",
+            "path": HOME / ".cargo/registry",
+            "clean": "rm -rf ~/.cargo/registry/cache ~/.cargo/git/checkouts",
+            "risk": "low: re-downloaded on build",
+        },
+        {
+            "id": "gradle",
+            "label": "gradle caches",
+            "path": HOME / ".gradle/caches",
+            "clean": "rm -rf ~/.gradle/caches",
+            "risk": "low: slow next build",
+        },
+        {
+            "id": "huggingface",
+            "label": "HuggingFace model cache",
+            "path": HOME / ".cache/huggingface",
+            "clean": "rm -rf ~/.cache/huggingface/<model>   # list models first, they can be many GB",
+            "risk": "medium: models must be re-downloaded",
+        },
+        {
+            "id": "playwright",
+            "label": "Playwright browsers",
+            "path": HOME / "Library/Caches/ms-playwright",
+            "clean": "rm -rf ~/Library/Caches/ms-playwright",
+            "risk": "low: `playwright install` restores",
+        },
+        {
+            "id": "homebrew",
+            "label": "Homebrew downloads",
+            "path": Path(cmd_out("brew", "--cache") or HOME / "Library/Caches/Homebrew"),
+            "clean": "brew cleanup --prune=all",
+            "risk": "low",
+        },
+        {
+            "id": "xcode-derived",
+            "label": "Xcode DerivedData",
+            "path": HOME / "Library/Developer/Xcode/DerivedData",
+            "clean": "rm -rf ~/Library/Developer/Xcode/DerivedData",
+            "risk": "low: rebuilt",
+        },
+        {
+            "id": "xcode-sim",
+            "label": "Xcode simulators (unavailable)",
+            "path": HOME / "Library/Developer/CoreSimulator",
+            "clean": "xcrun simctl delete unavailable",
+            "risk": "low",
+        },
+        {
+            "id": "trash",
+            "label": "Trash",
+            "path": HOME / ".Trash",
+            "clean": "empty Trash (user does it in Finder)",
+            "risk": "check first",
+        },
+        {
+            "id": "logs",
+            "label": "~/Library/Logs",
+            "path": HOME / "Library/Logs",
+            "clean": "rm -rf ~/Library/Logs/*",
+            "risk": "low",
+        },
     ]
     return c
 
@@ -157,14 +171,14 @@ def library_caches() -> list[dict]:
     with ThreadPoolExecutor(8) as ex:
         sizes = list(ex.map(du_mb, dirs))
     return [
-        dict(
-            id=f"appcache:{d.name}",
-            label=f"App cache {d.name}",
-            path=d,
-            size_mb=s,
-            clean=f"rm -rf '{d}'",
-            risk="low: app rebuilds it",
-        )
+        {
+            "id": f"appcache:{d.name}",
+            "label": f"App cache {d.name}",
+            "path": d,
+            "size_mb": s,
+            "clean": f"rm -rf '{d}'",
+            "risk": "low: app rebuilds it",
+        }
         for d, s in zip(dirs, sizes)
     ]
 
@@ -186,7 +200,7 @@ def main() -> None:
 
     free = shutil.disk_usage(HOME).free / 2**30
     if a.json:
-        json.dump(dict(free_gb=round(free, 1), rows=rows), sys.stdout, indent=2)
+        json.dump({"free_gb": round(free, 1), "rows": rows}, sys.stdout, indent=2)
         return
     print(f"Free disk: {free:.1f} GB   (rows >= {a.min_mb:.0f} MB, nothing deleted)\n")
     print(f"{'GB':>6}  {'id':<22} what / risk\n")

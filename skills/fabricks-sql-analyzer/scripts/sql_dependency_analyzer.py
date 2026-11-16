@@ -499,22 +499,22 @@ def render_graph(
         )
         # arrowhead annotation
         annotations.append(
-            dict(
-                ax=x0,
-                ay=y0,
-                x=x1,
-                y=y1,
-                xref="x",
-                yref="y",
-                axref="x",
-                ayref="y",
-                showarrow=True,
-                arrowhead=3,
-                arrowsize=1.2,
-                arrowwidth=1.0,
-                arrowcolor="#8888aa",
-                opacity=0.6,
-            )
+            {
+                "ax": x0,
+                "ay": y0,
+                "x": x1,
+                "y": y1,
+                "xref": "x",
+                "yref": "y",
+                "axref": "x",
+                "ayref": "y",
+                "showarrow": True,
+                "arrowhead": 3,
+                "arrowsize": 1.2,
+                "arrowwidth": 1.0,
+                "arrowcolor": "#8888aa",
+                "opacity": 0.6,
+            }
         )
 
     # --- node trace -------------------------------------------------------
@@ -527,12 +527,12 @@ def render_graph(
         text=node_labels,
         textposition="top center",
         textfont={"size": 9, "color": "#ffffff"},
-        marker=dict(
-            color=node_colors,
-            size=node_sizes,
-            line={"width": 1, "color": "#ffffff44"},
-            opacity=0.92,
-        ),
+        marker={
+            "color": node_colors,
+            "size": node_sizes,
+            "line": {"width": 1, "color": "#ffffff44"},
+            "opacity": 0.92,
+        },
         showlegend=False,
     )
 
@@ -565,20 +565,20 @@ def render_graph(
     fig = go.Figure(
         data=[*edge_traces, node_trace, *legend_traces],
         layout=go.Layout(
-            title=dict(
-                text=(f"Fabricks SQL Dependency Graph — Top {len(top_nodes)} tables + {depth}-hop neighbours"),
-                font={"size": 16, "color": "#e0e0ff"},
-            ),
+            title={
+                "text": (f"Fabricks SQL Dependency Graph — Top {len(top_nodes)} tables + {depth}-hop neighbours"),
+                "font": {"size": 16, "color": "#e0e0ff"},
+            },
             paper_bgcolor="#1a1a2e",
             plot_bgcolor="#1a1a2e",
             font={"color": "#ccccee"},
             showlegend=True,
-            legend=dict(
-                bgcolor="#22224a",
-                bordercolor="#444466",
-                borderwidth=1,
-                font={"size": 11},
-            ),
+            legend={
+                "bgcolor": "#22224a",
+                "bordercolor": "#444466",
+                "borderwidth": 1,
+                "font": {"size": 11},
+            },
             hovermode="closest",
             xaxis={"showgrid": False, "zeroline": False, "showticklabels": False},
             yaxis={"showgrid": False, "zeroline": False, "showticklabels": False},

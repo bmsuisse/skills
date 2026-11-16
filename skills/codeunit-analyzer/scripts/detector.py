@@ -112,7 +112,7 @@ class BottleneckDetector:
             return
 
         tables_in_loops = list(
-            set([r.get("tableName", "") for r in (findset_in_loops + get_in_loops) if r.get("tableName")])
+            {r.get("tableName", "") for r in (findset_in_loops + get_in_loops) if r.get("tableName")}
         )
         max_impact_multiplier = 1.0
         table_size_info = []
@@ -164,7 +164,7 @@ class BottleneckDetector:
         total_calc_ops = len(calcfields_in_loops) + len(calcsums_in_loops)
 
         calc_tables = list(
-            set([r.get("tableName", "") for r in (calcfields_in_loops + calcsums_in_loops) if r.get("tableName")])
+            {r.get("tableName", "") for r in (calcfields_in_loops + calcsums_in_loops) if r.get("tableName")}
         )
         max_impact_multiplier = 1.0
         table_size_info = []
@@ -234,7 +234,7 @@ class BottleneckDetector:
         if len(unfiltered_reads) < 2:
             return
 
-        tables_unfiltered = list(set([r.get("tableName", "") for r in unfiltered_reads if r.get("tableName")]))
+        tables_unfiltered = list({r.get("tableName", "") for r in unfiltered_reads if r.get("tableName")})
         max_impact_multiplier = 1.0
         max_row_count = 0
         table_size_details = []

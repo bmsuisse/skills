@@ -45,13 +45,13 @@ def worktrees_of(repo: Path) -> list[dict]:
         if not line:
             if cur and Path(cur["worktree"]) != repo:
                 wts.append(
-                    dict(
-                        path=cur["worktree"],
-                        repo=str(repo),
-                        branch=cur.get("branch", "(detached)").removeprefix("refs/heads/"),
-                        locked="locked" in cur,
-                        prunable="prunable" in cur,
-                    )
+                    {
+                        "path": cur["worktree"],
+                        "repo": str(repo),
+                        "branch": cur.get("branch", "(detached)").removeprefix("refs/heads/"),
+                        "locked": "locked" in cur,
+                        "prunable": "prunable" in cur,
+                    }
                 )
             cur = {}
         else:

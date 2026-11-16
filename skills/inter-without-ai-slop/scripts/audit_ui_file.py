@@ -32,7 +32,7 @@ def hex_to_hsl(hex_color):
 
 
 def find_hex_colors(text):
-    return set(m.group(0) for m in re.finditer(r"#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})\b", text))
+    return {m.group(0) for m in re.finditer(r"#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})\b", text)}
 
 
 def check_accent_tells(text):
