@@ -31,7 +31,7 @@ def parse_title(title: str) -> tuple[str, str] | None:
     return step, topic_item
 
 
-def find_job_config(title: str, repo_root: Path):
+def find_job_config(title: str, repo_root: Path) -> tuple[Path, dict] | None:
     parsed = parse_title(title)
     if not parsed:
         return None

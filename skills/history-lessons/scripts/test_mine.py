@@ -9,7 +9,7 @@ import tempfile
 d = pathlib.Path(tempfile.mkdtemp())
 
 
-def g(*a):
+def g(*a: str) -> str:
     return subprocess.run(
         ["git", "-C", str(d), "-c", "user.name=t", "-c", "user.email=t@t", *a],
         check=True,

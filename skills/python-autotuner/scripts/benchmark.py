@@ -38,7 +38,9 @@ import importlib.util
 import json
 import statistics
 import sys
+from collections.abc import Callable
 from pathlib import Path
+from types import ModuleType
 
 # ── stats ──────────────────────────────────────────────────────────────────────
 
@@ -68,7 +70,7 @@ def _ci_no_overlap(a: dict, b: dict) -> bool:
 # ── module loading ─────────────────────────────────────────────────────────────
 
 
-def _load_module_from_path(path: Path):
+def _load_module_from_path(path: Path) -> ModuleType:
     """Import a .py file as a module by path, without installing it."""
     parent = str(path.parent.resolve())
     if parent not in sys.path:
@@ -124,7 +126,7 @@ def _load_spec(target_file: str) -> dict:
 # ── timing ─────────────────────────────────────────────────────────────────────
 
 
-def _time_callable(fn, n_warmup: int, n_runs: int) -> list[float]:
+def _time_callable(fn: Callable[[], object], n_warmup: int, n_runs: int) -> list[float]:
     """Time a zero-arg callable. Returns per-call wall-clock seconds."""
     import timeit
 

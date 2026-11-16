@@ -15,11 +15,15 @@ import re
 import sys
 from collections import defaultdict
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import networkx as nx
 import sqlglot
 import sqlglot.expressions as exp
 from tqdm import tqdm
+
+if TYPE_CHECKING:
+    from databricks.sdk import WorkspaceClient
 
 if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
@@ -133,7 +137,7 @@ def top_depended(graph: nx.DiGraph, n: int | None = 10) -> list[tuple[str, int]]
 # ---------------------------------------------------------------------------
 
 
-def _get_workspace_client(profile: str):  # type: ignore[no-untyped-def]
+def _get_workspace_client(profile: str) -> WorkspaceClient:
     from databricks.sdk import WorkspaceClient
 
     return WorkspaceClient(profile=profile)

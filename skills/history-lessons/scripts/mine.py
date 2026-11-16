@@ -14,6 +14,7 @@ import subprocess
 import sys
 import urllib.parse
 from concurrent.futures import ThreadPoolExecutor
+from typing import Any
 
 CODE = re.compile(r"\.(py|ts|tsx|vue|js|jsx|sql|cs|php|yml|yaml|bicep|toml|sh)$")
 NOISE = re.compile(
@@ -21,33 +22,36 @@ NOISE = re.compile(
 )
 TRAILER = re.compile(r"^(Co-Authored-By|Claude-Session|Signed-off-by|Related work items|Generated with)", re.IGNORECASE)
 RULE_WORDS = re.compile(
-    r"\b(root cause|regress\w*|silently|never|must not|mistake|wrong|instead of|workaround|code review|review found|again|forbid\w*|restore\w*)\b",
+    r"\b(root cause|regress\w*|silently|never|must not|mistake|wrong|instead of|workaround|code review"
+    r"|review found|again|forbid\w*|restore\w*)\b",
     re.IGNORECASE,
 )
 MECHANICAL = re.compile(r"\b(strict|biome|ruff|format\w*|lint\w*|bump|rename)\b", re.IGNORECASE)
 
+Commit = tuple[str, str, str, str, list[str]]
 
-def out(s=""):
+
+def out(s: str = "") -> None:
     print(s, flush=True)
 
 
-def run(*a):
+def run(*a: str) -> tuple[str, str]:
     r = subprocess.run(a, capture_output=True, text=True, check=False)
     return r.stdout, r.stderr
 
 
-def git(repo, *a):
+def git(repo: str, *a: str) -> str:
     return run("git", "-C", repo, *a)[0]
 
 
-def kind(s, body=""):
+def kind(s: str, body: str = "") -> str:
     m = re.match(r"(\w+)(\(.*?\))?!?:", s)
     if re.match(r"revert", s, re.IGNORECASE) or "This reverts commit" in body:
         return "revert"
     return m.group(1).lower() if m else "other"
 
 
-def first_line(body):
+def first_line(body: str) -> str:
     for raw_line in body.splitlines():
         line = raw_line.strip()
         if line and not TRAILER.match(line):
@@ -55,7 +59,7 @@ def first_line(body):
     return ""
 
 
-def commits(repo, ref, since):
+def commits(repo: str, ref: str, since: str | None) -> list[Commit]:
     """Unique-by-subject commits, newest first (cherry-picks onto dev/test/main count once)."""
     raw = git(
         repo,
@@ -80,7 +84,7 @@ def commits(repo, ref, since):
     return res
 
 
-def header(repo, ref, cs):
+def header(repo: str, ref: str, cs: list[Commit]) -> None:
     sha = git(repo, "rev-parse", "--short", ref).strip()
     tree = git(repo, "ls-tree", "-r", "--name-only", ref).splitlines()
     docs = [f for f in tree if re.search(r"(^|/)(AGENTS|CLAUDE)\.md$|(STANDARDS|CONSTITUTION)\.md$", f, re.IGNORECASE)][
@@ -92,7 +96,7 @@ def header(repo, ref, cs):
     out("Agent docs on this ref: " + (", ".join(docs) or "none (bootstrap: nothing to dedupe against)") + "\n")
 
 
-def reverts(repo, cs, top):
+def reverts(repo: str, cs: list[Commit], top: int) -> None:
     out("## Reverts (something was wrong enough to undo)")
     n = 0
     for sha, date, subj, body, _fs in cs:
@@ -114,7 +118,7 @@ def reverts(repo, cs, top):
     out()
 
 
-def refactors(cs, top):
+def refactors(cs: list[Commit], top: int) -> None:
     """Newest-first would only show this month: take up to 3 per month, skip mechanical sweeps."""
     out("## Refactors (spread over the window, mechanical lint/format sweeps skipped)")
     per, n = collections.Counter(), 0
@@ -130,7 +134,7 @@ def refactors(cs, top):
     out()
 
 
-def rule_words(cs, top):
+def rule_words(cs: list[Commit], top: int) -> None:
     out("## Commits whose message states a cause or rule (read these first)")
     n = 0
     for sha, date, subj, body, _fs in cs:
@@ -146,7 +150,7 @@ def rule_words(cs, top):
     out()
 
 
-def hot_files(cs, top):
+def hot_files(cs: list[Commit], top: int) -> None:
     c = collections.Counter(f for _, _, s, b, fs in cs if kind(s, b) in {"fix", "refactor"} for f in fs)
     out("## Files fixed/refactored most often (churn, not proof of a mistake)")
     for f, n in c.most_common(top):
@@ -154,7 +158,7 @@ def hot_files(cs, top):
     out()
 
 
-def reviews(repo, n):
+def reviews(repo: str, n: int) -> str | tuple[list[tuple[int, str, str]], int, int]:
     url = git(repo, "remote", "get-url", "origin").strip()
     m = re.match(r"https://[^/]*@?dev\.azure\.com/([^/]+)/([^/]+)/_git/([^/]+)", url)
     if not m:
@@ -186,7 +190,7 @@ def reviews(repo, n):
     except Exception:
         return f"az failed (not logged in / not installed?): {se.strip()[:200]}"
 
-    def threads(pr):
+    def threads(pr: dict[str, Any]) -> tuple[dict[str, Any], list[dict[str, Any]] | None]:
         o, _ = run(
             "az",
             "devops",
@@ -227,7 +231,7 @@ def reviews(repo, n):
     return found, failed, len(prs)
 
 
-def main():
+def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("repo")
     p.add_argument("--ref", default="origin/HEAD")

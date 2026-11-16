@@ -35,6 +35,7 @@ import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from pyspark.sql.types import (
     ArrayType,
@@ -50,6 +51,10 @@ from pyspark.sql.types import (
     StructType,
 )
 
+if TYPE_CHECKING:
+    from pyspark.sql import SparkSession
+    from pyspark.sql.types import DataType
+
 
 def _progress(done: int, total: int, label: str, elapsed: float | None = None) -> None:
     """Draw or update a single-line progress bar on stderr."""
@@ -61,13 +66,13 @@ def _progress(done: int, total: int, label: str, elapsed: float | None = None) -
     print(f"  [{bar}] {done}/{total} {label}{suffix}\033[K", end=end, file=sys.stderr, flush=True)
 
 
-def get_spark(profile: str, cluster_id: str):
+def get_spark(profile: str, cluster_id: str) -> SparkSession:
     from databricks.connect import DatabricksSession
 
     return DatabricksSession.builder.profile(profile).clusterId(cluster_id).getOrCreate()
 
 
-def set_context(spark, catalog: str | None, schema: str | None) -> None:
+def set_context(spark: SparkSession, catalog: str | None, schema: str | None) -> None:
     if catalog:
         spark.sql(f"USE CATALOG {catalog}")
         print(f"[context] USE CATALOG {catalog}", file=sys.stderr)
@@ -76,7 +81,7 @@ def set_context(spark, catalog: str | None, schema: str | None) -> None:
         print(f"[context] USE SCHEMA {schema}", file=sys.stderr)
 
 
-def load_session_udfs(spark) -> None:
+def load_session_udfs(spark: SparkSession) -> None:
     udf_file = Path("udf_setup.py")
     if not udf_file.exists():
         return
@@ -104,12 +109,12 @@ def load_query(arg: str) -> str:
     return arg.strip()
 
 
-def explain_query(spark, query: str) -> str:
+def explain_query(spark: SparkSession, query: str) -> str:
     rows = spark.sql(f"EXPLAIN EXTENDED {query}").collect()
     return "\n".join(str(r[0]) for r in rows)
 
 
-def _safe_sql(spark, sql: str) -> list:
+def _safe_sql(spark: SparkSession, sql: str) -> list:
     try:
         return spark.sql(sql).collect()
     except Exception as e:
@@ -117,7 +122,7 @@ def _safe_sql(spark, sql: str) -> list:
         return []
 
 
-def collect_table_stats(spark, table_ref: str) -> dict:
+def collect_table_stats(spark: SparkSession, table_ref: str) -> dict:
     result: dict = {"table": table_ref}
 
     desc_rows = _safe_sql(spark, f"DESCRIBE EXTENDED {table_ref}")
@@ -235,7 +240,7 @@ def format_table_stats_report(stats_list: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def time_query(spark, query: str, n_runs: int, label: str, timing_count: bool = False) -> list[float]:
+def time_query(spark: SparkSession, query: str, n_runs: int, label: str, timing_count: bool = False) -> list[float]:
     exec_sql = f"SELECT COUNT(*) AS n FROM ({query})" if timing_count else query
     times: list[float] = []
     _progress(0, n_runs, label)
@@ -260,7 +265,7 @@ def is_significant(orig: dict, opt: dict) -> bool:
     return (opt["mean_s"] + opt["std_s"]) < (orig["mean_s"] - orig["std_s"])
 
 
-def _normalize_expr(expr: str, dtype) -> str:
+def _normalize_expr(expr: str, dtype: DataType) -> str:
     """Recursively build a deterministic SQL expression for non-deterministic types.
 
     - ArrayType  → array_sort(transform(expr, x -> normalize(x)))
@@ -281,7 +286,7 @@ def _normalize_expr(expr: str, dtype) -> str:
     return expr
 
 
-def _normalized_select(schema) -> str:
+def _normalized_select(schema: StructType) -> str:
     """SELECT clause that normalizes array/map/struct columns for deterministic EXCEPT ALL comparison."""
     parts = []
     for field in schema.fields:
@@ -291,7 +296,7 @@ def _normalized_select(schema) -> str:
     return ", ".join(parts)
 
 
-def validate_queries(spark, original: str, optimized: str) -> dict:
+def validate_queries(spark: SparkSession, original: str, optimized: str) -> dict:
     spark.sql(f"CREATE OR REPLACE TEMP VIEW _tuner_original AS {original}")
     spark.sql(f"CREATE OR REPLACE TEMP VIEW _tuner_optimized AS {optimized}")
 
@@ -329,7 +334,7 @@ def validate_queries(spark, original: str, optimized: str) -> dict:
     return {"passed": True, "row_count": orig_count}
 
 
-def validate_queries_global_temp(spark, original: str, optimized: str) -> dict:
+def validate_queries_global_temp(spark: SparkSession, original: str, optimized: str) -> dict:
     """Validate via global temp tables — results are cached on the cluster, nothing collected to driver."""
     spark.sql(f"CREATE OR REPLACE GLOBAL TEMP VIEW _tuner_original AS {original}")
     spark.sql(f"CREATE OR REPLACE GLOBAL TEMP VIEW _tuner_optimized AS {optimized}")
@@ -370,7 +375,7 @@ def validate_queries_global_temp(spark, original: str, optimized: str) -> dict:
     return {"passed": True, "row_count": orig_count}
 
 
-def validate_queries_checksum(spark, original: str, optimized: str) -> dict:
+def validate_queries_checksum(spark: SparkSession, original: str, optimized: str) -> dict:
     """Validate by comparing aggregate checksums on numeric and boolean columns only.
 
     Suitable for large tables where full EXCEPT ALL is too expensive.
@@ -434,7 +439,7 @@ def validate_queries_checksum(spark, original: str, optimized: str) -> dict:
     return {"passed": True, "row_count": orig_count, "strategy": "checksum", "columns_checked": checksum_cols}
 
 
-def validate_queries_row_hash(spark, original: str, optimized: str) -> dict:
+def validate_queries_row_hash(spark: SparkSession, original: str, optimized: str) -> dict:
     """Validate using a commutative row hash for huge tables.
 
     Computes SUM(xxhash64(col1, col2, ...)) across all rows — a single aggregation
@@ -474,7 +479,7 @@ def validate_queries_row_hash(spark, original: str, optimized: str) -> dict:
     return {"passed": True, "row_count": orig_count, "strategy": "row_hash"}
 
 
-def time_query_global_temp(spark, query: str, n_runs: int, label: str) -> list[float]:
+def time_query_global_temp(spark: SparkSession, query: str, n_runs: int, label: str) -> list[float]:
     """Time query by materializing into a cached global temp table — avoids driver collection."""
     name = f"_tuner_{label}"
     times: list[float] = []

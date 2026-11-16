@@ -7,7 +7,7 @@ from scripts.detector import BottleneckDetector
 # ---------------------------------------------------------------------------
 
 
-def make_proc(**kwargs) -> dict:
+def make_proc(**kwargs: object) -> dict:
     defaults: dict = {
         "params": "",
         "returnType": None,
@@ -55,24 +55,24 @@ def patterns(bottlenecks: list) -> list[str]:
 # ---------------------------------------------------------------------------
 
 
-def test_no_commit_no_large_transaction():
+def test_no_commit_no_large_transaction() -> None:
     writes = [{"operation": "INSERT", "isTemporary": False} for _ in range(20)]
     assert "large_transaction" not in patterns(detect({"P": make_proc(writes=writes)}))
 
 
-def test_small_transaction_with_commit_no_bottleneck():
+def test_small_transaction_with_commit_no_bottleneck() -> None:
     # 5 DELETEs x 3 = 15, below threshold 30
     writes = [{"operation": "COMMIT"}] + [{"operation": "DELETE", "isTemporary": False} for _ in range(5)]
     assert "large_transaction" not in patterns(detect({"P": make_proc(writes=writes)}))
 
 
-def test_large_transaction_detected():
+def test_large_transaction_detected() -> None:
     # 10 DELETEs x 3 = 30, hits threshold
     writes = [{"operation": "COMMIT"}] + [{"operation": "DELETE", "isTemporary": False} for _ in range(10)]
     assert "large_transaction" in patterns(detect({"P": make_proc(writes=writes)}))
 
 
-def test_large_transaction_severity_critical_at_weight_60():
+def test_large_transaction_severity_critical_at_weight_60() -> None:
     # 20 DELETEs x 3 = 60 → critical
     writes = [{"operation": "COMMIT"}] + [{"operation": "DELETE", "isTemporary": False} for _ in range(20)]
     bt = next(b for b in detect({"P": make_proc(writes=writes)}) if b["pattern"] == "large_transaction")
@@ -104,21 +104,21 @@ def _get_in_loop() -> dict:
     }
 
 
-def test_single_findset_in_loop_no_n_plus_one():
+def test_single_findset_in_loop_no_n_plus_one() -> None:
     assert "n_plus_one_query" not in patterns(detect({"P": make_proc(reads=[_findset_in_loop()])}))
 
 
-def test_two_findsets_in_loop_triggers_n_plus_one():
+def test_two_findsets_in_loop_triggers_n_plus_one() -> None:
     reads = [_findset_in_loop(), _findset_in_loop()]
     assert "n_plus_one_query" in patterns(detect({"P": make_proc(reads=reads)}))
 
 
-def test_five_gets_in_loop_triggers_n_plus_one():
+def test_five_gets_in_loop_triggers_n_plus_one() -> None:
     reads = [_get_in_loop() for _ in range(5)]
     assert "n_plus_one_query" in patterns(detect({"P": make_proc(reads=reads)}))
 
 
-def test_temporary_reads_do_not_trigger_n_plus_one():
+def test_temporary_reads_do_not_trigger_n_plus_one() -> None:
     reads = [
         {"operation": "FINDSET", "inLoop": True, "isTemporary": True, "tableName": "TempEntry", "line": "T.FINDSET"}
         for _ in range(3)
@@ -131,7 +131,7 @@ def test_temporary_reads_do_not_trigger_n_plus_one():
 # ---------------------------------------------------------------------------
 
 
-def test_calcfields_in_loop_detected():
+def test_calcfields_in_loop_detected() -> None:
     reads = [
         {
             "operation": "CALCFIELDS",
@@ -144,7 +144,7 @@ def test_calcfields_in_loop_detected():
     assert "calcfields_in_loop" in patterns(detect({"P": make_proc(reads=reads)}))
 
 
-def test_calcfields_outside_loop_not_detected():
+def test_calcfields_outside_loop_not_detected() -> None:
     reads = [
         {
             "operation": "CALCFIELDS",
@@ -162,12 +162,12 @@ def test_calcfields_outside_loop_not_detected():
 # ---------------------------------------------------------------------------
 
 
-def test_four_modifies_no_bottleneck():
+def test_four_modifies_no_bottleneck() -> None:
     writes = [{"operation": "MODIFY", "isTemporary": False} for _ in range(4)]
     assert "heavy_modify_operations" not in patterns(detect({"P": make_proc(writes=writes)}))
 
 
-def test_five_modifies_triggers():
+def test_five_modifies_triggers() -> None:
     writes = [{"operation": "MODIFY", "isTemporary": False} for _ in range(5)]
     assert "heavy_modify_operations" in patterns(detect({"P": make_proc(writes=writes)}))
 
@@ -177,17 +177,17 @@ def test_five_modifies_triggers():
 # ---------------------------------------------------------------------------
 
 
-def test_single_unfiltered_findset_no_bottleneck():
+def test_single_unfiltered_findset_no_bottleneck() -> None:
     reads = [{"operation": "FINDSET", "hasFilter": False, "tableName": "Entry", "line": "T.FINDSET"}]
     assert "unfiltered_table_reads" not in patterns(detect({"P": make_proc(reads=reads)}))
 
 
-def test_two_unfiltered_findsets_triggers():
+def test_two_unfiltered_findsets_triggers() -> None:
     reads = [{"operation": "FINDSET", "hasFilter": False, "tableName": "Entry", "line": "T.FINDSET"} for _ in range(2)]
     assert "unfiltered_table_reads" in patterns(detect({"P": make_proc(reads=reads)}))
 
 
-def test_filtered_findsets_do_not_trigger():
+def test_filtered_findsets_do_not_trigger() -> None:
     reads = [{"operation": "FINDSET", "hasFilter": True, "tableName": "Entry", "line": "T.FINDSET"} for _ in range(2)]
     assert "unfiltered_table_reads" not in patterns(detect({"P": make_proc(reads=reads)}))
 
@@ -197,17 +197,17 @@ def test_filtered_findsets_do_not_trigger():
 # ---------------------------------------------------------------------------
 
 
-def test_loop_depth_1_not_triggered():
+def test_loop_depth_1_not_triggered() -> None:
     reads = [{"operation": "FINDSET", "inLoop": True, "isTemporary": False, "tableName": "X", "line": "X.FINDSET"}]
     assert "nested_loops_with_database_ops" not in patterns(detect({"P": make_proc(reads=reads, max_loop_depth=1)}))
 
 
-def test_loop_depth_2_with_reads_triggers():
+def test_loop_depth_2_with_reads_triggers() -> None:
     reads = [{"operation": "FINDSET", "inLoop": True, "isTemporary": False, "tableName": "X", "line": "X.FINDSET"}]
     assert "nested_loops_with_database_ops" in patterns(detect({"P": make_proc(reads=reads, max_loop_depth=2)}))
 
 
-def test_loop_depth_2_without_reads_not_triggered():
+def test_loop_depth_2_without_reads_not_triggered() -> None:
     assert "nested_loops_with_database_ops" not in patterns(detect({"P": make_proc(reads=[], max_loop_depth=2)}))
 
 
@@ -216,17 +216,17 @@ def test_loop_depth_2_without_reads_not_triggered():
 # ---------------------------------------------------------------------------
 
 
-def test_14_real_reads_no_bottleneck():
+def test_14_real_reads_no_bottleneck() -> None:
     reads = [{"operation": "FINDFIRST", "isTemporary": False} for _ in range(14)]
     assert "read_heavy_procedure" not in patterns(detect({"P": make_proc(reads=reads)}))
 
 
-def test_15_real_reads_triggers():
+def test_15_real_reads_triggers() -> None:
     reads = [{"operation": "FINDFIRST", "isTemporary": False} for _ in range(15)]
     assert "read_heavy_procedure" in patterns(detect({"P": make_proc(reads=reads)}))
 
 
-def test_setrange_excluded_from_read_heavy_count():
+def test_setrange_excluded_from_read_heavy_count() -> None:
     reads = [{"operation": "SETRANGE", "isTemporary": False} for _ in range(15)]
     assert "read_heavy_procedure" not in patterns(detect({"P": make_proc(reads=reads)}))
 
@@ -236,17 +236,17 @@ def test_setrange_excluded_from_read_heavy_count():
 # ---------------------------------------------------------------------------
 
 
-def test_three_deletes_no_bulk_bottleneck():
+def test_three_deletes_no_bulk_bottleneck() -> None:
     writes = [{"operation": "DELETE", "isTemporary": False} for _ in range(3)]
     assert "bulk_delete_operations" not in patterns(detect({"P": make_proc(writes=writes)}))
 
 
-def test_four_deletes_triggers_bulk():
+def test_four_deletes_triggers_bulk() -> None:
     writes = [{"operation": "DELETE", "isTemporary": False} for _ in range(4)]
     assert "bulk_delete_operations" in patterns(detect({"P": make_proc(writes=writes)}))
 
 
-def test_ten_deletes_severity_high():
+def test_ten_deletes_severity_high() -> None:
     writes = [{"operation": "DELETE", "isTemporary": False} for _ in range(10)]
     bt = next(b for b in detect({"P": make_proc(writes=writes)}) if b["pattern"] == "bulk_delete_operations")
     assert bt["severity"] == "high"
@@ -257,7 +257,7 @@ def test_ten_deletes_severity_high():
 # ---------------------------------------------------------------------------
 
 
-def test_codeunit_metadata_present_in_bottleneck():
+def test_codeunit_metadata_present_in_bottleneck() -> None:
     writes = [{"operation": "COMMIT"}] + [{"operation": "DELETE", "isTemporary": False} for _ in range(10)]
     data = make_parsed({"P": make_proc(writes=writes)}, object_name="My CU", object_id=99)
     bottlenecks = BottleneckDetector(data, "mycodeunit.c-al").detect()
@@ -280,26 +280,26 @@ def _write_op(table: str, op: str = "MODIFY") -> dict:
     return {"operation": op, "isTemporary": False, "tableName": table, "line": f"{table}.{op}"}
 
 
-def test_heavy_read_few_writes_suggests_index():
+def test_heavy_read_few_writes_suggests_index() -> None:
     # 5 reads, 0 writes → reads >= 4x writes → missing_index_candidate
     reads = [_read_op("Customer") for _ in range(5)]
     assert "missing_index_candidate" in patterns(detect({"P": make_proc(reads=reads)}))
 
 
-def test_balanced_read_write_no_index_suggestion():
+def test_balanced_read_write_no_index_suggestion() -> None:
     # 5 reads, 2 writes → ratio 2.5 < 4 → no suggestion
     reads = [_read_op("Customer") for _ in range(5)]
     writes = [_write_op("Customer") for _ in range(2)]
     assert "missing_index_candidate" not in patterns(detect({"P": make_proc(reads=reads, writes=writes)}))
 
 
-def test_heavy_write_few_reads_warns_index_overhead():
+def test_heavy_write_few_reads_warns_index_overhead() -> None:
     # 5 writes, 0 reads → writes >= 4x reads → index_overhead
     writes = [_write_op("Entry") for _ in range(5)]
     assert "index_overhead" in patterns(detect({"P": make_proc(writes=writes)}))
 
 
-def test_balanced_write_read_no_overhead_warning():
+def test_balanced_write_read_no_overhead_warning() -> None:
     # 5 writes, 2 reads → ratio 2.5 < 4 → no warning
     reads = [_read_op("Entry") for _ in range(2)]
     writes = [_write_op("Entry") for _ in range(5)]

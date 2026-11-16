@@ -13,7 +13,7 @@ HOOK = Path(__file__).resolve().parents[2] / "hooks" / "translate-on-edit.py"
 
 
 @pytest.fixture
-def project(tmp_path):
+def project(tmp_path: Path) -> Path:
     (tmp_path / "pyproject.toml").write_text('[tool.bdt.translate]\noutput = ["frontend/src/locales"]\n')
     (tmp_path / "translations.toml").write_text('[A]\nen = "a"\n')
     (tmp_path / "bin").mkdir()
@@ -48,13 +48,13 @@ def calls(root: Path) -> list[str]:
     return log.read_text().splitlines() if log.exists() else []
 
 
-def test_runs_bdt_translate_in_the_project_root_when_translations_toml_is_edited(project):
+def test_runs_bdt_translate_in_the_project_root_when_translations_toml_is_edited(project: Path) -> None:
     result = run_hook(project / "translations.toml", fake_uv(project))
     assert result.returncode == 0
     assert calls(project) == [f"{project.resolve()}: run bdt translate"]
 
 
-def test_runs_from_the_project_root_for_a_nested_translations_toml(project):
+def test_runs_from_the_project_root_for_a_nested_translations_toml(project: Path) -> None:
     nested = project / "akeneo_editor"
     nested.mkdir()
     (nested / "translations.toml").write_text('[A]\nen = "a"\n')
@@ -63,37 +63,37 @@ def test_runs_from_the_project_root_for_a_nested_translations_toml(project):
     assert calls(project) == [f"{project.resolve()}: run bdt translate"]
 
 
-def test_failure_is_fed_back_with_exit_2(project):
+def test_failure_is_fed_back_with_exit_2(project: Path) -> None:
     result = run_hook(project / "translations.toml", fake_uv(project, run_code=1, output="missing key FOO"))
     assert result.returncode == 2
     assert "missing key FOO" in result.stderr
 
 
-def test_ignores_other_files(project):
+def test_ignores_other_files(project: Path) -> None:
     other = project / "README.md"
     other.write_text("x")
     assert run_hook(other, fake_uv(project)).returncode == 0
     assert calls(project) == []
 
 
-def test_noop_without_bdt_translate_config(project):
+def test_noop_without_bdt_translate_config(project: Path) -> None:
     (project / "pyproject.toml").write_text("[project]\nname = 'x'\n")
     assert run_hook(project / "translations.toml", fake_uv(project)).returncode == 0
     assert calls(project) == []
 
 
-def test_noop_without_a_pyproject(project):
+def test_noop_without_a_pyproject(project: Path) -> None:
     (project / "pyproject.toml").unlink()
     assert run_hook(project / "translations.toml", fake_uv(project)).returncode == 0
     assert calls(project) == []
 
 
-def test_noop_without_uv(project):
+def test_noop_without_uv(project: Path) -> None:
     env = {**os.environ, "PATH": str(project / "bin")}
     assert run_hook(project / "translations.toml", env).returncode == 0
 
 
-def test_ignores_translations_toml_outside_the_project(project, tmp_path_factory):
+def test_ignores_translations_toml_outside_the_project(project: Path, tmp_path_factory: pytest.TempPathFactory) -> None:
     vendored = tmp_path_factory.mktemp("vendored")
     (vendored / "pyproject.toml").write_text("[tool.bdt.translate]\n")
     (vendored / "translations.toml").write_text('[A]\nen = "a"\n')
@@ -102,7 +102,7 @@ def test_ignores_translations_toml_outside_the_project(project, tmp_path_factory
     assert calls(project) == []
 
 
-def test_edit_in_a_worktree_regenerates_that_worktree_not_the_main_checkout(project):
+def test_edit_in_a_worktree_regenerates_that_worktree_not_the_main_checkout(project: Path) -> None:
     worktree = project / ".worktrees" / "task"
     worktree.mkdir(parents=True)
     (worktree / "pyproject.toml").write_text("[tool.bdt.translate]\n")
@@ -112,7 +112,7 @@ def test_edit_in_a_worktree_regenerates_that_worktree_not_the_main_checkout(proj
     assert calls(project) == [f"{worktree.resolve()}: run bdt translate"]
 
 
-def test_codex_apply_patch_headers_trigger_translation_relative_to_cwd(project):
+def test_codex_apply_patch_headers_trigger_translation_relative_to_cwd(project: Path) -> None:
     patch = (
         "*** Begin Patch\n*** Update File: translations.toml\n@@\n-x\n+y\n*** Update File: README.md\n*** End Patch\n"
     )
@@ -122,7 +122,7 @@ def test_codex_apply_patch_headers_trigger_translation_relative_to_cwd(project):
     assert calls(project) == [f"{project.resolve()}: run bdt translate"]
 
 
-def test_codex_apply_patch_without_translations_toml_is_ignored(project):
+def test_codex_apply_patch_without_translations_toml_is_ignored(project: Path) -> None:
     patch = "*** Begin Patch\n*** Update File: README.md\n@@\n-x\n+y\n*** End Patch\n"
     payload = {"tool_name": "apply_patch", "cwd": str(project), "tool_input": {"command": patch}}
     result = run_hook(project / "translations.toml", fake_uv(project), project=project, payload=payload)
@@ -130,7 +130,7 @@ def test_codex_apply_patch_without_translations_toml_is_ignored(project):
     assert calls(project) == []
 
 
-def test_does_not_escape_an_unconfigured_worktree_into_the_main_checkout(project):
+def test_does_not_escape_an_unconfigured_worktree_into_the_main_checkout(project: Path) -> None:
     worktree = project / ".worktrees" / "task"
     worktree.mkdir(parents=True)
     (worktree / ".git").write_text("gitdir: ../../.git/worktrees/task\n")
@@ -140,7 +140,7 @@ def test_does_not_escape_an_unconfigured_worktree_into_the_main_checkout(project
     assert calls(project) == []
 
 
-def test_config_is_parsed_not_substring_matched(project):
+def test_config_is_parsed_not_substring_matched(project: Path) -> None:
     (project / "pyproject.toml").write_text("# [tool.bdt.translate]\n")
     assert run_hook(project / "translations.toml", fake_uv(project)).returncode == 0
     assert calls(project) == []
@@ -149,7 +149,7 @@ def test_config_is_parsed_not_substring_matched(project):
     assert len(calls(project)) == 1
 
 
-def test_failure_without_output_is_still_reported(project):
+def test_failure_without_output_is_still_reported(project: Path) -> None:
     result = run_hook(project / "translations.toml", fake_uv(project, run_code=9, output=""))
     assert result.returncode == 2
     assert "exit code 9" in result.stderr

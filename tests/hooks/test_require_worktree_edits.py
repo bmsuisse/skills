@@ -4,6 +4,7 @@ import json
 import subprocess
 import sys
 import tempfile
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
@@ -12,7 +13,7 @@ HOOK = Path(__file__).resolve().parents[2] / "hooks" / "require-worktree-edits.p
 
 
 @pytest.fixture
-def repo_dir():
+def repo_dir() -> Iterator[Path]:
     # /tmp itself is an always-allowed path prefix (see ALLOWED_PREFIX), so the
     # path-based gate tests need a directory outside it to actually exercise
     # the git-based checks.

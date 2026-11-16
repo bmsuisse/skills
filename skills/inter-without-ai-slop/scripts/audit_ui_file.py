@@ -23,7 +23,7 @@ KNOWN_TELLS = {
 HUE_THRESHOLD_DEG = 18
 
 
-def hex_to_hsl(hex_color):
+def hex_to_hsl(hex_color: str) -> tuple[float, float, float]:
     hex_color = hex_color.lstrip("#")
     if len(hex_color) == 3:
         hex_color = "".join(c * 2 for c in hex_color)
@@ -32,11 +32,11 @@ def hex_to_hsl(hex_color):
     return h * 360, s, light
 
 
-def find_hex_colors(text):
+def find_hex_colors(text: str) -> set[str]:
     return {m.group(0) for m in re.finditer(r"#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})\b", text)}
 
 
-def check_accent_tells(text):
+def check_accent_tells(text: str) -> list[str]:
     findings = []
     for hex_color in find_hex_colors(text):
         try:
@@ -62,7 +62,7 @@ PILL_PATTERNS = [
 ]
 
 
-def count_pill_shapes(text):
+def count_pill_shapes(text: str) -> tuple[int, set[str]]:
     # Distinct className/style value combos that look like a pill container,
     # not just the count of the word "rounded-full" (one component reused
     # many times for the same semantic thing is fine; the tell is *distinct*
@@ -81,7 +81,7 @@ NUMERIC_COLUMN_HINT = re.compile(
 TABULAR_HINT = re.compile(r"tabular-nums|font-feature-settings.*tnum|font-variant-numeric.*tabular", re.IGNORECASE)
 
 
-def check_tabular_figures(text):
+def check_tabular_figures(text: str) -> list[str]:
     has_numeric_hint = bool(NUMERIC_COLUMN_HINT.search(text))
     has_tabular = bool(TABULAR_HINT.search(text))
     if has_numeric_hint and not has_tabular:
@@ -89,7 +89,7 @@ def check_tabular_figures(text):
     return []
 
 
-def audit(path):
+def audit(path: str) -> None:
     text = Path(path).read_text(encoding="utf-8")
     print(f"\n=== {path} ===")
 
@@ -103,11 +103,13 @@ def audit(path):
 
     pill_lines, colors = count_pill_shapes(text)
     print(
-        f"Pill/badge-shaped lines: {pill_lines}, distinct color hints used: {len(colors)} {sorted(colors) if colors else ''}"
+        f"Pill/badge-shaped lines: {pill_lines}, "
+        f"distinct color hints used: {len(colors)} {sorted(colors) if colors else ''}"
     )
     if len(colors) > 3:
         print(
-            "  -> more than 3 distinct pill colors/shapes; check they map to genuinely different semantic categories (see SKILL.md #2), not decoration."
+            "  -> more than 3 distinct pill colors/shapes; check they map to genuinely different semantic "
+            "categories (see SKILL.md #2), not decoration."
         )
 
     tabular = check_tabular_figures(text)
@@ -117,7 +119,7 @@ def audit(path):
         print("Tabular figures: no obvious gap detected (or no numeric-looking columns found).")
 
 
-def main():
+def main() -> None:
     if len(sys.argv) < 2:
         print(__doc__)
         sys.exit(2)

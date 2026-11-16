@@ -3,13 +3,15 @@ from typing import Any
 
 
 class BottleneckDetector:
-    def __init__(self, parsed_data, file_path, table_metadata=None):
+    def __init__(
+        self, parsed_data: dict[str, Any], file_path: str | Path, table_metadata: dict[str, Any] | None = None
+    ) -> None:
         self.data = parsed_data
         self.file_path = Path(file_path)
         self.table_metadata = table_metadata or {}
         self.bottlenecks = []
 
-    def detect(self):
+    def detect(self) -> list[dict[str, Any]]:
         raw_procedures = self.data.get("procedures", {})
 
         for proc_name, proc_data in raw_procedures.items():
@@ -38,7 +40,7 @@ class BottleneckDetector:
     def _get_table_severity_adjustment(self, table_name: str) -> str:
         return self._get_table_info(table_name).get("severityAdjustment", "unknown impact")
 
-    def _detect_procedure_bottlenecks(self, proc_name: str, proc_data: dict):
+    def _detect_procedure_bottlenecks(self, proc_name: str, proc_data: dict) -> None:
         writes = [
             w["operation"] for w in proc_data.get("writes", []) if w["operation"] in ["INSERT", "MODIFY", "DELETE"]
         ]
@@ -71,7 +73,7 @@ class BottleneckDetector:
         self._detect_flowfield_overuse(proc_name, proc_data)
         self._detect_key_misalignment_hint(proc_name, proc_data)
 
-    def _detect_large_transaction(self, proc_name: str, proc_data: dict, has_commit: bool):
+    def _detect_large_transaction(self, proc_name: str, proc_data: dict, has_commit: bool) -> None:
         if not has_commit:
             return
 
@@ -103,7 +105,7 @@ class BottleneckDetector:
                 }
             )
 
-    def _detect_n_plus_one_query(self, proc_name: str, proc_data: dict):
+    def _detect_n_plus_one_query(self, proc_name: str, proc_data: dict) -> None:
         reads_in_loops = [r for r in proc_data.get("reads", []) if r.get("inLoop") and not r.get("isTemporary")]
         findset_in_loops = [r for r in reads_in_loops if r["operation"] == "FINDSET"]
         get_in_loops = [r for r in reads_in_loops if r["operation"] == "GET"]
@@ -150,7 +152,7 @@ class BottleneckDetector:
             }
         )
 
-    def _detect_calcfields_in_loop(self, proc_name: str, proc_data: dict):
+    def _detect_calcfields_in_loop(self, proc_name: str, proc_data: dict) -> None:
         reads_in_loops = [r for r in proc_data.get("reads", []) if r.get("inLoop") and not r.get("isTemporary")]
         calcfields_in_loops = [r for r in reads_in_loops if r["operation"] == "CALCFIELDS"]
         calcsums_in_loops = [r for r in reads_in_loops if r["operation"] == "CALCSUMS"]
@@ -199,7 +201,7 @@ class BottleneckDetector:
             }
         )
 
-    def _detect_heavy_modify_operations(self, proc_name: str, proc_data: dict, writes: list[str]):
+    def _detect_heavy_modify_operations(self, proc_name: str, proc_data: dict, writes: list[str]) -> None:
         modify_count = sum(1 for w in writes if w == "MODIFY")
 
         if modify_count >= 5:
@@ -220,7 +222,7 @@ class BottleneckDetector:
                 }
             )
 
-    def _detect_unfiltered_reads(self, proc_name: str, proc_data: dict):
+    def _detect_unfiltered_reads(self, proc_name: str, proc_data: dict) -> None:
         unfiltered_reads = [
             r for r in proc_data.get("reads", []) if r["operation"] in ["FINDSET", "FIND"] and not r.get("hasFilter")
         ]
@@ -269,7 +271,7 @@ class BottleneckDetector:
             }
         )
 
-    def _detect_nested_loops_with_db_ops(self, proc_name: str, proc_data: dict):
+    def _detect_nested_loops_with_db_ops(self, proc_name: str, proc_data: dict) -> None:
         max_loop_depth = proc_data.get("max_loop_depth", 0)
         reads_in_loops = [r for r in proc_data.get("reads", []) if r.get("inLoop") and not r.get("isTemporary")]
 
@@ -291,7 +293,7 @@ class BottleneckDetector:
                 }
             )
 
-    def _detect_read_heavy_procedure(self, proc_name: str, proc_data: dict):
+    def _detect_read_heavy_procedure(self, proc_name: str, proc_data: dict) -> None:
         real_reads = [
             r
             for r in proc_data.get("reads", [])
@@ -316,7 +318,7 @@ class BottleneckDetector:
                 }
             )
 
-    def _detect_compound_antipatterns(self, proc_name: str, proc_data: dict, has_commit: bool):
+    def _detect_compound_antipatterns(self, proc_name: str, proc_data: dict, has_commit: bool) -> None:
         reads_in_loops = [r for r in proc_data.get("reads", []) if r.get("inLoop") and not r.get("isTemporary")]
         findset_in_loops = [r for r in reads_in_loops if r["operation"] == "FINDSET"]
         get_in_loops = [r for r in reads_in_loops if r["operation"] == "GET"]
@@ -361,7 +363,7 @@ class BottleneckDetector:
                 }
             )
 
-    def _detect_bulk_delete_operations(self, proc_name: str, proc_data: dict, writes: list[str]):
+    def _detect_bulk_delete_operations(self, proc_name: str, proc_data: dict, writes: list[str]) -> None:
         delete_count = sum(1 for w in writes if w == "DELETE")
 
         if delete_count >= 4:
@@ -383,7 +385,7 @@ class BottleneckDetector:
                 }
             )
 
-    def _detect_validate_in_loop(self, proc_name: str, proc_data: dict):
+    def _detect_validate_in_loop(self, proc_name: str, proc_data: dict) -> None:
         validates = [w for w in proc_data.get("writes", []) if w["operation"] == "VALIDATE" and w.get("inLoop")]
         if validates:
             self.bottlenecks.append(
@@ -403,7 +405,7 @@ class BottleneckDetector:
                 }
             )
 
-    def _detect_modify_in_onmodify(self, proc_name: str, proc_data: dict):
+    def _detect_modify_in_onmodify(self, proc_name: str, proc_data: dict) -> None:
         if "modify" not in proc_name.lower():
             return
         modifies = [w for w in proc_data.get("writes", []) if w["operation"] == "MODIFY"]
@@ -425,7 +427,7 @@ class BottleneckDetector:
                 }
             )
 
-    def _detect_multi_get_onvalidate(self, proc_name: str, proc_data: dict):
+    def _detect_multi_get_onvalidate(self, proc_name: str, proc_data: dict) -> None:
         if "validate" not in proc_name.lower():
             return
         gets = [r for r in proc_data.get("reads", []) if r["operation"] == "GET"]
@@ -453,7 +455,7 @@ class BottleneckDetector:
             ht in lower_name for ht in ["onaftergetrecord", "onaftergetcurrrecord", "onfindrecord", "onnextrecord"]
         )
 
-    def _detect_commit_in_page_trigger(self, proc_name: str, proc_data: dict, has_commit: bool):
+    def _detect_commit_in_page_trigger(self, proc_name: str, proc_data: dict, has_commit: bool) -> None:
         if not has_commit:
             return
         page_triggers = [
@@ -493,7 +495,7 @@ class BottleneckDetector:
                 }
             )
 
-    def _detect_heavy_get_in_hot_trigger(self, proc_name: str, proc_data: dict):
+    def _detect_heavy_get_in_hot_trigger(self, proc_name: str, proc_data: dict) -> None:
         if not self._is_hot_trigger(proc_name):
             return
         gets = [r for r in proc_data.get("reads", []) if r["operation"] == "GET"]
@@ -515,7 +517,7 @@ class BottleneckDetector:
                 }
             )
 
-    def _detect_calcfields_in_hot_trigger(self, proc_name: str, proc_data: dict):
+    def _detect_calcfields_in_hot_trigger(self, proc_name: str, proc_data: dict) -> None:
         if not self._is_hot_trigger(proc_name):
             return
         calcs = [
@@ -541,7 +543,7 @@ class BottleneckDetector:
                 }
             )
 
-    def _detect_modify_in_hot_trigger(self, proc_name: str, proc_data: dict):
+    def _detect_modify_in_hot_trigger(self, proc_name: str, proc_data: dict) -> None:
         if not self._is_hot_trigger(proc_name):
             return
         writes = [
@@ -567,7 +569,7 @@ class BottleneckDetector:
                 }
             )
 
-    def _detect_page_run_in_hot_trigger(self, proc_name: str, proc_data: dict):
+    def _detect_page_run_in_hot_trigger(self, proc_name: str, proc_data: dict) -> None:
         if not self._is_hot_trigger(proc_name):
             return
         calls = proc_data.get("calls", [])
@@ -589,7 +591,7 @@ class BottleneckDetector:
                 }
             )
 
-    def _detect_heavy_onclosepage(self, proc_name: str, proc_data: dict):
+    def _detect_heavy_onclosepage(self, proc_name: str, proc_data: dict) -> None:
         if "onclosepage" not in proc_name.lower():
             return
         writes = [
@@ -615,7 +617,7 @@ class BottleneckDetector:
                 }
             )
 
-    def _detect_missing_setloadfields(self, proc_name: str, proc_data: dict):
+    def _detect_missing_setloadfields(self, proc_name: str, proc_data: dict) -> None:
         """Flag every FINDSET/FINDFIRST/FIND that lacks SETLOADFIELDS.
 
         Score is weighted by:
@@ -689,7 +691,7 @@ class BottleneckDetector:
                 }
             )
 
-    def _detect_unfiltered_findset(self, proc_name: str, proc_data: dict):
+    def _detect_unfiltered_findset(self, proc_name: str, proc_data: dict) -> None:
         reads = [r for r in proc_data.get("reads", []) if r["operation"] == "FINDSET" and not r.get("isTemporary")]
         for read in reads:
             if not read.get("hasFilter"):
@@ -710,7 +712,7 @@ class BottleneckDetector:
                     }
                 )
 
-    def _detect_event_subscriber_hotspot(self, proc_name: str, proc_data: dict):
+    def _detect_event_subscriber_hotspot(self, proc_name: str, proc_data: dict) -> None:
         if not proc_data.get("is_event_subscriber"):
             return
 
@@ -741,7 +743,7 @@ class BottleneckDetector:
     # Classic NAV — Locking / Blocking
     # ----------------------------------------------------------------
 
-    def _detect_locktable_overuse(self, proc_name: str, proc_data: dict):
+    def _detect_locktable_overuse(self, proc_name: str, proc_data: dict) -> None:
         """Flag excessive or unconditional LOCKTABLE calls.
 
         In Classic NAV, LOCKTABLE escalates to a full table lock held for the
@@ -817,7 +819,7 @@ class BottleneckDetector:
     # Classic NAV — FlowField Overuse (global, not just in loops)
     # ----------------------------------------------------------------
 
-    def _detect_flowfield_overuse(self, proc_name: str, proc_data: dict):
+    def _detect_flowfield_overuse(self, proc_name: str, proc_data: dict) -> None:
         """Flag procedures with many CALCFIELDS calls — even outside loops.
 
         In Classic NAV, CALCFIELDS issues a separate SQL sub-query for each call.
@@ -875,7 +877,7 @@ class BottleneckDetector:
     # Classic NAV — Key / Index Alignment
     # ----------------------------------------------------------------
 
-    def _detect_key_misalignment_hint(self, proc_name: str, proc_data: dict):
+    def _detect_key_misalignment_hint(self, proc_name: str, proc_data: dict) -> None:
         """Hint when SETRANGE is used on filters that may not align with a key.
 
         Classic NAV queries must follow the defined key order exactly.
@@ -947,7 +949,7 @@ class BottleneckDetector:
             }
         )
 
-    def _detect_index_recommendations(self):
+    def _detect_index_recommendations(self) -> None:
         """Codeunit-level pass: aggregate reads/writes per table and emit index hints."""
         read_ops = {"FINDSET", "FIND", "FINDFIRST", "FINDLAST", "GET"}
         write_ops = {"INSERT", "MODIFY", "DELETE", "MODIFYALL", "DELETEALL"}

@@ -13,7 +13,7 @@ HOOK = Path(__file__).resolve().parents[2] / "skills" / "clean-code" / "hooks" /
 
 
 @pytest.fixture
-def project(tmp_path):
+def project(tmp_path: Path) -> Path:
     (tmp_path / "pyproject.toml").write_text("[tool.ruff]\nline-length = 120\n")
     (tmp_path / "bin").mkdir()
     return tmp_path
@@ -37,7 +37,7 @@ def run_hook(file: Path, env: dict | None = None) -> subprocess.CompletedProcess
     )
 
 
-def test_remaining_violations_are_fed_back_with_exit_2(project):
+def test_remaining_violations_are_fed_back_with_exit_2(project: Path) -> None:
     f = project / "a.py"
     f.write_text("import os\n")
     r = run_hook(f, fake_ruff(project, 1, "a.py:1:8: F401 unused import"))
@@ -45,21 +45,21 @@ def test_remaining_violations_are_fed_back_with_exit_2(project):
     assert "F401" in r.stderr
 
 
-def test_clean_file_is_silent(project):
+def test_clean_file_is_silent(project: Path) -> None:
     f = project / "a.py"
     f.write_text("x = 1\n")
     r = run_hook(f, fake_ruff(project, 0, ""))
     assert (r.returncode, r.stderr) == (0, "")
 
 
-def test_no_ruff_config_is_a_noop(project):
+def test_no_ruff_config_is_a_noop(project: Path) -> None:
     (project / "pyproject.toml").write_text("[project]\nname='x'\n")
     f = project / "a.py"
     f.write_text("import os\n")
     assert run_hook(f, fake_ruff(project, 1, "boom")).returncode == 0
 
 
-def test_other_file_types_and_missing_files_are_noops(project):
+def test_other_file_types_and_missing_files_are_noops(project: Path) -> None:
     env = fake_ruff(project, 1, "boom")
     md = project / "README.md"
     md.write_text("hi")
@@ -67,7 +67,7 @@ def test_other_file_types_and_missing_files_are_noops(project):
     assert run_hook(project / "gone.py", env).returncode == 0
 
 
-def test_linter_failure_never_blocks(project):
+def test_linter_failure_never_blocks(project: Path) -> None:
     f = project / "a.py"
     f.write_text("x = 1\n")
     r = run_hook(f, fake_ruff(project, 2, "error: invalid config"))

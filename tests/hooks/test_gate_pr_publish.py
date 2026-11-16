@@ -7,6 +7,7 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
+from typing import TypedDict, Unpack
 
 import pytest
 
@@ -58,7 +59,7 @@ def transcript_with(tmp_path: Path, skill: str | None) -> Path:
 @pytest.mark.parametrize(
     "skill", ["code-review", "bms-code-review", "plugin:code-review", "dev-workflow:bms-code-review"]
 )
-def test_allows_after_review(tmp_path, skill):
+def test_allows_after_review(tmp_path: Path, skill: str) -> None:
     assert run_hook(transcript_with(tmp_path, skill)) is None
 
 
@@ -68,7 +69,7 @@ def assert_denied(out: dict | None) -> None:
 
 
 @pytest.mark.parametrize("skill", [None, "bms-plan-review", "design-review"])
-def test_denies_without_review(tmp_path, skill):
+def test_denies_without_review(tmp_path: Path, skill: str | None) -> None:
     assert_denied(run_hook(transcript_with(tmp_path, skill)))
 
 
@@ -112,7 +113,13 @@ def transcript_rows(tmp_path: Path, *rows: dict, name: str = "session.jsonl") ->
     return path
 
 
-def codex_foreground(tmp_path: Path, command: str, **result) -> Path:
+class BashResultKwargs(TypedDict, total=False):
+    tool_id: str
+    text: str
+    is_error: bool
+
+
+def codex_foreground(tmp_path: Path, command: str, **result: Unpack[BashResultKwargs]) -> Path:
     return transcript_rows(tmp_path, bash_call(command), bash_result(**result))
 
 
@@ -148,11 +155,11 @@ def codex_foreground(tmp_path: Path, command: str, **result) -> Path:
         'A="Use the bms-code-review skill"; B="$A on the diff"; codex exec "$B"',
     ],
 )
-def test_allows_after_completed_foreground_codex_review(tmp_path, command):
+def test_allows_after_completed_foreground_codex_review(tmp_path: Path, command: str) -> None:
     assert run_hook(codex_foreground(tmp_path, command)) is None
 
 
-def test_allows_codex_review_run_by_a_subagent(tmp_path):
+def test_allows_codex_review_run_by_a_subagent(tmp_path: Path) -> None:
     transcript = transcript_with(tmp_path, None)
     sub = tmp_path / "session" / "subagents"
     sub.mkdir(parents=True)
@@ -170,38 +177,38 @@ def background_start(tmp_path: Path, out: Path | None, timestamp: str | None = "
     return transcript_rows(tmp_path, bash_call(command, timestamp=timestamp), bash_result(text="started"))
 
 
-def test_allows_background_codex_review_once_the_output_file_is_written(tmp_path):
+def test_allows_background_codex_review_once_the_output_file_is_written(tmp_path: Path) -> None:
     out = tmp_path / "codex-review.md"
     out.write_text("## Should fix\n- nothing\n")
     assert run_hook(background_start(tmp_path, out)) is None
 
 
-def test_denies_background_codex_review_while_the_output_file_is_missing(tmp_path):
+def test_denies_background_codex_review_while_the_output_file_is_missing(tmp_path: Path) -> None:
     out = tmp_path / "codex-review.md"
     assert_denied(run_hook(background_start(tmp_path, out)))
 
 
-def test_denies_background_codex_review_with_empty_output_file(tmp_path):
+def test_denies_background_codex_review_with_empty_output_file(tmp_path: Path) -> None:
     out = tmp_path / "codex-review.md"
     out.write_text("")
     assert_denied(run_hook(background_start(tmp_path, out)))
 
 
-def test_denies_background_codex_review_with_stale_output_file(tmp_path):
+def test_denies_background_codex_review_with_stale_output_file(tmp_path: Path) -> None:
     out = tmp_path / "codex-review.md"
     out.write_text("an older review")
     assert_denied(run_hook(background_start(tmp_path, out, timestamp="2999-01-01T00:00:00Z")))
 
 
 @pytest.mark.parametrize("timestamp", [None, "", "not a date"])
-def test_denies_background_codex_review_without_a_valid_call_timestamp(tmp_path, timestamp):
+def test_denies_background_codex_review_without_a_valid_call_timestamp(tmp_path: Path, timestamp: str | None) -> None:
     # "newer than the call" cannot be told, so an existing non-empty file proves nothing
     out = tmp_path / "codex-review.md"
     out.write_text("## Should fix\n- nothing\n")
     assert_denied(run_hook(background_start(tmp_path, out, timestamp=timestamp)))
 
 
-def test_denies_background_codex_review_without_output_file(tmp_path):
+def test_denies_background_codex_review_without_output_file(tmp_path: Path) -> None:
     # Nothing proves that a nohup'd run without -o ever finished.
     assert_denied(run_hook(background_start(tmp_path, None)))
 
@@ -246,7 +253,9 @@ def api_request_blob(command: str, tool_id: str = "toolu_1") -> dict:
 
 @pytest.mark.parametrize("with_blob", [False, True], ids=["transcript-row-only", "plus-api-request-blob"])
 @pytest.mark.parametrize("shape", list(background_shapes(Path("/x"))))
-def test_allows_finished_shell_backgrounded_codex_review_in_any_shape(tmp_path, shape, with_blob):
+def test_allows_finished_shell_backgrounded_codex_review_in_any_shape(
+    tmp_path: Path, shape: str, with_blob: bool
+) -> None:
     command, out = background_shapes(tmp_path)[shape]
     out.write_text("No real bugs found.\n")
     rows = [
@@ -261,8 +270,8 @@ def test_allows_finished_shell_backgrounded_codex_review_in_any_shape(tmp_path, 
 @pytest.mark.parametrize("shape", list(background_shapes(Path("/x"))))
 @pytest.mark.parametrize("state", ["missing", "empty", "stale"])
 def test_denies_unfinished_shell_backgrounded_codex_review_in_any_shape_despite_api_request_blob(
-    tmp_path, shape, state
-):
+    tmp_path: Path, shape: str, state: str
+) -> None:
     command, out = background_shapes(tmp_path)[shape]
     if state != "missing":
         out.write_text("" if state == "empty" else "an older review")
@@ -271,13 +280,13 @@ def test_denies_unfinished_shell_backgrounded_codex_review_in_any_shape_despite_
     assert_denied(run_hook(transcript_rows(tmp_path, *rows)))
 
 
-def test_api_request_blob_alone_is_not_a_codex_review_call(tmp_path):
+def test_api_request_blob_alone_is_not_a_codex_review_call(tmp_path: Path) -> None:
     command, out = background_shapes(tmp_path)["literal-paths"]
     out.write_text("No real bugs found.\n")
     assert_denied(run_hook(transcript_rows(tmp_path, api_request_blob(command))))
 
 
-def test_allows_run_in_background_codex_review_after_completed_notification(tmp_path):
+def test_allows_run_in_background_codex_review_after_completed_notification(tmp_path: Path) -> None:
     command = f'codex exec "{REVIEW_PROMPT}"'
     transcript = transcript_rows(
         tmp_path,
@@ -291,7 +300,9 @@ def test_allows_run_in_background_codex_review_after_completed_notification(tmp_
 @pytest.mark.parametrize(
     "notification", [None, ("toolu_1", "killed"), ("toolu_1", "failed"), ("toolu_other", "completed")]
 )
-def test_denies_run_in_background_codex_review_without_completion(tmp_path, notification):
+def test_denies_run_in_background_codex_review_without_completion(
+    tmp_path: Path, notification: tuple[str, str] | None
+) -> None:
     rows = [
         bash_call(f'codex exec "{REVIEW_PROMPT}"', background=True),
         bash_result(text="Command running in background"),
@@ -324,19 +335,19 @@ def test_denies_run_in_background_codex_review_without_completion(tmp_path, noti
         "ls ~/.codex/skills/bms-code-review",
     ],
 )
-def test_denies_codex_commands_that_are_not_a_review(tmp_path, command):
+def test_denies_codex_commands_that_are_not_a_review(tmp_path: Path, command: str) -> None:
     assert_denied(run_hook(codex_foreground(tmp_path, command)))
 
 
-def test_denies_codex_review_that_failed(tmp_path):
+def test_denies_codex_review_that_failed(tmp_path: Path) -> None:
     assert_denied(run_hook(codex_foreground(tmp_path, "codex review", text="Exit code 1", is_error=True)))
 
 
-def test_denies_codex_review_without_a_tool_result(tmp_path):
+def test_denies_codex_review_without_a_tool_result(tmp_path: Path) -> None:
     assert_denied(run_hook(transcript_rows(tmp_path, bash_call("codex review"))))
 
 
-def test_denies_when_codex_is_only_mentioned_in_text(tmp_path):
+def test_denies_when_codex_is_only_mentioned_in_text(tmp_path: Path) -> None:
     text = {
         "type": "assistant",
         "message": {"role": "assistant", "content": [{"type": "text", "text": "codex exec code review done"}]},
@@ -344,7 +355,7 @@ def test_denies_when_codex_is_only_mentioned_in_text(tmp_path):
     assert_denied(run_hook(transcript_rows(tmp_path, text)))
 
 
-def test_denies_codex_review_in_a_non_bash_tool(tmp_path):
+def test_denies_codex_review_in_a_non_bash_tool(tmp_path: Path) -> None:
     row = bash_call("codex review")
     row["message"]["content"][0]["name"] = "Write"
     assert_denied(run_hook(transcript_rows(tmp_path, row, bash_result())))
@@ -353,7 +364,7 @@ def test_denies_codex_review_in_a_non_bash_tool(tmp_path):
 # --- completion proof: the -o file only counts for shell-backgrounded runs -----------------------------------------
 
 
-def test_denies_failed_foreground_codex_review_that_left_an_output_file(tmp_path):
+def test_denies_failed_foreground_codex_review_that_left_an_output_file(tmp_path: Path) -> None:
     out = tmp_path / "report.md"
     out.write_text("## partial output of a run that then failed\n")
     command = f"codex review -o {out} --base main"
@@ -366,7 +377,9 @@ def test_denies_failed_foreground_codex_review_that_left_an_output_file(tmp_path
 
 
 @pytest.mark.parametrize("status", ["failed", "killed", None])
-def test_denies_run_in_background_codex_review_with_output_file_but_no_completion(tmp_path, status):
+def test_denies_run_in_background_codex_review_with_output_file_but_no_completion(
+    tmp_path: Path, status: str | None
+) -> None:
     out = tmp_path / "report.md"
     out.write_text("## partial output\n")
     rows = [
@@ -378,14 +391,16 @@ def test_denies_run_in_background_codex_review_with_output_file_but_no_completio
     assert_denied(run_hook(transcript_rows(tmp_path, *rows)))
 
 
-def test_denies_foreground_codex_review_with_output_file_but_no_tool_result(tmp_path):
+def test_denies_foreground_codex_review_with_output_file_but_no_tool_result(tmp_path: Path) -> None:
     out = tmp_path / "report.md"
     out.write_text("## partial output\n")
     call = bash_call(f'codex exec -o {out} "{REVIEW_PROMPT}"', timestamp="2020-01-01T00:00:00Z")
     assert_denied(run_hook(transcript_rows(tmp_path, call)))
 
 
-def test_allows_shell_backgrounded_codex_review_with_fresh_output_file_in_a_run_in_background_call(tmp_path):
+def test_allows_shell_backgrounded_codex_review_with_fresh_output_file_in_a_run_in_background_call(
+    tmp_path: Path,
+) -> None:
     out = tmp_path / "report.md"
     out.write_text("## Should fix\n- nothing\n")
     command = f'nohup codex exec -o {out} "{REVIEW_PROMPT}" > {tmp_path}/log 2>&1 &'
@@ -394,7 +409,7 @@ def test_allows_shell_backgrounded_codex_review_with_fresh_output_file_in_a_run_
 
 
 @pytest.mark.parametrize("redirect", ["&>/dev/null", ">/dev/null 2>&1", "> /dev/null 2>&1"])
-def test_recognizes_shell_backgrounding_after_redirections(tmp_path, redirect):
+def test_recognizes_shell_backgrounding_after_redirections(tmp_path: Path, redirect: str) -> None:
     out = tmp_path / "report.md"
     out.write_text("## Should fix\n- nothing\n")
     command = f'codex exec -o {out} "{REVIEW_PROMPT}" {redirect} &'
@@ -424,7 +439,7 @@ def test_recognizes_shell_backgrounding_after_redirections(tmp_path, redirect):
         f"bash -c 'codex exec \"{REVIEW_PROMPT}\"' || true",
     ],
 )
-def test_denies_codex_review_whose_failure_the_tool_result_would_hide(tmp_path, command):
+def test_denies_codex_review_whose_failure_the_tool_result_would_hide(tmp_path: Path, command: str) -> None:
     # the Bash result is the status of the whole command line: `| cat` / `; echo done` / `|| true` exit 0 anyway
     assert_denied(run_hook(codex_foreground(tmp_path, command)))
     background = transcript_rows(
@@ -437,14 +452,14 @@ def test_denies_codex_review_whose_failure_the_tool_result_would_hide(tmp_path, 
     assert_denied(run_hook(background))
 
 
-def test_pipefail_inside_bash_c_counts_for_that_shell_only(tmp_path):
+def test_pipefail_inside_bash_c_counts_for_that_shell_only(tmp_path: Path) -> None:
     ok = f"bash -c 'set -o pipefail; codex exec \"{REVIEW_PROMPT}\" | tee out.md'"
     assert run_hook(codex_foreground(tmp_path, ok)) is None
     outer = f"set -o pipefail; bash -c 'codex exec \"{REVIEW_PROMPT}\" | tee out.md'"
     assert_denied(run_hook(codex_foreground(tmp_path, outer)))
 
 
-def test_denies_a_failed_foreground_run_even_when_the_codex_call_decides_the_status(tmp_path):
+def test_denies_a_failed_foreground_run_even_when_the_codex_call_decides_the_status(tmp_path: Path) -> None:
     command = f'cd /work/wt && codex exec "{REVIEW_PROMPT}"'
     assert_denied(run_hook(codex_foreground(tmp_path, command, text="Exit code 1", is_error=True)))
 
@@ -464,14 +479,14 @@ def test_denies_a_failed_foreground_run_even_when_the_codex_call_decides_the_sta
         f'codex exec "$UNSET" # {REVIEW_PROMPT}',
     ],
 )
-def test_denies_codex_exec_whose_prompt_is_not_a_resolvable_review_request(tmp_path, command):
+def test_denies_codex_exec_whose_prompt_is_not_a_resolvable_review_request(tmp_path: Path, command: str) -> None:
     assert_denied(run_hook(codex_foreground(tmp_path, command)))
 
 
 # --- robustness ----------------------------------------------------------------------------------------------------
 
 
-def test_malformed_transcript_lines_do_not_break_the_check(tmp_path):
+def test_malformed_transcript_lines_do_not_break_the_check(tmp_path: Path) -> None:
     good = [bash_call("codex review"), bash_result()]
     odd = [
         "not json {codex",
@@ -504,7 +519,7 @@ def test_malformed_transcript_lines_do_not_break_the_check(tmp_path):
         f'nohup codex exec "{REVIEW_PROMPT}" > /tmp/codex.log 2>&1 &',
     ],
 )
-def test_preflight_denies_codex_review_that_could_never_count(tmp_path, command):
+def test_preflight_denies_codex_review_that_could_never_count(tmp_path: Path, command: str) -> None:
     assert_denied(run_hook(transcript_rows(tmp_path), command))
 
 
@@ -520,11 +535,11 @@ def test_preflight_denies_codex_review_that_could_never_count(tmp_path, command)
         "ls | tail",
     ],
 )
-def test_preflight_allows_provable_or_unrelated_commands(tmp_path, command):
+def test_preflight_allows_provable_or_unrelated_commands(tmp_path: Path, command: str) -> None:
     assert run_hook(transcript_rows(tmp_path), command) is None
 
 
-def test_preflight_allows_once_a_review_was_already_accepted(tmp_path):
+def test_preflight_allows_once_a_review_was_already_accepted(tmp_path: Path) -> None:
     path = transcript_rows(tmp_path, bash_call("codex review"), bash_result())
     assert run_hook(path, "codex review | tail -40") is None
 
@@ -560,59 +575,59 @@ def codex_skill_message(name: str, role: str = "user") -> dict:
 
 
 @pytest.mark.parametrize("name", ["bms-code-review", "dev-workflow:bms-code-review", "code-review"])
-def test_codex_allows_after_explicitly_invoked_review_skill(tmp_path, name):
+def test_codex_allows_after_explicitly_invoked_review_skill(tmp_path: Path, name: str) -> None:
     assert run_hook(codex_rollout(tmp_path, codex_skill_message(name))) is None
 
 
 @pytest.mark.parametrize("name", ["bms-plan-review", "dev-workflow:design-review"])
-def test_codex_denies_after_other_review_skill(tmp_path, name):
+def test_codex_denies_after_other_review_skill(tmp_path: Path, name: str) -> None:
     assert_denied(run_hook(codex_rollout(tmp_path, codex_skill_message(name))))
 
 
-def test_codex_denies_a_review_skill_text_in_a_non_user_message(tmp_path):
+def test_codex_denies_a_review_skill_text_in_a_non_user_message(tmp_path: Path) -> None:
     assert_denied(run_hook(codex_rollout(tmp_path, codex_skill_message("bms-code-review", role="assistant"))))
 
 
-def test_codex_allows_after_the_model_read_the_review_skill_file(tmp_path):
+def test_codex_allows_after_the_model_read_the_review_skill_file(tmp_path: Path) -> None:
     cmd = "cat /home/u/.codex/plugins/cache/bmsuisse-skills/dev-workflow/local/skills/bms-code-review/SKILL.md"
     assert run_hook(codex_rollout(tmp_path, codex_command(cmd))) is None
 
 
-def test_codex_denies_a_failed_read_of_the_review_skill_file(tmp_path):
+def test_codex_denies_a_failed_read_of_the_review_skill_file(tmp_path: Path) -> None:
     assert_denied(run_hook(codex_rollout(tmp_path, codex_command("cat skills/bms-code-review/SKILL.md", exit_code=1))))
 
 
-def test_codex_allows_after_the_builtin_review_mode(tmp_path):
+def test_codex_allows_after_the_builtin_review_mode(tmp_path: Path) -> None:
     row = {"type": "event_msg", "payload": {"type": "exited_review_mode"}}
     assert run_hook(codex_rollout(tmp_path, row)) is None
 
 
-def test_codex_allows_after_a_finished_nested_codex_review(tmp_path):
+def test_codex_allows_after_a_finished_nested_codex_review(tmp_path: Path) -> None:
     assert run_hook(codex_rollout(tmp_path, codex_command(f'codex exec -s read-only "{REVIEW_PROMPT}"'))) is None
 
 
-def test_codex_denies_a_failed_nested_codex_review(tmp_path):
+def test_codex_denies_a_failed_nested_codex_review(tmp_path: Path) -> None:
     cmd = f'codex exec -s read-only "{REVIEW_PROMPT}"'
     assert_denied(run_hook(codex_rollout(tmp_path, codex_command(cmd, exit_code=1))))
 
 
-def test_codex_denies_a_nested_codex_review_whose_failure_the_exit_code_would_hide(tmp_path):
+def test_codex_denies_a_nested_codex_review_whose_failure_the_exit_code_would_hide(tmp_path: Path) -> None:
     assert_denied(run_hook(codex_rollout(tmp_path, codex_command(f'codex exec "{REVIEW_PROMPT}" | tee /tmp/o.md'))))
 
 
-def test_codex_allows_backgrounded_nested_review_with_fresh_output_file(tmp_path):
+def test_codex_allows_backgrounded_nested_review_with_fresh_output_file(tmp_path: Path) -> None:
     out = tmp_path / "out.md"
     out.write_text("findings")
     cmd = f'nohup codex exec -o {out} "{REVIEW_PROMPT}" > /dev/null 2>&1 &'
     assert run_hook(codex_rollout(tmp_path, codex_command(cmd, started_ms=1_000))) is None
 
 
-def test_codex_denies_backgrounded_nested_review_without_output_file(tmp_path):
+def test_codex_denies_backgrounded_nested_review_without_output_file(tmp_path: Path) -> None:
     cmd = f'nohup codex exec -o {tmp_path / "missing.md"} "{REVIEW_PROMPT}" > /dev/null 2>&1 &'
     assert_denied(run_hook(codex_rollout(tmp_path, codex_command(cmd))))
 
 
-def test_codex_denies_without_any_review(tmp_path):
+def test_codex_denies_without_any_review(tmp_path: Path) -> None:
     assert_denied(run_hook(codex_rollout(tmp_path, codex_command("git status"))))
 
 
@@ -624,7 +639,7 @@ def test_codex_denies_without_any_review(tmp_path):
         "cat skills/bms-code-review/SKILL.md | head -20",
     ],
 )
-def test_codex_allows_common_ways_to_read_the_review_skill(tmp_path, command):
+def test_codex_allows_common_ways_to_read_the_review_skill(tmp_path: Path, command: str) -> None:
     assert run_hook(codex_rollout(tmp_path, codex_command(command))) is None
 
 
@@ -636,7 +651,7 @@ def test_codex_allows_common_ways_to_read_the_review_skill(tmp_path, command):
         "git commit -m 'read skills/bms-code-review/SKILL.md'",
     ],
 )
-def test_codex_denies_commands_that_only_mention_the_review_skill_file(tmp_path, command):
+def test_codex_denies_commands_that_only_mention_the_review_skill_file(tmp_path: Path, command: str) -> None:
     assert_denied(run_hook(codex_rollout(tmp_path, codex_command(command))))
 
 
@@ -674,7 +689,7 @@ def fake_cli(tmp_path: Path, name: str, stdout: str) -> Path:
         "bdt pr create --no-draft --target test -- --source-branch dev",
     ],
 )
-def test_promotion_pr_with_explicit_branches_needs_no_review(tmp_path, command):
+def test_promotion_pr_with_explicit_branches_needs_no_review(tmp_path: Path, command: str) -> None:
     assert run_hook(transcript_with(tmp_path, None), command) is None
 
 
@@ -688,43 +703,43 @@ def test_promotion_pr_with_explicit_branches_needs_no_review(tmp_path, command):
         "bdt pr create --no-draft --target main -- --source-branch fix/x",
     ],
 )
-def test_non_promotion_pr_with_explicit_branches_still_needs_review(tmp_path, command):
+def test_non_promotion_pr_with_explicit_branches_still_needs_review(tmp_path: Path, command: str) -> None:
     assert_denied(run_hook(transcript_with(tmp_path, None), command))
 
 
-def test_bdt_create_defaults_to_dev_target(tmp_path):
+def test_bdt_create_defaults_to_dev_target(tmp_path: Path) -> None:
     transcript = transcript_with(tmp_path, None)
     assert_denied(run_hook(transcript, "bdt pr create --no-draft", cwd=git_repo_on(tmp_path, "feature-x")))
 
 
-def test_bdt_create_from_test_branch_into_default_dev_target_is_a_promotion(tmp_path):
+def test_bdt_create_from_test_branch_into_default_dev_target_is_a_promotion(tmp_path: Path) -> None:
     # main -> dev merge-back: both ends are promotion branches
     repo = git_repo_on(tmp_path, "main")
     assert run_hook(transcript_with(tmp_path, None), "bdt pr create --no-draft", cwd=repo) is None
 
 
-def test_bdt_create_from_dev_to_test_needs_no_review(tmp_path):
+def test_bdt_create_from_dev_to_test_needs_no_review(tmp_path: Path) -> None:
     repo = git_repo_on(tmp_path, "dev")
     assert run_hook(transcript_with(tmp_path, None), "bdt pr create --no-draft --target test", cwd=repo) is None
 
 
-def test_bdt_create_from_feature_branch_to_test_still_needs_review(tmp_path):
+def test_bdt_create_from_feature_branch_to_test_still_needs_review(tmp_path: Path) -> None:
     repo = git_repo_on(tmp_path, "feature-x")
     assert_denied(run_hook(transcript_with(tmp_path, None), "bdt pr create --no-draft --target test", cwd=repo))
 
 
-def test_publish_looks_up_the_promotion_pr_via_gh(tmp_path):
+def test_publish_looks_up_the_promotion_pr_via_gh(tmp_path: Path) -> None:
     bin_dir = fake_cli(tmp_path, "gh", '{"headRefName": "dev", "baseRefName": "test"}')
     out = run_hook(transcript_with(tmp_path, None), "gh pr merge 7 --squash", path_prefix=bin_dir)
     assert out is None
 
 
-def test_publish_of_a_feature_pr_found_via_gh_still_needs_review(tmp_path):
+def test_publish_of_a_feature_pr_found_via_gh_still_needs_review(tmp_path: Path) -> None:
     bin_dir = fake_cli(tmp_path, "gh", '{"headRefName": "feature/x", "baseRefName": "dev"}')
     assert_denied(run_hook(transcript_with(tmp_path, None), "gh pr ready 7", path_prefix=bin_dir))
 
 
-def test_az_update_looks_up_the_promotion_pr_via_az(tmp_path):
+def test_az_update_looks_up_the_promotion_pr_via_az(tmp_path: Path) -> None:
     bin_dir = fake_cli(tmp_path, "az", "refs/heads/test\nrefs/heads/main")
     out = run_hook(
         transcript_with(tmp_path, None), "az repos pr update --id 12 --status completed", path_prefix=bin_dir
@@ -732,7 +747,7 @@ def test_az_update_looks_up_the_promotion_pr_via_az(tmp_path):
     assert out is None
 
 
-def test_unresolvable_branches_fall_back_to_requiring_review(tmp_path):
+def test_unresolvable_branches_fall_back_to_requiring_review(tmp_path: Path) -> None:
     assert_denied(run_hook(transcript_with(tmp_path, None), "gh pr merge 7"))
 
 
@@ -747,14 +762,14 @@ def test_unresolvable_branches_fall_back_to_requiring_review(tmp_path):
         "gh pr create --head dev --base test && gh pr create --head hotfix/x --base main",
     ],
 )
-def test_ambiguous_or_foreign_context_never_counts_as_a_promotion(tmp_path, command):
+def test_ambiguous_or_foreign_context_never_counts_as_a_promotion(tmp_path: Path, command: str) -> None:
     bin_dir = fake_cli(tmp_path, "gh", '{"headRefName": "dev", "baseRefName": "test"}')
     assert_denied(
         run_hook(transcript_with(tmp_path, None), command, cwd=git_repo_on(tmp_path, "dev"), path_prefix=bin_dir)
     )
 
 
-def test_flags_of_other_commands_in_the_line_are_not_borrowed(tmp_path):
+def test_flags_of_other_commands_in_the_line_are_not_borrowed(tmp_path: Path) -> None:
     bin_dir = fake_cli(tmp_path, "gh", '{"headRefName": "hotfix/x", "baseRefName": "main"}')
     command = "echo --head dev --base test && gh pr merge 7"
     assert_denied(run_hook(transcript_with(tmp_path, None), command, path_prefix=bin_dir))

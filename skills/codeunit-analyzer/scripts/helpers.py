@@ -1,10 +1,17 @@
 import os
 import sys
+from collections.abc import Callable, Iterable
 from concurrent.futures import ProcessPoolExecutor, as_completed
+from typing import Any
 
 
-def run_in_processpool(func, iterable, max_workers=None, desc=None):
-    results = []
+def run_in_processpool(
+    func: Callable[..., Any],
+    iterable: Iterable[tuple[Any, ...]],
+    max_workers: int | None = None,
+    desc: str | None = None,
+) -> list[Any]:
+    results: list[Any] = []
     items = list(iterable)
     total = len(items)
     label = f"{desc}: " if desc else ""

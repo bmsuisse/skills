@@ -54,7 +54,7 @@ class CodeunitParser:
 
     STATEMENT_KEYWORDS: ClassVar[list[str]] = ["IF", "WHILE", "WITH", "CASE", "UNTIL", "FOR", "REPEAT"]
 
-    def __init__(self, cal_path, table_metadata=None):
+    def __init__(self, cal_path: str | Path, table_metadata: dict[str, Any] | None = None) -> None:
         cal_path = Path(cal_path)
 
         if cal_path.suffix == ".cs":
@@ -89,14 +89,14 @@ class CodeunitParser:
         self.filtered_vars = set()
         self._report = None
 
-    def parse(self):
+    def parse(self) -> dict[str, Any]:
         if self._report is None:
             self._parse_cs_companion()
             self._parse_cal()
             self._report = self._build_report()
         return self._report
 
-    def _parse_cs_companion(self):
+    def _parse_cs_companion(self) -> None:
         if not self.cs_path or not self.cs_path.exists():
             self.warnings.append("No .cs companion file found; object metadata may be incomplete.")
             return
@@ -142,7 +142,7 @@ class CodeunitParser:
         except Exception as e:
             self.warnings.append(f"Could not parse .cs companion: {e!s}")
 
-    def _extract_navrecord_handles(self, content: str):
+    def _extract_navrecord_handles(self, content: str) -> None:
         try:
             handle_declarations = re.finditer(r"(?:public|private)\s+NavRecordHandle\s+([a-zA-Z0-9_]+);", content)
             var_names = set()
@@ -188,7 +188,7 @@ class CodeunitParser:
 
         return None
 
-    def _parse_cal(self):
+    def _parse_cal(self) -> None:
         if not self.cal_path.exists():
             self.warnings.append(f"C-AL file not found: {self.cal_path}")
             return
@@ -236,7 +236,7 @@ class CodeunitParser:
 
         return processed
 
-    def _parse_procedures(self, lines: list[str]):
+    def _parse_procedures(self, lines: list[str]) -> None:
         self.pending_subscriber = False
         for line in lines:
             stripped = line.strip()
@@ -293,7 +293,7 @@ class CodeunitParser:
             "return_type": return_type,
         }
 
-    def _start_new_procedure(self, proc_info: dict[str, Any]):
+    def _start_new_procedure(self, proc_info: dict[str, Any]) -> None:
         proc_name = proc_info["name"]
         self.current_procedure = proc_name
 
@@ -322,7 +322,7 @@ class CodeunitParser:
         }
         self.loadfields_vars = set()
 
-    def _analyze_line(self, line: str):
+    def _analyze_line(self, line: str) -> None:
         if not self.current_procedure:
             return
 
@@ -339,7 +339,7 @@ class CodeunitParser:
         self._extract_calls(line, proc_data)
         self._detect_operations(line, proc_data)
 
-    def _track_blocks(self, upper_line: str, proc_data: dict):
+    def _track_blocks(self, upper_line: str, proc_data: dict) -> None:
         stripped = upper_line.strip()
 
         if stripped.startswith("BEGIN"):
@@ -359,7 +359,7 @@ class CodeunitParser:
 
         proc_data["nesting_depth"] = max(proc_data.get("nesting_depth", 0), self.block_depth)
 
-    def _track_loops(self, upper_line: str, proc_data: dict):
+    def _track_loops(self, upper_line: str, proc_data: dict) -> None:
         if re.search(r"\b(REPEAT|WHILE|FOR)\b", upper_line):
             self.loop_depth += 1
             self.in_loop = True
@@ -371,7 +371,7 @@ class CodeunitParser:
 
         proc_data["max_loop_depth"] = max(proc_data.get("max_loop_depth", 0), self.loop_depth)
 
-    def _track_filters(self, upper_line: str):
+    def _track_filters(self, upper_line: str) -> None:
         filter_pattern = r"([A-Za-z0-9_]+)\.(?:SETRANGE|SETFILTER)\s*\("
         match = re.search(filter_pattern, upper_line)
         if match:
@@ -388,7 +388,7 @@ class CodeunitParser:
         if match:
             self.loadfields_vars.add(match.group(1))
 
-    def _update_complexity(self, upper_line: str, proc_data: dict):
+    def _update_complexity(self, upper_line: str, proc_data: dict) -> None:
         if re.search(r"\bIF\b", upper_line):
             proc_data["complexity"] += 1
         if re.search(r"\bCASE\b", upper_line):
@@ -403,7 +403,7 @@ class CodeunitParser:
         proc_data["complexity"] += upper_line.count(" AND ")
         proc_data["complexity"] += upper_line.count(" OR ")
 
-    def _extract_dependencies(self, line: str):
+    def _extract_dependencies(self, line: str) -> None:
         patterns = {
             "reports": re.compile(r'REPORT::(?:"([^"]+)"|([A-Za-z0-9_]+))'),
             "pages": re.compile(r'PAGE::(?:"([^"]+)"|([A-Za-z0-9_]+))'),
@@ -417,7 +417,7 @@ class CodeunitParser:
                 if dep_name:
                     self.dependencies[dep_type].add(dep_name)
 
-    def _extract_calls(self, line: str, proc_data: dict):
+    def _extract_calls(self, line: str, proc_data: dict) -> None:
         obj_method_pattern = r"([A-Z][A-Za-z0-9_]+)\.([A-Z][A-Za-z0-9_]+)\s*(?:\(|;)"
         for match in re.finditer(obj_method_pattern, line):
             obj_name = match.group(1)
@@ -442,14 +442,14 @@ class CodeunitParser:
                 ):
                     proc_data["calls"].append(method_name)
 
-    def _detect_operations(self, line: str, proc_data: dict):
+    def _detect_operations(self, line: str, proc_data: dict) -> None:
         upper_line = line.upper()
 
         self._detect_guards(upper_line, proc_data)
         self._detect_reads(line, upper_line, proc_data)
         self._detect_writes(line, upper_line, proc_data)
 
-    def _detect_guards(self, upper_line: str, proc_data: dict):
+    def _detect_guards(self, upper_line: str, proc_data: dict) -> None:
         guard_patterns = [
             (r"IF\s+NOT\s+([A-Za-z0-9_]+)\.FINDFIRST", "IF NOT FINDFIRST"),
             (r"IF\s+NOT\s+([A-Za-z0-9_]+)\.GET\s*\(", "IF NOT GET"),
@@ -485,7 +485,7 @@ class CodeunitParser:
 
         return "Unknown"
 
-    def _detect_reads(self, line: str, upper_line: str, proc_data: dict):
+    def _detect_reads(self, line: str, upper_line: str, proc_data: dict) -> None:
         read_ops = {
             "FINDSET": r"([A-Za-z0-9_]+)\.FINDSET(?:\s*\(\s*(TRUE|FALSE)?\s*\))?",
             "FINDFIRST": r"([A-Za-z0-9_]+)\.FINDFIRST",
@@ -524,7 +524,7 @@ class CodeunitParser:
 
                 break
 
-    def _detect_writes(self, line: str, upper_line: str, proc_data: dict):
+    def _detect_writes(self, line: str, upper_line: str, proc_data: dict) -> None:
         write_ops = {
             "INSERT": r"([A-Za-z0-9_]+)\.INSERT(?:\s*\(\s*(TRUE|FALSE)?\s*\))?",
             "MODIFY": r"([A-Za-z0-9_]+)\.MODIFY(?:\s*\(\s*(TRUE|FALSE)?\s*\))?",
@@ -582,7 +582,7 @@ class CodeunitParser:
                 if table_name != "Unknown" and not is_temp:
                     self.dependencies["tables"].add(table_name)
 
-    def _build_report(self):
+    def _build_report(self) -> dict[str, Any]:
         total_complexity = sum(p.get("complexity", 1) for p in self.procedures.values())
 
         side_effects = []

@@ -21,7 +21,7 @@ from parser import CodeunitParser
 from table_metadata import TableMetadataLoader
 
 
-def get_project_dirs():
+def get_project_dirs() -> tuple[Path, Path, Path]:
     import os
 
     env_dir = os.environ.get("CODEUNITS_DIR")
@@ -33,7 +33,9 @@ def get_project_dirs():
     return data_dir / "codeunits", data_dir / "tables", data_dir / "pages"
 
 
-def _parse_codeunit_file(file, source_type="unknown", table_metadata=None):
+def _parse_codeunit_file(
+    file: Path, source_type: str = "unknown", table_metadata: dict[str, Any] | None = None
+) -> dict[str, Any]:
     try:
         parser = CodeunitParser(file, table_metadata=table_metadata)
         data = parser.parse()
@@ -55,7 +57,7 @@ def _parse_codeunit_file(file, source_type="unknown", table_metadata=None):
         }
 
 
-def list_codeunits():
+def list_codeunits() -> list[dict[str, Any]]:
     codeunits_dir, tables_dir, pages_dir = get_project_dirs()
 
     tagged_files = []
@@ -78,7 +80,7 @@ def list_codeunits():
     return sorted(results, key=lambda x: x["name"])
 
 
-def analyze_codeunit(filename, table_metadata=None):
+def analyze_codeunit(filename: str | Path, table_metadata: dict[str, Any] | None = None) -> dict[str, Any]:
     codeunits_dir, tables_dir, pages_dir = get_project_dirs()
     file_path = Path(filename)
     if not file_path.exists():
@@ -105,7 +107,7 @@ def analyze_codeunit(filename, table_metadata=None):
     return {"object": data, "bottlenecks": bottlenecks}
 
 
-def _analyze_codeunit_for_scan(file_info, table_metadata):
+def _analyze_codeunit_for_scan(file_info: dict[str, Any], table_metadata: dict[str, Any]) -> list[dict[str, Any]]:
     try:
         # Pass the absolute path to analyze_codeunit so it doesn't need to re-rglob it
         result = analyze_codeunit(file_info["path"], table_metadata=table_metadata)
@@ -122,7 +124,7 @@ def _analyze_codeunit_for_scan(file_info, table_metadata):
         return []
 
 
-def scan_all_bottlenecks():
+def scan_all_bottlenecks() -> list[dict[str, Any]]:
     files = list_codeunits()
     table_metadata = TableMetadataLoader.load_metadata()
     results = run_in_processpool(_analyze_codeunit_for_scan, ((f, table_metadata) for f in files), desc="Scanning")
@@ -131,7 +133,7 @@ def scan_all_bottlenecks():
     return all_bottlenecks
 
 
-def format_severity_badge(severity):
+def format_severity_badge(severity: str) -> str:
     badges = {
         "critical": "[CRITICAL]",
         "high": "[HIGH]",
@@ -141,7 +143,7 @@ def format_severity_badge(severity):
     return badges.get(severity, "[" + severity.upper() + "]")
 
 
-def format_bottleneck(bottleneck, index):
+def format_bottleneck(bottleneck: dict[str, Any], index: int) -> str:
     pattern = bottleneck.get("pattern", "unknown").replace("_", " ").title()
     severity = format_severity_badge(bottleneck.get("severity", "low"))
     procedure = bottleneck.get("procedure", "N/A")
@@ -168,7 +170,7 @@ def format_bottleneck(bottleneck, index):
     return "\n".join(output)
 
 
-def cmd_list():
+def cmd_list() -> int:
     print("Fetching codeunits...\n")
 
     files = list_codeunits()
@@ -192,7 +194,7 @@ def cmd_list():
     return 0
 
 
-def cmd_analyze(filename, with_ai=False):
+def cmd_analyze(filename: str | Path, with_ai: bool = False) -> int:
     print(f"Analyzing {filename}...\n")
 
     try:
@@ -257,7 +259,7 @@ def cmd_analyze(filename, with_ai=False):
     return 0
 
 
-def cmd_scan(output_file=None, limit: int | None = 25):
+def cmd_scan(output_file: str | None = None, limit: int | None = 25) -> int:
     print("Scanning all codeunits for performance bottlenecks...\n")
 
     files = list_codeunits()
@@ -285,7 +287,7 @@ def cmd_scan(output_file=None, limit: int | None = 25):
     print(f"  Medium: {len(medium)}")
     print(f"  Low: {len(low)}")
 
-    by_codeunit = {}
+    by_codeunit: dict[str, dict[str, Any]] = {}
     for b in all_bottlenecks:
         file = b.get("codeunit", {}).get("file") or "Unknown"
         name = b.get("codeunit", {}).get("object_name") or file
@@ -391,7 +393,7 @@ def cmd_scan(output_file=None, limit: int | None = 25):
     return 0
 
 
-def cmd_optimize(filename):
+def cmd_optimize(filename: str | Path) -> int:
     print(f"Generating optimization plan for {filename}...\n")
 
     try:
@@ -747,7 +749,7 @@ def cmd_setloadfields(filename: str | None, top: int | None, output_file: str | 
     return 0
 
 
-def main():
+def main() -> int | None:
     parser = argparse.ArgumentParser(description="Analyze C-AL codeunits for performance issues")
     subparsers = parser.add_subparsers(dest="command", help="Command to run")
 
