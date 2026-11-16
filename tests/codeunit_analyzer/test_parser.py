@@ -148,12 +148,15 @@ def test_page_dependency_extracted(tmp_path: Path):
 
 
 def test_read_inside_repeat_loop_flagged_in_loop(tmp_path: Path):
-    report = make_cal(tmp_path, proc(
-        "LoopProc",
-        "REPEAT",
-        "  SomeTable.FINDSET;",
-        "UNTIL SomeTable.NEXT = 0;",
-    )).parse()
+    report = make_cal(
+        tmp_path,
+        proc(
+            "LoopProc",
+            "REPEAT",
+            "  SomeTable.FINDSET;",
+            "UNTIL SomeTable.NEXT = 0;",
+        ),
+    ).parse()
     assert any(r.get("inLoop") for r in report["procedures"]["LoopProc"]["reads"])
 
 

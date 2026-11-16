@@ -4,6 +4,7 @@ Deletable because they regenerate (`bun install`, `uv sync`, `cargo build`).
 
 Usage: stale_envs.py [ROOT=$AZDO_WORK_DIR|$BMS_WORK_DIR|~/projects] [--days 30] [--min-mb 100]
 """
+
 import argparse
 import os
 import subprocess
@@ -15,7 +16,9 @@ NAMES = {"node_modules", ".venv", "target", ".next", ".turbo"}
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("root", nargs="?", default=os.environ.get("AZDO_WORK_DIR") or os.environ.get("BMS_WORK_DIR") or "~/projects")
+    ap.add_argument(
+        "root", nargs="?", default=os.environ.get("AZDO_WORK_DIR") or os.environ.get("BMS_WORK_DIR") or "~/projects"
+    )
     ap.add_argument("--days", type=float, default=30)
     ap.add_argument("--min-mb", type=float, default=100)
     a = ap.parse_args()
@@ -30,7 +33,15 @@ def main() -> None:
                 if d == "target" and not Path(dp, "Cargo.toml").exists():
                     continue
                 if p.stat().st_mtime < cutoff:
-                    mb = int((subprocess.run(["du", "-sk", str(p)], capture_output=True, text=True).stdout.split() or ["0"])[0]) / 1024
+                    mb = (
+                        int(
+                            (
+                                subprocess.run(["du", "-sk", str(p)], capture_output=True, text=True).stdout.split()
+                                or ["0"]
+                            )[0]
+                        )
+                        / 1024
+                    )
                     if mb >= a.min_mb:
                         hits.append((mb, p))
             elif d != ".git":

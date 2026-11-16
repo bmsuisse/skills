@@ -36,7 +36,12 @@ def test_warns_at_75_percent_of_each_limit(tmp_path):
 
 def test_other_test_conventions_get_the_allowance(tmp_path):
     (tmp_path / "tests").mkdir()
-    for f in [tmp_path / "conftest.py", tmp_path / "foo_test.py", tmp_path / "tests" / "helpers.py", tmp_path / "a.spec.ts"]:
+    for f in [
+        tmp_path / "conftest.py",
+        tmp_path / "foo_test.py",
+        tmp_path / "tests" / "helpers.py",
+        tmp_path / "a.spec.ts",
+    ]:
         limit = 600 if f.suffix == ".ts" else 1200
         assert run(make(f.parent, f.name, int(limit * 1.2))).returncode == 0, f.name
 

@@ -8,12 +8,12 @@ Usage:
     python3 scripts/complexity.py query.sql
     python3 scripts/complexity.py --json query.sql   # machine-readable output
 """
+
 from __future__ import annotations
 
 import argparse
 import json
 import re
-import sys
 from pathlib import Path
 
 

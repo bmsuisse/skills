@@ -21,7 +21,6 @@ from pathlib import Path
 
 import httpx
 
-
 SEMANTIC_SCHOLAR_API = "https://api.semanticscholar.org/graph/v1/paper/search"
 SIMILARITY_THRESHOLD = 0.45
 _S2_API_KEY = os.environ.get("SEMANTIC_SCHOLAR_API_KEY", "")
@@ -61,9 +60,7 @@ def extract_bibliography(text: str) -> list[BibEntry]:
         r"|Bibliografia|Riferimenti(?:\s+bibliografici)?|Opere\s+citate)",
         re.IGNORECASE,
     )
-    bib_start = next(
-        (i for i, line in enumerate(lines) if _bib_headers.match(line)), -1
-    )
+    bib_start = next((i for i, line in enumerate(lines) if _bib_headers.match(line)), -1)
     if bib_start < 0:
         return []
 
@@ -78,7 +75,7 @@ def extract_bibliography(text: str) -> list[BibEntry]:
 
         year = year_match.group(1)
         authors = line[: year_match.start()].strip().rstrip(",").rstrip(".")
-        rest = line[year_match.end():].strip().lstrip(".").strip()
+        rest = line[year_match.end() :].strip().lstrip(".").strip()
 
         title_match = re.match(r"\*([^*]+)\*", rest)
         if title_match:
@@ -111,15 +108,23 @@ def _score_to_confidence(score: float) -> str:
 
 def _not_found(entry: BibEntry, note: str, source: str) -> VerificationResult:
     return VerificationResult(
-        entry=entry, status="not_found", confidence="low",
-        confidence_score=0.1, source=source, note=note,
+        entry=entry,
+        status="not_found",
+        confidence="low",
+        confidence_score=0.1,
+        source=source,
+        note=note,
     )
 
 
 def _error(entry: BibEntry, msg: str, source: str) -> VerificationResult:
     return VerificationResult(
-        entry=entry, status="error", confidence="low",
-        confidence_score=0.1, source=source, note=f"Error: {msg}",
+        entry=entry,
+        status="error",
+        confidence="low",
+        confidence_score=0.1,
+        source=source,
+        note=f"Error: {msg}",
     )
 
 
@@ -145,7 +150,7 @@ def query_semantic_scholar(entry: BibEntry, client: httpx.Client) -> Verificatio
             return _error(entry, str(e), source="semantic_scholar")
 
         if resp.status_code == 429:
-            wait = 2 ** attempt * 3  # 3, 6, 12, 24s
+            wait = 2**attempt * 3  # 3, 6, 12, 24s
             time.sleep(wait)
             continue
 
@@ -171,15 +176,8 @@ def query_semantic_scholar(entry: BibEntry, client: httpx.Client) -> Verificatio
 
         title_sim = word_overlap(entry.title, cr_title)
         first_name = entry.authors.split(",")[0].lower()
-        author_match = (
-            first_name in cr_first_author.lower()
-            or cr_first_author.lower() in first_name
-        )
-        combined = (
-            title_sim * 0.65
-            + (0.2 if author_match else 0)
-            + (0.15 if cr_year == entry.year else 0)
-        )
+        author_match = first_name in cr_first_author.lower() or cr_first_author.lower() in first_name
+        combined = title_sim * 0.65 + (0.2 if author_match else 0) + (0.15 if cr_year == entry.year else 0)
         if combined > best_score:
             best_score = combined
             best = {
@@ -237,15 +235,8 @@ def query_scholarly(entry: BibEntry) -> VerificationResult:
 
         title_sim = word_overlap(entry.title, cr_title)
         first_name = entry.authors.split(",")[0].lower()
-        author_match = (
-            first_name in cr_first_author.lower()
-            or cr_first_author.lower() in first_name
-        )
-        combined = (
-            title_sim * 0.65
-            + (0.2 if author_match else 0)
-            + (0.15 if cr_year == entry.year else 0)
-        )
+        author_match = first_name in cr_first_author.lower() or cr_first_author.lower() in first_name
+        combined = title_sim * 0.65 + (0.2 if author_match else 0) + (0.15 if cr_year == entry.year else 0)
         if combined > best_score:
             best_score = combined
             best = {
@@ -289,6 +280,7 @@ def verify_entry(entry: BibEntry, client: httpx.Client, use_scholar: bool) -> Ve
 def _check_scholarly_available() -> bool:
     try:
         import scholarly  # noqa: F401
+
         return True
     except ImportError:
         return False
@@ -322,7 +314,11 @@ def generate_report(results: list[VerificationResult], output_path: Path) -> Non
     ]
 
     sections: list[tuple[str, list[VerificationResult], bool]] = [
-        ("Low Confidence — Manual Check Required", sorted(by_conf["low"] + by_conf["none"], key=lambda x: x.confidence_score), True),
+        (
+            "Low Confidence — Manual Check Required",
+            sorted(by_conf["low"] + by_conf["none"], key=lambda x: x.confidence_score),
+            True,
+        ),
         ("Medium Confidence — Worth Reviewing", sorted(by_conf["medium"], key=lambda x: x.confidence_score), False),
     ]
     for label, section, show_full_ref in sections:
@@ -349,7 +345,8 @@ def generate_report(results: list[VerificationResult], output_path: Path) -> Non
 
     if by_conf["high"]:
         lines += [
-            "## High Confidence — Verified", "",
+            "## High Confidence — Verified",
+            "",
             "| Entry | Score | Source | Citations | URL |",
             "|-------|-------|--------|-----------|-----|",
         ]

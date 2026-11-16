@@ -8,6 +8,7 @@ Usage:
     python3 scripts/check_quality.py --file mymodule.py --json
     python3 scripts/check_quality.py --file mymodule.py --fix   # auto-fix ruff violations
 """
+
 from __future__ import annotations
 
 import argparse
@@ -26,13 +27,15 @@ def run_ruff(file: str, fix: bool = False) -> dict:
     try:
         raw = json.loads(result.stdout) if result.stdout.strip() else []
         for v in raw:
-            violations.append({
-                "code": v.get("code", ""),
-                "message": v.get("message", ""),
-                "line": v.get("location", {}).get("row", 0),
-                "col": v.get("location", {}).get("column", 0),
-                "fixable": v.get("fix") is not None,
-            })
+            violations.append(
+                {
+                    "code": v.get("code", ""),
+                    "message": v.get("message", ""),
+                    "line": v.get("location", {}).get("row", 0),
+                    "col": v.get("location", {}).get("column", 0),
+                    "fixable": v.get("fix") is not None,
+                }
+            )
     except json.JSONDecodeError:
         pass
 

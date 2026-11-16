@@ -21,6 +21,7 @@ Usage:
         [--catalog my_catalog] [--schema my_schema] \\
         [--timing-count] [--global-temp]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -39,6 +40,7 @@ TUNE_PY = Path(__file__).parent / "tune.py"
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def slugify(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")[:40]
 
@@ -47,7 +49,7 @@ def derive_run_id(original_arg: str) -> str:
     if original_arg.startswith("@"):
         stem = Path(original_arg[1:]).stem
         slug = slugify(stem)
-        return slug if slug else f"run-{int(time.time())}"
+        return slug or f"run-{int(time.time())}"
     return f"run-{int(time.time())}"
 
 
@@ -87,6 +89,7 @@ def run_tune(extra_args: list[str]) -> dict:
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(
@@ -152,11 +155,7 @@ def main() -> None:
     if in_git_repo():
         exclude_path = Path(".git/info/exclude")
         existing = exclude_path.read_text(encoding="utf-8") if exclude_path.exists() else ""
-        to_add = "".join(
-            f"{name}\n"
-            for name in (results_file, log_file)
-            if name not in existing
-        )
+        to_add = "".join(f"{name}\n" for name in (results_file, log_file) if name not in existing)
         if to_add:
             with exclude_path.open("a", encoding="utf-8") as f:
                 f.write(to_add)
@@ -171,11 +170,16 @@ def main() -> None:
     # --- Baseline benchmark ---
     print(f"\n[baseline] Running baseline ({args.n_runs} runs, original vs original)...", file=sys.stderr)
     tune_args = [
-        "--profile", args.profile,
-        "--cluster-id", args.cluster_id,
-        "--original", f"@{original_file}",
-        "--optimized", f"@{original_file}",
-        "--n-runs", str(args.n_runs),
+        "--profile",
+        args.profile,
+        "--cluster-id",
+        args.cluster_id,
+        "--original",
+        f"@{original_file}",
+        "--optimized",
+        f"@{original_file}",
+        "--n-runs",
+        str(args.n_runs),
     ]
     if args.catalog:
         tune_args += ["--catalog", args.catalog]
@@ -209,16 +213,21 @@ def main() -> None:
     print("=" * w, file=sys.stderr)
 
     # Machine-readable JSON on stdout for Claude
-    print(json.dumps({
-        "run_id": run_id,
-        "baseline_mean_s": baseline_mean,
-        "original_file": str(original_file),
-        "query_file": str(query_file),
-        "results_file": results_file,
-        "log_file": log_file,
-        "branch": branch_name,
-        "sha": sha,
-    }, indent=2))
+    print(
+        json.dumps(
+            {
+                "run_id": run_id,
+                "baseline_mean_s": baseline_mean,
+                "original_file": str(original_file),
+                "query_file": str(query_file),
+                "results_file": results_file,
+                "log_file": log_file,
+                "branch": branch_name,
+                "sha": sha,
+            },
+            indent=2,
+        )
+    )
 
 
 if __name__ == "__main__":

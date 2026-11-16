@@ -15,6 +15,7 @@ Usage: resolve_job_file.py <repo_root> <title>
 Prints the resolved file path (a sibling `{item}.sql` if one exists,
 otherwise the `_config.*.yml` itself) or exits non-zero if no match is found.
 """
+
 import sys
 from pathlib import Path
 

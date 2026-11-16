@@ -14,6 +14,7 @@ not to be a compiler frontend. JS/TS block-comment detection does a simple
 best-effort skip of string/template literals; it can be fooled by comment-like
 text inside strings on rare inputs. Good enough for review purposes.
 """
+
 import argparse
 import io
 import json
@@ -42,24 +43,34 @@ def extract_python(source, lines):
     prev_significant = None
     for tok in tokens:
         if tok.type == tokenize.COMMENT:
-            results.append({
-                "line": tok.start[0],
-                "kind": "line",
-                "text": tok.string.lstrip("#").strip(),
-            })
+            results.append(
+                {
+                    "line": tok.start[0],
+                    "kind": "line",
+                    "text": tok.string.lstrip("#").strip(),
+                }
+            )
         elif tok.type == tokenize.STRING and prev_significant and prev_significant[1] in (":",):
             # crude docstring heuristic: a bare string statement right after a
             # `def ...:` / `class ...:` line, on its own line
             if tok.string.startswith(('"""', "'''")):
                 line_text = lines[tok.start[0] - 1].strip()
                 if line_text.startswith(('"""', "'''", 'r"""', "r'''")):
-                    results.append({
-                        "line": tok.start[0],
-                        "kind": "docstring",
-                        "text": tok.string.strip("\"'").strip(),
-                    })
-        if tok.type not in (tokenize.NL, tokenize.NEWLINE, tokenize.INDENT,
-                            tokenize.DEDENT, tokenize.COMMENT, tokenize.ENCODING):
+                    results.append(
+                        {
+                            "line": tok.start[0],
+                            "kind": "docstring",
+                            "text": tok.string.strip("\"'").strip(),
+                        }
+                    )
+        if tok.type not in (
+            tokenize.NL,
+            tokenize.NEWLINE,
+            tokenize.INDENT,
+            tokenize.DEDENT,
+            tokenize.COMMENT,
+            tokenize.ENCODING,
+        ):
             prev_significant = (tok.type, tok.string)
     return results
 
@@ -92,23 +103,27 @@ def extract_js(source):
         if ch == "/" and i + 1 < n and source[i + 1] == "/":
             end = source.find("\n", i)
             end = end if end != -1 else n
-            results.append({
-                "line": line_no,
-                "kind": "line",
-                "text": source[i + 2:end].strip(),
-            })
+            results.append(
+                {
+                    "line": line_no,
+                    "kind": "line",
+                    "text": source[i + 2 : end].strip(),
+                }
+            )
             i = end
             continue
         if ch == "/" and i + 1 < n and source[i + 1] == "*":
             end = source.find("*/", i + 2)
             end = end if end != -1 else n
-            comment_text = source[i + 2:end]
-            kind = "docstring" if source[i:i + 3] == "/**" else "block"
-            results.append({
-                "line": line_no,
-                "kind": kind,
-                "text": comment_text.strip(),
-            })
+            comment_text = source[i + 2 : end]
+            kind = "docstring" if source[i : i + 3] == "/**" else "block"
+            results.append(
+                {
+                    "line": line_no,
+                    "kind": kind,
+                    "text": comment_text.strip(),
+                }
+            )
             line_no += comment_text.count("\n")
             i = end + 2
             continue

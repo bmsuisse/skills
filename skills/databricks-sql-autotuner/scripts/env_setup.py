@@ -89,12 +89,9 @@ def verify_connection(venv: Path, profile: str, cluster_id: str) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Set up the SQL autotuner venv.")
-    parser.add_argument("--dbr-version", required=True, metavar="VER",
-                        help="Databricks Runtime version, e.g. 17.3")
-    parser.add_argument("--profile", required=True,
-                        help="Databricks CLI profile name")
-    parser.add_argument("--cluster-id", required=True, dest="cluster_id",
-                        help="Target cluster ID")
+    parser.add_argument("--dbr-version", required=True, metavar="VER", help="Databricks Runtime version, e.g. 17.3")
+    parser.add_argument("--profile", required=True, help="Databricks CLI profile name")
+    parser.add_argument("--cluster-id", required=True, dest="cluster_id", help="Target cluster ID")
     args = parser.parse_args()
 
     check_uv()
@@ -104,9 +101,8 @@ def main() -> None:
     verify_connection(venv, args.profile, args.cluster_id)
 
     python_path = venv_python(venv)
-    print(f"\n[setup] Done. Run tune.py with:")
-    print(f"  {python_path} scripts/tune.py "
-          f"--profile {args.profile} --cluster-id {args.cluster_id} ...")
+    print("\n[setup] Done. Run tune.py with:")
+    print(f"  {python_path} scripts/tune.py --profile {args.profile} --cluster-id {args.cluster_id} ...")
 
 
 if __name__ == "__main__":

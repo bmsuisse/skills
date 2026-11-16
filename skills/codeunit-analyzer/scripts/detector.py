@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 
 class BottleneckDetector:
@@ -19,7 +19,7 @@ class BottleneckDetector:
 
         return self.bottlenecks
 
-    def _get_table_info(self, table_name: str) -> Dict[str, Any]:
+    def _get_table_info(self, table_name: str) -> dict[str, Any]:
         if not table_name or not self.table_metadata:
             return {}
 
@@ -205,7 +205,7 @@ class BottleneckDetector:
             }
         )
 
-    def _detect_heavy_modify_operations(self, proc_name: str, proc_data: dict, writes: List[str]):
+    def _detect_heavy_modify_operations(self, proc_name: str, proc_data: dict, writes: list[str]):
         modify_count = sum(1 for w in writes if w == "MODIFY")
 
         if modify_count >= 5:
@@ -370,7 +370,7 @@ class BottleneckDetector:
                 }
             )
 
-    def _detect_bulk_delete_operations(self, proc_name: str, proc_data: dict, writes: List[str]):
+    def _detect_bulk_delete_operations(self, proc_name: str, proc_data: dict, writes: list[str]):
         delete_count = sum(1 for w in writes if w == "DELETE")
 
         if delete_count >= 4:
@@ -393,164 +393,236 @@ class BottleneckDetector:
             )
 
     def _detect_validate_in_loop(self, proc_name: str, proc_data: dict):
-        validates = [
-            w for w in proc_data.get("writes", []) if w["operation"] == "VALIDATE" and w.get("inLoop")
-        ]
+        validates = [w for w in proc_data.get("writes", []) if w["operation"] == "VALIDATE" and w.get("inLoop")]
         if validates:
-            self.bottlenecks.append({
-                "pattern": "validate_in_loop",
-                "severity": "high",
-                "score": 130,
-                "procedure": proc_name,
-                "explanation": "VALIDATE called inside a loop. Firing field triggers repeatedly inside loops multiplies database load exponentially.",
-                "recommendation": "Assign values directly if triggers are not required, or cache logic outside the loop.",
-                "example": "// Assign without firing trigger:\nTable.Field := Value;\n// Then call Table.MODIFY(TRUE); after the loop",
-                "codeunit": {
-                    "file": self.file_path.name,
-                    "object_name": self.data.get("object_name"),
-                    "object_id": self.data.get("object_id"),
-                },
-            })
+            self.bottlenecks.append(
+                {
+                    "pattern": "validate_in_loop",
+                    "severity": "high",
+                    "score": 130,
+                    "procedure": proc_name,
+                    "explanation": "VALIDATE called inside a loop. Firing field triggers repeatedly inside loops multiplies database load exponentially.",
+                    "recommendation": "Assign values directly if triggers are not required, or cache logic outside the loop.",
+                    "example": "// Assign without firing trigger:\nTable.Field := Value;\n// Then call Table.MODIFY(TRUE); after the loop",
+                    "codeunit": {
+                        "file": self.file_path.name,
+                        "object_name": self.data.get("object_name"),
+                        "object_id": self.data.get("object_id"),
+                    },
+                }
+            )
 
     def _detect_modify_in_onmodify(self, proc_name: str, proc_data: dict):
         if "modify" not in proc_name.lower():
             return
-        modifies = [
-            w for w in proc_data.get("writes", []) if w["operation"] == "MODIFY"
-        ]
+        modifies = [w for w in proc_data.get("writes", []) if w["operation"] == "MODIFY"]
         if modifies:
-            self.bottlenecks.append({
-                "pattern": "modify_in_onmodify",
-                "severity": "critical",
-                "score": 200,
-                "procedure": proc_name,
-                "explanation": "Calling MODIFY inside an OnModify trigger causes a recursive loop risk.",
-                "recommendation": "Do not explicitly call MODIFY inside OnModify (or use a different table instance if necessary).",
-                "example": "Remove the explicitly bare MODIFY call inside OnModify.",
-                "codeunit": {
-                    "file": self.file_path.name,
-                    "object_name": self.data.get("object_name"),
-                    "object_id": self.data.get("object_id"),
-                },
-            })
+            self.bottlenecks.append(
+                {
+                    "pattern": "modify_in_onmodify",
+                    "severity": "critical",
+                    "score": 200,
+                    "procedure": proc_name,
+                    "explanation": "Calling MODIFY inside an OnModify trigger causes a recursive loop risk.",
+                    "recommendation": "Do not explicitly call MODIFY inside OnModify (or use a different table instance if necessary).",
+                    "example": "Remove the explicitly bare MODIFY call inside OnModify.",
+                    "codeunit": {
+                        "file": self.file_path.name,
+                        "object_name": self.data.get("object_name"),
+                        "object_id": self.data.get("object_id"),
+                    },
+                }
+            )
 
     def _detect_multi_get_onvalidate(self, proc_name: str, proc_data: dict):
         if "validate" not in proc_name.lower():
             return
-        gets = [
-            r for r in proc_data.get("reads", []) if r["operation"] == "GET"
-        ]
+        gets = [r for r in proc_data.get("reads", []) if r["operation"] == "GET"]
         if len(gets) >= 3:
-            self.bottlenecks.append({
-                "pattern": "multi_get_in_onvalidate",
-                "severity": "medium",
-                "score": 70,
-                "procedure": proc_name,
-                "explanation": f"Multiple GET calls ({len(gets)}) in a single OnValidate. Makes field entry feel sluggish.",
-                "recommendation": "Cache frequently fetched records or simplify validation checks to minimize lookups.",
-                "example": "Use Temp Tables, Cache Data Codeunits, or check if the record is already loaded.",
-                "codeunit": {
-                    "file": self.file_path.name,
-                    "object_name": self.data.get("object_name"),
-                    "object_id": self.data.get("object_id"),
-                },
-            })
-
+            self.bottlenecks.append(
+                {
+                    "pattern": "multi_get_in_onvalidate",
+                    "severity": "medium",
+                    "score": 70,
+                    "procedure": proc_name,
+                    "explanation": f"Multiple GET calls ({len(gets)}) in a single OnValidate. Makes field entry feel sluggish.",
+                    "recommendation": "Cache frequently fetched records or simplify validation checks to minimize lookups.",
+                    "example": "Use Temp Tables, Cache Data Codeunits, or check if the record is already loaded.",
+                    "codeunit": {
+                        "file": self.file_path.name,
+                        "object_name": self.data.get("object_name"),
+                        "object_id": self.data.get("object_id"),
+                    },
+                }
+            )
 
     def _is_hot_trigger(self, proc_name: str) -> bool:
         lower_name = proc_name.lower()
-        return any(ht in lower_name for ht in ["onaftergetrecord", "onaftergetcurrrecord", "onfindrecord", "onnextrecord"])
+        return any(
+            ht in lower_name for ht in ["onaftergetrecord", "onaftergetcurrrecord", "onfindrecord", "onnextrecord"]
+        )
 
     def _detect_commit_in_page_trigger(self, proc_name: str, proc_data: dict, has_commit: bool):
-        if not has_commit: return
-        page_triggers = ["oninit", "onopenpage", "onclosepage", "onaftergetrecord", "onaftergetcurrrecord", "onnewrecord", "oninsertrecord", "onmodifyrecord", "ondeleterecord", "onqueryclosepage", "onfindrecord", "onnextrecord", "onaction", "ondrilldown", "onassistedit", "onlookup"]
+        if not has_commit:
+            return
+        page_triggers = [
+            "oninit",
+            "onopenpage",
+            "onclosepage",
+            "onaftergetrecord",
+            "onaftergetcurrrecord",
+            "onnewrecord",
+            "oninsertrecord",
+            "onmodifyrecord",
+            "ondeleterecord",
+            "onqueryclosepage",
+            "onfindrecord",
+            "onnextrecord",
+            "onaction",
+            "ondrilldown",
+            "onassistedit",
+            "onlookup",
+        ]
         lower_name = proc_name.lower()
         if any(pt in lower_name for pt in page_triggers):
-            self.bottlenecks.append({
-                "pattern": "commit_in_page_trigger",
-                "severity": "critical",
-                "score": 180,
-                "procedure": proc_name,
-                "explanation": "COMMIT inside a page trigger breaks transaction rollback and can corrupt partial writes.",
-                "recommendation": "Remove COMMIT from page triggers to ensure UI actions can be rolled back on error.",
-                "example": "Remove the COMMIT statement.",
-                "codeunit": {"file": self.file_path.name, "object_name": self.data.get("object_name"), "object_id": self.data.get("object_id")}
-            })
+            self.bottlenecks.append(
+                {
+                    "pattern": "commit_in_page_trigger",
+                    "severity": "critical",
+                    "score": 180,
+                    "procedure": proc_name,
+                    "explanation": "COMMIT inside a page trigger breaks transaction rollback and can corrupt partial writes.",
+                    "recommendation": "Remove COMMIT from page triggers to ensure UI actions can be rolled back on error.",
+                    "example": "Remove the COMMIT statement.",
+                    "codeunit": {
+                        "file": self.file_path.name,
+                        "object_name": self.data.get("object_name"),
+                        "object_id": self.data.get("object_id"),
+                    },
+                }
+            )
 
     def _detect_heavy_get_in_hot_trigger(self, proc_name: str, proc_data: dict):
-        if not self._is_hot_trigger(proc_name): return
+        if not self._is_hot_trigger(proc_name):
+            return
         gets = [r for r in proc_data.get("reads", []) if r["operation"] == "GET"]
         if len(gets) >= 3:
-            self.bottlenecks.append({
-                "pattern": "heavy_get_in_hot_trigger",
-                "severity": "critical",
-                "score": 160,
-                "procedure": proc_name,
-                "explanation": f"Multiple GETs ({len(gets)}) in hot trigger. Fires on every record scroll, causing 1 DB round-trip per GET.",
-                "recommendation": "Use FlowFields, cache records in memory, or use a temporary table.",
-                "example": "Cache records outside the scrolling logic.",
-                "codeunit": {"file": self.file_path.name, "object_name": self.data.get("object_name"), "object_id": self.data.get("object_id")}
-            })
+            self.bottlenecks.append(
+                {
+                    "pattern": "heavy_get_in_hot_trigger",
+                    "severity": "critical",
+                    "score": 160,
+                    "procedure": proc_name,
+                    "explanation": f"Multiple GETs ({len(gets)}) in hot trigger. Fires on every record scroll, causing 1 DB round-trip per GET.",
+                    "recommendation": "Use FlowFields, cache records in memory, or use a temporary table.",
+                    "example": "Cache records outside the scrolling logic.",
+                    "codeunit": {
+                        "file": self.file_path.name,
+                        "object_name": self.data.get("object_name"),
+                        "object_id": self.data.get("object_id"),
+                    },
+                }
+            )
 
     def _detect_calcfields_in_hot_trigger(self, proc_name: str, proc_data: dict):
-        if not self._is_hot_trigger(proc_name): return
-        calcs = [r for r in proc_data.get("reads", []) if r["operation"] in ["CALCFIELDS", "CALCSUMS"] and not r.get("inLoop")]
+        if not self._is_hot_trigger(proc_name):
+            return
+        calcs = [
+            r
+            for r in proc_data.get("reads", [])
+            if r["operation"] in ["CALCFIELDS", "CALCSUMS"] and not r.get("inLoop")
+        ]
         if len(calcs) >= 2:
-            self.bottlenecks.append({
-                "pattern": "calcfields_in_hot_trigger",
-                "severity": "high",
-                "score": 110,
-                "procedure": proc_name,
-                "explanation": f"Multiple CALCFIELDS ({len(calcs)}) in hot trigger (outside loops). Expensive per navigation.",
-                "recommendation": "Calculate once before opening if possible, or only on drill-down.",
-                "example": "Change UI to calculate on demand.",
-                "codeunit": {"file": self.file_path.name, "object_name": self.data.get("object_name"), "object_id": self.data.get("object_id")}
-            })
+            self.bottlenecks.append(
+                {
+                    "pattern": "calcfields_in_hot_trigger",
+                    "severity": "high",
+                    "score": 110,
+                    "procedure": proc_name,
+                    "explanation": f"Multiple CALCFIELDS ({len(calcs)}) in hot trigger (outside loops). Expensive per navigation.",
+                    "recommendation": "Calculate once before opening if possible, or only on drill-down.",
+                    "example": "Change UI to calculate on demand.",
+                    "codeunit": {
+                        "file": self.file_path.name,
+                        "object_name": self.data.get("object_name"),
+                        "object_id": self.data.get("object_id"),
+                    },
+                }
+            )
 
     def _detect_modify_in_hot_trigger(self, proc_name: str, proc_data: dict):
-        if not self._is_hot_trigger(proc_name): return
-        writes = [w for w in proc_data.get("writes", []) if w["operation"] in ["MODIFY", "INSERT", "DELETE"] and not w.get("isTemporary")]
+        if not self._is_hot_trigger(proc_name):
+            return
+        writes = [
+            w
+            for w in proc_data.get("writes", [])
+            if w["operation"] in ["MODIFY", "INSERT", "DELETE"] and not w.get("isTemporary")
+        ]
         if writes:
-            self.bottlenecks.append({
-                "pattern": "db_write_in_hot_trigger",
-                "severity": "high",
-                "score": 120,
-                "procedure": proc_name,
-                "explanation": "Database write during a navigation/hot trigger causes unexpected saves and performance issues.",
-                "recommendation": "Move writes to OnAction or explicit save functions.",
-                "example": "Do not write during OnAfterGetRecord.",
-                "codeunit": {"file": self.file_path.name, "object_name": self.data.get("object_name"), "object_id": self.data.get("object_id")}
-            })
+            self.bottlenecks.append(
+                {
+                    "pattern": "db_write_in_hot_trigger",
+                    "severity": "high",
+                    "score": 120,
+                    "procedure": proc_name,
+                    "explanation": "Database write during a navigation/hot trigger causes unexpected saves and performance issues.",
+                    "recommendation": "Move writes to OnAction or explicit save functions.",
+                    "example": "Do not write during OnAfterGetRecord.",
+                    "codeunit": {
+                        "file": self.file_path.name,
+                        "object_name": self.data.get("object_name"),
+                        "object_id": self.data.get("object_id"),
+                    },
+                }
+            )
 
     def _detect_page_run_in_hot_trigger(self, proc_name: str, proc_data: dict):
-        if not self._is_hot_trigger(proc_name): return
+        if not self._is_hot_trigger(proc_name):
+            return
         calls = proc_data.get("calls", [])
         if any(c.upper() in ["PAGE.RUN", "PAGE.RUNMODAL"] for c in calls):
-            self.bottlenecks.append({
-                "pattern": "page_run_in_hot_trigger",
-                "severity": "high",
-                "score": 100,
-                "procedure": proc_name,
-                "explanation": "Opening a page from within a navigation trigger can cause recursive page loads.",
-                "recommendation": "Trigger PAGE.RUN from an explicit user action (OnAction).",
-                "example": "Move PAGE.RUN to an action.",
-                "codeunit": {"file": self.file_path.name, "object_name": self.data.get("object_name"), "object_id": self.data.get("object_id")}
-            })
+            self.bottlenecks.append(
+                {
+                    "pattern": "page_run_in_hot_trigger",
+                    "severity": "high",
+                    "score": 100,
+                    "procedure": proc_name,
+                    "explanation": "Opening a page from within a navigation trigger can cause recursive page loads.",
+                    "recommendation": "Trigger PAGE.RUN from an explicit user action (OnAction).",
+                    "example": "Move PAGE.RUN to an action.",
+                    "codeunit": {
+                        "file": self.file_path.name,
+                        "object_name": self.data.get("object_name"),
+                        "object_id": self.data.get("object_id"),
+                    },
+                }
+            )
 
     def _detect_heavy_onclosepage(self, proc_name: str, proc_data: dict):
-        if "onclosepage" not in proc_name.lower(): return
-        writes = [w for w in proc_data.get("writes", []) if w["operation"] in ["MODIFY", "INSERT", "DELETE", "DELETEALL", "MODIFYALL"] and not w.get("isTemporary")]
+        if "onclosepage" not in proc_name.lower():
+            return
+        writes = [
+            w
+            for w in proc_data.get("writes", [])
+            if w["operation"] in ["MODIFY", "INSERT", "DELETE", "DELETEALL", "MODIFYALL"] and not w.get("isTemporary")
+        ]
         if len(writes) >= 2:
-            self.bottlenecks.append({
-                "pattern": "heavy_onclosepage",
-                "severity": "medium",
-                "score": 70,
-                "procedure": proc_name,
-                "explanation": f"Multiple DB Writes ({len(writes)}) in OnClosePage. OnClosePage is not transactional; failures are swallowed.",
-                "recommendation": "Perform heavy writes on an explicit 'Save' or 'Post' action, not silently on close.",
-                "example": "Move writes out of OnClosePage.",
-                "codeunit": {"file": self.file_path.name, "object_name": self.data.get("object_name"), "object_id": self.data.get("object_id")}
-            })
+            self.bottlenecks.append(
+                {
+                    "pattern": "heavy_onclosepage",
+                    "severity": "medium",
+                    "score": 70,
+                    "procedure": proc_name,
+                    "explanation": f"Multiple DB Writes ({len(writes)}) in OnClosePage. OnClosePage is not transactional; failures are swallowed.",
+                    "recommendation": "Perform heavy writes on an explicit 'Save' or 'Post' action, not silently on close.",
+                    "example": "Move writes out of OnClosePage.",
+                    "codeunit": {
+                        "file": self.file_path.name,
+                        "object_name": self.data.get("object_name"),
+                        "object_id": self.data.get("object_id"),
+                    },
+                }
+            )
 
     def _detect_missing_setloadfields(self, proc_name: str, proc_data: dict):
         """Flag every FINDSET/FINDFIRST/FIND that lacks SETLOADFIELDS.
@@ -563,7 +635,8 @@ class BottleneckDetector:
           - +15 pts if the table has FlowFields (BC calculates ALL without SETLOADFIELDS)
         """
         reads = [
-            r for r in proc_data.get("reads", [])
+            r
+            for r in proc_data.get("reads", [])
             if r["operation"] in ["FINDSET", "FINDFIRST", "FIND"] and not r.get("isTemporary")
         ]
         for read in reads:
@@ -599,60 +672,79 @@ class BottleneckDetector:
                 extras.append("table has FlowFields")
             if field_count > 30:
                 extras.append(f"{field_count} fields")
-            extra_str = f" ({", ".join(extras)})" if extras else ""
+            extra_str = f" ({', '.join(extras)})" if extras else ""
 
-            self.bottlenecks.append({
-                "pattern": "missing_setloadfields",
-                "severity": severity,
-                "score": score,
-                "procedure": proc_name,
-                "explanation": (
-                    f"Missing SetLoadFields before {read['operation']} for table '{table_name}'{extra_str}. "
-                    f"Without SETLOADFIELDS, BC fetches ALL columns (SELECT *) across the network — "
-                    f"including BLOBs and triggering FlowField calculations on every row."
-                ),
-                "recommendation": (
-                    f"Add {table_name}.SETLOADFIELDS(Field1, Field2, ...) immediately before the "
-                    f"{read['operation']} call. Use only the fields actually needed in this procedure."
-                ),
-                "example": f"{table_name}.SETLOADFIELDS(Field1, Field2);\nIF {table_name}.{read['operation']} THEN ...",
-                "codeunit": {"file": self.file_path.name, "object_name": self.data.get("object_name"), "object_id": self.data.get("object_id")}
-            })
+            self.bottlenecks.append(
+                {
+                    "pattern": "missing_setloadfields",
+                    "severity": severity,
+                    "score": score,
+                    "procedure": proc_name,
+                    "explanation": (
+                        f"Missing SetLoadFields before {read['operation']} for table '{table_name}'{extra_str}. "
+                        f"Without SETLOADFIELDS, BC fetches ALL columns (SELECT *) across the network — "
+                        f"including BLOBs and triggering FlowField calculations on every row."
+                    ),
+                    "recommendation": (
+                        f"Add {table_name}.SETLOADFIELDS(Field1, Field2, ...) immediately before the "
+                        f"{read['operation']} call. Use only the fields actually needed in this procedure."
+                    ),
+                    "example": f"{table_name}.SETLOADFIELDS(Field1, Field2);\nIF {table_name}.{read['operation']} THEN ...",
+                    "codeunit": {
+                        "file": self.file_path.name,
+                        "object_name": self.data.get("object_name"),
+                        "object_id": self.data.get("object_id"),
+                    },
+                }
+            )
 
     def _detect_unfiltered_findset(self, proc_name: str, proc_data: dict):
         reads = [r for r in proc_data.get("reads", []) if r["operation"] == "FINDSET" and not r.get("isTemporary")]
         for read in reads:
             if not read.get("hasFilter"):
-                self.bottlenecks.append({
-                    "pattern": "unfiltered_findset",
-                    "severity": "high",
-                    "score": 110,
-                    "procedure": proc_name,
-                    "explanation": f"Unfiltered FINDSET detected for table {read.get('tableName', 'Unknown')}. This will pull the entire table into memory.",
-                    "recommendation": "Always apply SETRANGE or SETFILTER before FINDSET.",
-                    "example": "Table.SETRANGE(Status, Status::Active);\\nIF Table.FINDSET THEN...",
-                    "codeunit": {"file": self.file_path.name, "object_name": self.data.get("object_name"), "object_id": self.data.get("object_id")}
-                })
+                self.bottlenecks.append(
+                    {
+                        "pattern": "unfiltered_findset",
+                        "severity": "high",
+                        "score": 110,
+                        "procedure": proc_name,
+                        "explanation": f"Unfiltered FINDSET detected for table {read.get('tableName', 'Unknown')}. This will pull the entire table into memory.",
+                        "recommendation": "Always apply SETRANGE or SETFILTER before FINDSET.",
+                        "example": "Table.SETRANGE(Status, Status::Active);\\nIF Table.FINDSET THEN...",
+                        "codeunit": {
+                            "file": self.file_path.name,
+                            "object_name": self.data.get("object_name"),
+                            "object_id": self.data.get("object_id"),
+                        },
+                    }
+                )
 
     def _detect_event_subscriber_hotspot(self, proc_name: str, proc_data: dict):
-        if not proc_data.get("is_event_subscriber"): return
-        
+        if not proc_data.get("is_event_subscriber"):
+            return
+
         has_loop = proc_data.get("max_loop_depth", 0) > 0
         heavy_reads = [r for r in proc_data.get("reads", []) if r["operation"] in ["FINDSET", "CALCFIELDS"]]
-        
+
         if has_loop or heavy_reads:
             score = 150 if has_loop else 120
             severity = "critical" if has_loop else "high"
-            self.bottlenecks.append({
-                "pattern": "event_subscriber_hotspot",
-                "severity": severity,
-                "score": score,
-                "procedure": proc_name,
-                "explanation": "Event Subscribers run synchronously and globally. Found loops or heavy DB operations (FINDSET/CALCFIELDS) inside a subscriber, which drastically degrades entire ERP performance.",
-                "recommendation": "Offload heavy processing to background tasks via JobQueue or process asynchronously. Event subscribers should exit as fast as possible.",
-                "example": "IF JobQueue.ScheduleTask(...) THEN EXIT;",
-                "codeunit": {"file": self.file_path.name, "object_name": self.data.get("object_name"), "object_id": self.data.get("object_id")}
-            })
+            self.bottlenecks.append(
+                {
+                    "pattern": "event_subscriber_hotspot",
+                    "severity": severity,
+                    "score": score,
+                    "procedure": proc_name,
+                    "explanation": "Event Subscribers run synchronously and globally. Found loops or heavy DB operations (FINDSET/CALCFIELDS) inside a subscriber, which drastically degrades entire ERP performance.",
+                    "recommendation": "Offload heavy processing to background tasks via JobQueue or process asynchronously. Event subscribers should exit as fast as possible.",
+                    "example": "IF JobQueue.ScheduleTask(...) THEN EXIT;",
+                    "codeunit": {
+                        "file": self.file_path.name,
+                        "object_name": self.data.get("object_name"),
+                        "object_id": self.data.get("object_id"),
+                    },
+                }
+            )
 
     # ----------------------------------------------------------------
     # Classic NAV — Locking / Blocking
@@ -665,17 +757,14 @@ class BottleneckDetector:
         entire transaction. Called inside loops or on large tables it causes
         severe blocking across concurrent users.
         """
-        lock_calls = [
-            w for w in proc_data.get("writes", [])
-            if w.get("operation") == "LOCKTABLE"
-        ]
+        lock_calls = [w for w in proc_data.get("writes", []) if w.get("operation") == "LOCKTABLE"]
         if not lock_calls:
             return
 
         in_loop_locks = [w for w in lock_calls if w.get("inLoop")]
-        locked_tables = list({w.get('tableName', 'Unknown') for w in lock_calls})
+        locked_tables = list({w.get("tableName", "Unknown") for w in lock_calls})
         max_impact = max(
-            (self._get_table_impact_multiplier(t) for t in locked_tables if t and t != 'Unknown'),
+            (self._get_table_impact_multiplier(t) for t in locked_tables if t and t != "Unknown"),
             default=1.0,
         )
 
@@ -702,30 +791,36 @@ class BottleneckDetector:
                 "Consider locking as late and briefly as possible."
             )
 
-        self.bottlenecks.append({
-            "pattern": "locktable_overuse",
-            "severity": severity,
-            "score": score,
-            "procedure": proc_name,
-            "explanation": explanation,
-            "recommendation": (
-                "Move LOCKTABLE as close to the MODIFY/INSERT/DELETE as possible. "
-                "Avoid inside loops — lock the table once before the loop if required. "
-                "Consider whether pessimistic locking is truly needed or if optimistic retry is viable."
-            ),
-            "example": (
-                "// BAD: lock inside loop\n"
-                "REPEAT\n"
-                "  Table.LOCKTABLE;  // holds lock for entire loop!\n"
-                "  Table.MODIFY;\n"
-                "UNTIL Table.NEXT = 0;\n\n"
-                "// GOOD: lock once, loop inside\n"
-                "Table.LOCKTABLE;\n"
-                "IF Table.FINDSET THEN\n"
-                "  REPEAT Table.MODIFY; UNTIL Table.NEXT = 0;"
-            ),
-            "codeunit": {"file": self.file_path.name, "object_name": self.data.get("object_name"), "object_id": self.data.get("object_id")}
-        })
+        self.bottlenecks.append(
+            {
+                "pattern": "locktable_overuse",
+                "severity": severity,
+                "score": score,
+                "procedure": proc_name,
+                "explanation": explanation,
+                "recommendation": (
+                    "Move LOCKTABLE as close to the MODIFY/INSERT/DELETE as possible. "
+                    "Avoid inside loops — lock the table once before the loop if required. "
+                    "Consider whether pessimistic locking is truly needed or if optimistic retry is viable."
+                ),
+                "example": (
+                    "// BAD: lock inside loop\n"
+                    "REPEAT\n"
+                    "  Table.LOCKTABLE;  // holds lock for entire loop!\n"
+                    "  Table.MODIFY;\n"
+                    "UNTIL Table.NEXT = 0;\n\n"
+                    "// GOOD: lock once, loop inside\n"
+                    "Table.LOCKTABLE;\n"
+                    "IF Table.FINDSET THEN\n"
+                    "  REPEAT Table.MODIFY; UNTIL Table.NEXT = 0;"
+                ),
+                "codeunit": {
+                    "file": self.file_path.name,
+                    "object_name": self.data.get("object_name"),
+                    "object_id": self.data.get("object_id"),
+                },
+            }
+        )
 
     # ----------------------------------------------------------------
     # Classic NAV — FlowField Overuse (global, not just in loops)
@@ -738,49 +833,52 @@ class BottleneckDetector:
         A procedure that calls CALCFIELDS 4+ times in a row is a sign that
         denormalisation or caching should be considered.
         """
-        all_calcs = [
-            r for r in proc_data.get("reads", [])
-            if r["operation"] in ["CALCFIELDS", "CALCSUMS"]
-        ]
+        all_calcs = [r for r in proc_data.get("reads", []) if r["operation"] in ["CALCFIELDS", "CALCSUMS"]]
         # Already flagged by calcfields_in_loop — only catch the non-loop excess here
         non_loop_calcs = [r for r in all_calcs if not r.get("inLoop")]
         if len(non_loop_calcs) < 4:
             return
 
-        calc_tables = list({r.get('tableName', 'Unknown') for r in non_loop_calcs if r.get('tableName')})
+        calc_tables = list({r.get("tableName", "Unknown") for r in non_loop_calcs if r.get("tableName")})
         max_impact = max(
-            (self._get_table_impact_multiplier(t) for t in calc_tables if t and t != 'Unknown'),
+            (self._get_table_impact_multiplier(t) for t in calc_tables if t and t != "Unknown"),
             default=1.0,
         )
         score = int((40 + len(non_loop_calcs) * 8) * max_impact)
         severity = "high" if score >= 100 else "medium"
 
-        self.bottlenecks.append({
-            "pattern": "flowfield_overuse",
-            "severity": severity,
-            "score": score,
-            "procedure": proc_name,
-            "explanation": (
-                f"{len(non_loop_calcs)} CALCFIELDS/CALCSUMS calls outside loops in one procedure "
-                f"(tables: {', '.join(calc_tables)}). Each fires a separate SQL sub-query in Classic NAV."
-            ),
-            "recommendation": (
-                "Cache calculated values in local variables. "
-                "If the same FlowField is read multiple times, calculate once and reuse the variable. "
-                "Consider storing high-traffic FlowField values as regular fields (maintained by triggers) "
-                "on very large tables."
-            ),
-            "example": (
-                "// BAD: calculate on every use\n"
-                "Cust.CALCFIELDS(Balance, 'Sales (LCY)');\n"
-                "Cust.CALCFIELDS('Profit (LCY)');\n"
-                "Cust.CALCFIELDS('Balance Due');\n\n"
-                "// GOOD: batch & cache\n"
-                "Cust.CALCFIELDS(Balance, 'Sales (LCY)', 'Profit (LCY)', 'Balance Due');\n"
-                "BalanceDue := Cust.'Balance Due';  // use variable, not re-CALCFIELDS"
-            ),
-            "codeunit": {"file": self.file_path.name, "object_name": self.data.get("object_name"), "object_id": self.data.get("object_id")}
-        })
+        self.bottlenecks.append(
+            {
+                "pattern": "flowfield_overuse",
+                "severity": severity,
+                "score": score,
+                "procedure": proc_name,
+                "explanation": (
+                    f"{len(non_loop_calcs)} CALCFIELDS/CALCSUMS calls outside loops in one procedure "
+                    f"(tables: {', '.join(calc_tables)}). Each fires a separate SQL sub-query in Classic NAV."
+                ),
+                "recommendation": (
+                    "Cache calculated values in local variables. "
+                    "If the same FlowField is read multiple times, calculate once and reuse the variable. "
+                    "Consider storing high-traffic FlowField values as regular fields (maintained by triggers) "
+                    "on very large tables."
+                ),
+                "example": (
+                    "// BAD: calculate on every use\n"
+                    "Cust.CALCFIELDS(Balance, 'Sales (LCY)');\n"
+                    "Cust.CALCFIELDS('Profit (LCY)');\n"
+                    "Cust.CALCFIELDS('Balance Due');\n\n"
+                    "// GOOD: batch & cache\n"
+                    "Cust.CALCFIELDS(Balance, 'Sales (LCY)', 'Profit (LCY)', 'Balance Due');\n"
+                    "BalanceDue := Cust.'Balance Due';  // use variable, not re-CALCFIELDS"
+                ),
+                "codeunit": {
+                    "file": self.file_path.name,
+                    "object_name": self.data.get("object_name"),
+                    "object_id": self.data.get("object_id"),
+                },
+            }
+        )
 
     # ----------------------------------------------------------------
     # Classic NAV — Key / Index Alignment
@@ -794,7 +892,8 @@ class BottleneckDetector:
         even when an index exists on those columns.
         """
         reads = [
-            r for r in proc_data.get("reads", [])
+            r
+            for r in proc_data.get("reads", [])
             if r["operation"] in ["FINDSET", "FIND", "FINDFIRST", "FINDLAST"]
             and not r.get("isTemporary")
             and r.get("hasFilter")
@@ -824,32 +923,38 @@ class BottleneckDetector:
         score = int(min(30 + len(suspicious) * 20, 90) * max_impact)
         severity = "high" if score >= 80 else "medium"
 
-        self.bottlenecks.append({
-            "pattern": "key_misalignment_hint",
-            "severity": severity,
-            "score": score,
-            "procedure": proc_name,
-            "explanation": (
-                f"{len(suspicious)} FINDSET/FIND on large table(s) ({tables_str}) with single-field filters. "
-                "In Classic NAV, filters must align with a defined key from the leading field. "
-                "A non-leading-field filter causes a full extent scan even when statistics look healthy."
-            ),
-            "recommendation": (
-                "Review the key definitions for each filtered table. "
-                "Ensure your SETRANGE fields appear in the same order as a defined key (including the primary key prefix). "
-                "Add a secondary key if needed — but weigh the write overhead on high-volume tables."
-            ),
-            "example": (
-                "// If key is: 'Document Type, No., Line No.'\n"
-                "// BAD: filter skips leading key field\n"
-                "Line.SETRANGE('No.', DocNo);  // skips 'Document Type' -> full scan\n\n"
-                "// GOOD: include all leading key fields\n"
-                "Line.SETRANGE('Document Type', DocType);\n"
-                "Line.SETRANGE('No.', DocNo);\n"
-                "IF Line.FINDSET THEN ..."
-            ),
-            "codeunit": {"file": self.file_path.name, "object_name": self.data.get("object_name"), "object_id": self.data.get("object_id")}
-        })
+        self.bottlenecks.append(
+            {
+                "pattern": "key_misalignment_hint",
+                "severity": severity,
+                "score": score,
+                "procedure": proc_name,
+                "explanation": (
+                    f"{len(suspicious)} FINDSET/FIND on large table(s) ({tables_str}) with single-field filters. "
+                    "In Classic NAV, filters must align with a defined key from the leading field. "
+                    "A non-leading-field filter causes a full extent scan even when statistics look healthy."
+                ),
+                "recommendation": (
+                    "Review the key definitions for each filtered table. "
+                    "Ensure your SETRANGE fields appear in the same order as a defined key (including the primary key prefix). "
+                    "Add a secondary key if needed — but weigh the write overhead on high-volume tables."
+                ),
+                "example": (
+                    "// If key is: 'Document Type, No., Line No.'\n"
+                    "// BAD: filter skips leading key field\n"
+                    "Line.SETRANGE('No.', DocNo);  // skips 'Document Type' -> full scan\n\n"
+                    "// GOOD: include all leading key fields\n"
+                    "Line.SETRANGE('Document Type', DocType);\n"
+                    "Line.SETRANGE('No.', DocNo);\n"
+                    "IF Line.FINDSET THEN ..."
+                ),
+                "codeunit": {
+                    "file": self.file_path.name,
+                    "object_name": self.data.get("object_name"),
+                    "object_id": self.data.get("object_id"),
+                },
+            }
+        )
 
     def _detect_index_recommendations(self):
         """Codeunit-level pass: aggregate reads/writes per table and emit index hints."""
@@ -858,8 +963,8 @@ class BottleneckDetector:
         MIN_OPS = 5
         RATIO = 4
 
-        reads_by_table: Dict[str, int] = {}
-        writes_by_table: Dict[str, int] = {}
+        reads_by_table: dict[str, int] = {}
+        writes_by_table: dict[str, int] = {}
 
         for proc_data in self.data.get("procedures", {}).values():
             for r in proc_data.get("reads", []):

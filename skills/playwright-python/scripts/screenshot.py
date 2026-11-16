@@ -44,7 +44,7 @@ async def capture(args: argparse.Namespace) -> Path:
         browser = await browser_type.launch(headless=True)
         context = await browser.new_context(
             viewport={"width": args.width, "height": args.height},
-            storage_state=args.storage_state if args.storage_state else None,
+            storage_state=args.storage_state or None,
         )
         page = await context.new_page()
         try:

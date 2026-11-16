@@ -1,7 +1,7 @@
 import re
-from functools import lru_cache
+from functools import cache
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 class CodeunitParser:
@@ -89,7 +89,7 @@ class CodeunitParser:
         self.in_loop = False
         self.filtered_vars = set()
 
-    @lru_cache(maxsize=None)
+    @cache
     def parse(self):
         self._parse_cs_companion()
         self._parse_cal()
@@ -102,7 +102,7 @@ class CodeunitParser:
             return
 
         try:
-            with open(self.cs_path, "r", encoding="utf-8", errors="ignore") as f:
+            with open(self.cs_path, encoding="utf-8", errors="ignore") as f:
                 content = f.read()
 
             match = re.search(r'\[NavCodeunit\((\d+),\s*"([^"]+)"\)\]', content)
@@ -140,7 +140,7 @@ class CodeunitParser:
                     self.temp_table_vars.add(var_name)
 
         except Exception as e:
-            self.warnings.append(f"Could not parse .cs companion: {str(e)}")
+            self.warnings.append(f"Could not parse .cs companion: {e!s}")
 
     def _extract_navrecord_handles(self, content: str):
         try:
@@ -178,7 +178,7 @@ class CodeunitParser:
         except Exception:
             pass
 
-    def _get_table_name_by_id(self, table_id: str) -> Optional[str]:
+    def _get_table_name_by_id(self, table_id: str) -> str | None:
         if not self.table_metadata:
             return None
 
@@ -197,10 +197,10 @@ class CodeunitParser:
             lines = self._read_cal_lines()
             self._parse_procedures(lines)
         except Exception as e:
-            self.warnings.append(f"Could not parse C/AL file: {str(e)}")
+            self.warnings.append(f"Could not parse C/AL file: {e!s}")
 
-    def _read_cal_lines(self) -> List[str]:
-        with open(self.cal_path, "r", encoding="utf-8", errors="ignore") as f:
+    def _read_cal_lines(self) -> list[str]:
+        with open(self.cal_path, encoding="utf-8", errors="ignore") as f:
             raw_lines = f.readlines()
 
         self.source_code = "".join(raw_lines)
@@ -237,7 +237,7 @@ class CodeunitParser:
 
         return processed
 
-    def _parse_procedures(self, lines: List[str]):
+    def _parse_procedures(self, lines: list[str]):
         self.pending_subscriber = False
         for line in lines:
             stripped = line.strip()
@@ -259,13 +259,13 @@ class CodeunitParser:
             if self.current_procedure:
                 self._analyze_line(stripped)
 
-    def _match_procedure_definition(self, line: str) -> Optional[Dict[str, Any]]:
+    def _match_procedure_definition(self, line: str) -> dict[str, Any] | None:
         # Match standard events/triggers (with or without parens)
         trigger_pattern = r"^(OnInsert|OnModify|OnDelete|OnRename|OnValidate|OnLookup|On[A-Za-z0-9_]*)(?:\(\))?$"
         match = re.match(trigger_pattern, line, re.IGNORECASE)
         if match:
             return {"name": match.group(1), "params": "", "return_type": None}
-            
+
         # Match UI control triggers (e.g. "ActionName - OnAction()")
         ui_trigger_pattern = r"^(.*?-\s*On(?:Action|DrillDown|AssistEdit|Lookup|Validate))(?:\(\))?$"
         match = re.match(ui_trigger_pattern, line, re.IGNORECASE)
@@ -294,7 +294,7 @@ class CodeunitParser:
             "return_type": return_type,
         }
 
-    def _start_new_procedure(self, proc_info: Dict[str, Any]):
+    def _start_new_procedure(self, proc_info: dict[str, Any]):
         proc_name = proc_info["name"]
         self.current_procedure = proc_name
 

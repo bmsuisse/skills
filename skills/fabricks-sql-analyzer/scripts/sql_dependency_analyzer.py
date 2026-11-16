@@ -105,7 +105,7 @@ def build_graph(sql_files: list[Path]) -> tuple[nx.DiGraph, dict[Path, str | Non
         output = file_to_table(path)
         file_table_map[path] = output
 
-        src = output if output else str(path.relative_to(ROOT))
+        src = output or str(path.relative_to(ROOT))
         G.add_node(src, kind="table" if output else "file", path=str(path.relative_to(ROOT)))
 
         for dep in deps:
@@ -159,7 +159,7 @@ def fetch_row_counts(
         warehouses = [wh for wh in w.warehouses.list() if wh.state and wh.state.name in ("RUNNING", "STARTING")]
         if not warehouses:
             print("  [row-count] No running SQL warehouse found -- skipping row counts")
-            return {t: None for t in tables}
+            return dict.fromkeys(tables)
 
         warehouse_id = warehouses[0].id
         tqdm.write(f"  Using warehouse: {warehouses[0].name} ({warehouse_id})")
@@ -204,7 +204,7 @@ def fetch_row_counts(
 
     except Exception as e:
         print(f"  [row-count] Could not connect to Databricks: {e}")
-        return {t: None for t in tables}
+        return dict.fromkeys(tables)
 
     return result
 

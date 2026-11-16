@@ -5,14 +5,26 @@ usage: mine.py REPO [--ref origin/HEAD] [--since 2025-01-01] [--top 25] [--prs 0
 Git only by default (seconds). --prs N also pulls review comments of the last N completed PRs
 via `az` (Azure DevOps only, minutes: opt in when the team really reviews in PR threads).
 """
-import argparse, collections, json, re, subprocess, sys, urllib.parse
+
+import argparse
+import collections
+import json
+import re
+import subprocess
+import sys
+import urllib.parse
 from concurrent.futures import ThreadPoolExecutor
 
 CODE = re.compile(r"\.(py|ts|tsx|vue|js|jsx|sql|cs|php|yml|yaml|bicep|toml|sh)$")
-NOISE = re.compile(r"(lock|\.min\.|/migrations?/|snapshots?/|generated|CHANGELOG|/(i18n|locales?)/|catalogs?/)", re.I)
-TRAILER = re.compile(r"^(Co-Authored-By|Claude-Session|Signed-off-by|Related work items|Generated with)", re.I)
-RULE_WORDS = re.compile(r"\b(root cause|regress\w*|silently|never|must not|mistake|wrong|instead of|workaround|code review|review found|again|forbid\w*|restore\w*)\b", re.I)
-MECHANICAL = re.compile(r"\b(strict|biome|ruff|format\w*|lint\w*|bump|rename)\b", re.I)
+NOISE = re.compile(
+    r"(lock|\.min\.|/migrations?/|snapshots?/|generated|CHANGELOG|/(i18n|locales?)/|catalogs?/)", re.IGNORECASE
+)
+TRAILER = re.compile(r"^(Co-Authored-By|Claude-Session|Signed-off-by|Related work items|Generated with)", re.IGNORECASE)
+RULE_WORDS = re.compile(
+    r"\b(root cause|regress\w*|silently|never|must not|mistake|wrong|instead of|workaround|code review|review found|again|forbid\w*|restore\w*)\b",
+    re.IGNORECASE,
+)
+MECHANICAL = re.compile(r"\b(strict|biome|ruff|format\w*|lint\w*|bump|rename)\b", re.IGNORECASE)
 
 
 def out(s=""):
@@ -30,7 +42,7 @@ def git(repo, *a):
 
 def kind(s, body=""):
     m = re.match(r"(\w+)(\(.*?\))?!?:", s)
-    if re.match(r"revert", s, re.I) or "This reverts commit" in body:
+    if re.match(r"revert", s, re.IGNORECASE) or "This reverts commit" in body:
         return "revert"
     return m.group(1).lower() if m else "other"
 
@@ -45,7 +57,15 @@ def first_line(body):
 
 def commits(repo, ref, since):
     """Unique-by-subject commits, newest first (cherry-picks onto dev/test/main count once)."""
-    raw = git(repo, "log", ref, "--no-merges", "--format=%x01%h%x02%as%x02%s%x02%b%x03", "--name-only", *(["--since", since] if since else []))
+    raw = git(
+        repo,
+        "log",
+        ref,
+        "--no-merges",
+        "--format=%x01%h%x02%as%x02%s%x02%b%x03",
+        "--name-only",
+        *(["--since", since] if since else []),
+    )
     res, at = [], {}
     for block in raw.split("\x01")[1:]:
         head, _, files = block.partition("\x03")
@@ -53,7 +73,8 @@ def commits(repo, ref, since):
         fs = [f for f in files.split("\n") if f and CODE.search(f) and not NOISE.search(f)]
         c = (sha, date, subj, body, fs)
         if subj not in at:
-            at[subj] = len(res); res.append(c)
+            at[subj] = len(res)
+            res.append(c)
         elif len(body) > len(res[at[subj]][3]):  # keep the copy that has the explanation
             res[at[subj]] = c
     return res
@@ -62,7 +83,9 @@ def commits(repo, ref, since):
 def header(repo, ref, cs):
     sha = git(repo, "rev-parse", "--short", ref).strip()
     tree = git(repo, "ls-tree", "-r", "--name-only", ref).splitlines()
-    docs = [f for f in tree if re.search(r"(^|/)(AGENTS|CLAUDE)\.md$|(STANDARDS|CONSTITUTION)\.md$", f, re.I)][:8]
+    docs = [f for f in tree if re.search(r"(^|/)(AGENTS|CLAUDE)\.md$|(STANDARDS|CONSTITUTION)\.md$", f, re.IGNORECASE)][
+        :8
+    ]
     kinds = collections.Counter(kind(c[2], c[3]) for c in cs)
     out(f"# History digest: {repo} @ {ref} ({sha})\n")
     out(f"{len(cs)} unique commits, {cs[-1][1]} .. {cs[0][1]}. Types: {dict(kinds.most_common(8))}")
@@ -78,7 +101,11 @@ def reverts(repo, cs, top):
         why = first_line(body)
         m = re.search(r"This reverts commit (\w+)", body)
         undone = git(repo, "log", "-1", "--format=%s", m.group(1)).strip() if m else ""
-        out(f"- {sha} {date} {subj}" + (f"\n    why: {why}" if why and "This reverts" not in why else "") + (f"\n    undoes: {undone}" if undone and undone not in subj else ""))
+        out(
+            f"- {sha} {date} {subj}"
+            + (f"\n    why: {why}" if why and "This reverts" not in why else "")
+            + (f"\n    undoes: {undone}" if undone and undone not in subj else "")
+        )
         n += 1
         if n >= top:
             break
@@ -134,14 +161,51 @@ def reviews(repo, n):
         return "origin is not Azure DevOps (dev.azure.com https remote); use `gh api` for GitHub reviews"
     org, proj, name = (urllib.parse.unquote(x) for x in m.groups())
     base = f"https://dev.azure.com/{org}"
-    so, se = run("az", "repos", "pr", "list", "--organization", base, "--project", proj, "--repository", name, "--status", "completed", "--top", str(n), "--query", "[].{id:pullRequestId,by:createdBy.id}", "-o", "json")
+    so, se = run(
+        "az",
+        "repos",
+        "pr",
+        "list",
+        "--organization",
+        base,
+        "--project",
+        proj,
+        "--repository",
+        name,
+        "--status",
+        "completed",
+        "--top",
+        str(n),
+        "--query",
+        "[].{id:pullRequestId,by:createdBy.id}",
+        "-o",
+        "json",
+    )
     try:
         prs = json.loads(so)
     except Exception:
         return f"az failed (not logged in / not installed?): {se.strip()[:200]}"
 
     def threads(pr):
-        o, _ = run("az", "devops", "invoke", "--organization", base, "--area", "git", "--resource", "pullRequestThreads", "--route-parameters", f"project={proj}", f"repositoryId={name}", f"pullRequestId={pr['id']}", "--api-version", "7.1", "-o", "json")
+        o, _ = run(
+            "az",
+            "devops",
+            "invoke",
+            "--organization",
+            base,
+            "--area",
+            "git",
+            "--resource",
+            "pullRequestThreads",
+            "--route-parameters",
+            f"project={proj}",
+            f"repositoryId={name}",
+            f"pullRequestId={pr['id']}",
+            "--api-version",
+            "7.1",
+            "-o",
+            "json",
+        )
         try:
             return pr, json.loads(o)["value"]
         except Exception:
@@ -165,8 +229,11 @@ def reviews(repo, n):
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("repo"); p.add_argument("--ref", default="origin/HEAD"); p.add_argument("--since")
-    p.add_argument("--top", type=int, default=25); p.add_argument("--prs", type=int, default=0)
+    p.add_argument("repo")
+    p.add_argument("--ref", default="origin/HEAD")
+    p.add_argument("--since")
+    p.add_argument("--top", type=int, default=25)
+    p.add_argument("--prs", type=int, default=0)
     a = p.parse_args()
     cs = commits(a.repo, a.ref, a.since)
     if not cs:

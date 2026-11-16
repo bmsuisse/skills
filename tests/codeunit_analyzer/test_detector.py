@@ -2,7 +2,6 @@
 
 from scripts.detector import BottleneckDetector
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -87,11 +86,23 @@ def test_large_transaction_severity_critical_at_weight_60():
 
 
 def _findset_in_loop() -> dict:
-    return {"operation": "FINDSET", "inLoop": True, "isTemporary": False, "tableName": "Entry", "line": "SomeTable.FINDSET"}
+    return {
+        "operation": "FINDSET",
+        "inLoop": True,
+        "isTemporary": False,
+        "tableName": "Entry",
+        "line": "SomeTable.FINDSET",
+    }
 
 
 def _get_in_loop() -> dict:
-    return {"operation": "GET", "inLoop": True, "isTemporary": False, "tableName": "Entry", "line": "SomeTable.GET(Key)"}
+    return {
+        "operation": "GET",
+        "inLoop": True,
+        "isTemporary": False,
+        "tableName": "Entry",
+        "line": "SomeTable.GET(Key)",
+    }
 
 
 def test_single_findset_in_loop_no_n_plus_one():
@@ -109,7 +120,10 @@ def test_five_gets_in_loop_triggers_n_plus_one():
 
 
 def test_temporary_reads_do_not_trigger_n_plus_one():
-    reads = [{"operation": "FINDSET", "inLoop": True, "isTemporary": True, "tableName": "TempEntry", "line": "T.FINDSET"} for _ in range(3)]
+    reads = [
+        {"operation": "FINDSET", "inLoop": True, "isTemporary": True, "tableName": "TempEntry", "line": "T.FINDSET"}
+        for _ in range(3)
+    ]
     assert "n_plus_one_query" not in patterns(detect({"P": make_proc(reads=reads)}))
 
 
@@ -119,12 +133,28 @@ def test_temporary_reads_do_not_trigger_n_plus_one():
 
 
 def test_calcfields_in_loop_detected():
-    reads = [{"operation": "CALCFIELDS", "inLoop": True, "isTemporary": False, "tableName": "Entry", "line": "T.CALCFIELDS(F)"}]
+    reads = [
+        {
+            "operation": "CALCFIELDS",
+            "inLoop": True,
+            "isTemporary": False,
+            "tableName": "Entry",
+            "line": "T.CALCFIELDS(F)",
+        }
+    ]
     assert "calcfields_in_loop" in patterns(detect({"P": make_proc(reads=reads)}))
 
 
 def test_calcfields_outside_loop_not_detected():
-    reads = [{"operation": "CALCFIELDS", "inLoop": False, "isTemporary": False, "tableName": "Entry", "line": "T.CALCFIELDS(F)"}]
+    reads = [
+        {
+            "operation": "CALCFIELDS",
+            "inLoop": False,
+            "isTemporary": False,
+            "tableName": "Entry",
+            "line": "T.CALCFIELDS(F)",
+        }
+    ]
     assert "calcfields_in_loop" not in patterns(detect({"P": make_proc(reads=reads)}))
 
 

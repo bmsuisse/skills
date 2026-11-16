@@ -35,7 +35,7 @@ def _extract_flag(cmd: str, *flags: str) -> tuple[str | None, str]:
     return None, cmd
 
 
-def remap(cmd: str) -> str:  # noqa: C901
+def remap(cmd: str) -> str:
     if not cmd or not re.match(r"^databricks\b", cmd):
         return cmd
 
@@ -48,7 +48,7 @@ def remap(cmd: str) -> str:  # noqa: C901
             if catalog:
                 # strip any leftover positional that was already there
                 base = re.sub(r"^(databricks\s+schemas\s+list)\b.*", r"\1", cmd)
-                rest = cmd[len(base):].strip()
+                rest = cmd[len(base) :].strip()
                 # avoid doubling if catalog already appears positionally
                 if catalog not in rest.split():
                     return f"{base} {catalog} {rest}".strip()
@@ -61,7 +61,7 @@ def remap(cmd: str) -> str:  # noqa: C901
             catalog, cmd = _extract_flag(cmd, "--catalog-name", "--catalog")
             schema, cmd = _extract_flag(cmd, "--schema-name", "--schema")
             base = re.sub(r"^(databricks\s+tables\s+list)\b.*", r"\1", cmd)
-            rest = cmd[len(base):].strip()
+            rest = cmd[len(base) :].strip()
             parts = " ".join(filter(None, [catalog, schema, rest]))
             return f"{base} {parts}".strip()
         return cmd
@@ -73,9 +73,7 @@ def remap(cmd: str) -> str:  # noqa: C901
     # ── sql execute / sql-execute / execute-statement → aitools query ─────────
     # Extract quoted or unquoted SQL argument if present
     sql_match = None
-    if m := re.match(
-        r"^databricks\s+(?:sql\s+execute|sql-execute|execute-statement)\s+(.+)$", cmd
-    ):
+    if m := re.match(r"^databricks\s+(?:sql\s+execute|sql-execute|execute-statement)\s+(.+)$", cmd):
         sql_match = m.group(1).strip()
     elif re.match(r"^databricks\s+(?:sql\s+execute|sql-execute|execute-statement)$", cmd):
         sql_match = ""
@@ -101,12 +99,16 @@ def main() -> None:
 
     if new_cmd != cmd:
         data["tool_input"]["command"] = new_cmd
-        print(json.dumps({
-            "hookSpecificOutput": {
-                "hookEventName": "PreToolUse",
-                "updatedInput": data["tool_input"],
-            }
-        }))
+        print(
+            json.dumps(
+                {
+                    "hookSpecificOutput": {
+                        "hookEventName": "PreToolUse",
+                        "updatedInput": data["tool_input"],
+                    }
+                }
+            )
+        )
 
 
 if __name__ == "__main__":

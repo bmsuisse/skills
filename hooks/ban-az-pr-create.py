@@ -84,7 +84,7 @@ def main() -> None:
 
     reason = (
         "Blocked: do not create PRs with `az repos pr create`. Use `bdt pr create --target <branch> "
-        "--title \"...\"` instead (opens a draft PR; extra az/gh flags go after `--`, e.g. `-- --work-items 123`), "
+        '--title "..."` instead (opens a draft PR; extra az/gh flags go after `--`, e.g. `-- --work-items 123`), '
         "then `bdt pr publish` once reviewed. See `bdt pr create --help` and the dev-workflow skill."
     )
     print(

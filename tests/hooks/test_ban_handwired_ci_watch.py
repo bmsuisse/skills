@@ -35,7 +35,7 @@ def is_denied(response: dict | None) -> bool:
     [
         # polling loops around a PR or CI query
         "while true; do az repos pr show --id 1 --query status; sleep 30; done",
-        "until [ \"$(az repos pr show --id 1 --query status -o tsv)\" = completed ]; do sleep 20; done",
+        'until [ "$(az repos pr show --id 1 --query status -o tsv)" = completed ]; do sleep 20; done',
         "for i in 1 2 3; do az repos pr list --status active; sleep 60; done",
         f'while true; do curl -s -u ":$PAT" "{PR_API}/12?api-version=7.1"; sleep 30; done',
         "while sleep 30; do gh pr view 3 --json state; done",
@@ -147,5 +147,9 @@ def test_ignores_non_bash_tools() -> None:
 def test_hints_install_when_bdt_is_missing(tmp_path: Path) -> None:
     payload = json.dumps({"tool_name": "Bash", "tool_input": {"command": "az pipelines runs list"}})
     env = {"PATH": str(tmp_path), "HOME": str(tmp_path), "TMPDIR": str(tmp_path)}
-    result = subprocess.run([sys.executable, str(HOOK)], input=payload, capture_output=True, text=True, timeout=10, env=env)
-    assert "uv tool install bmsdna-devtools" in json.loads(result.stdout)["hookSpecificOutput"]["permissionDecisionReason"]
+    result = subprocess.run(
+        [sys.executable, str(HOOK)], input=payload, capture_output=True, text=True, timeout=10, env=env
+    )
+    assert (
+        "uv tool install bmsdna-devtools" in json.loads(result.stdout)["hookSpecificOutput"]["permissionDecisionReason"]
+    )

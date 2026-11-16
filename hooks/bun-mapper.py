@@ -43,7 +43,7 @@ def _remap_install_flags(args: str) -> str:
     return re.sub(r"(?:^|\s)(--save-dev|-D)(?=\s|$)", " -d", args).strip()
 
 
-def remap(cmd: str) -> str:  # noqa: C901
+def remap(cmd: str) -> str:
     if not cmd or cmd.startswith("bun ") or cmd == "bun":
         return cmd
 
@@ -141,12 +141,16 @@ def main() -> None:
 
     if new_cmd != cmd:
         data["tool_input"]["command"] = new_cmd
-        print(json.dumps({
-            "hookSpecificOutput": {
-                "hookEventName": "PreToolUse",
-                "updatedInput": data["tool_input"],
-            }
-        }))
+        print(
+            json.dumps(
+                {
+                    "hookSpecificOutput": {
+                        "hookEventName": "PreToolUse",
+                        "updatedInput": data["tool_input"],
+                    }
+                }
+            )
+        )
 
 
 if __name__ == "__main__":

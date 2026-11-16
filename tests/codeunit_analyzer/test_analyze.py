@@ -1,9 +1,7 @@
-
 from pathlib import Path
 from unittest.mock import patch
 
 from analyze import _analyze_codeunit_for_scan, scan_all_bottlenecks
-
 
 CAL_CONTENT = """\
 MyProc()

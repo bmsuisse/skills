@@ -56,7 +56,7 @@ def cmd_tables(args: argparse.Namespace) -> int:
 
     rows = [
         [
-            f"{t.get('catalog_name','')}.{t.get('schema_name','')}.{t.get('name','')}",
+            f"{t.get('catalog_name', '')}.{t.get('schema_name', '')}.{t.get('name', '')}",
             t.get("table_type", ""),
             (t.get("comment") or "").replace("\n", " ")[:100],
         ]

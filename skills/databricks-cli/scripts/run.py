@@ -88,10 +88,7 @@ def format_markdown_table(columns: list[str], rows: list[list[str]]) -> str:
     separator = "|" + "|".join("-" * (w + 2) for w in widths) + "|"
     lines = [header, separator]
     for row in rows:
-        line = "| " + " | ".join(
-            (row[i] if i < len(row) else "").ljust(w)
-            for i, w in enumerate(widths)
-        ) + " |"
+        line = "| " + " | ".join((row[i] if i < len(row) else "").ljust(w) for i, w in enumerate(widths)) + " |"
         lines.append(line)
     return "\n".join(lines)
 

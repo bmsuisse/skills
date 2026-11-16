@@ -550,7 +550,7 @@ def codex_review_ran_in(path: str) -> bool:
     errors: dict[str, bool] = {}  # tool_use id -> tool_result is_error
     notifications: dict[str, str] = {}  # tool_use id -> task-notification status
     try:
-        with open(path, "r", errors="ignore") as fh:
+        with open(path, errors="ignore") as fh:
             for line in fh:
                 if "codex" not in line and "tool_result" not in line and "task-notification" not in line:
                     continue
@@ -616,7 +616,7 @@ CODEX_SKILL_FILE = re.compile(r"skills/(?:bms-)?code-review/SKILL\.md")
 
 def is_codex_transcript(path: str) -> bool:
     try:
-        with open(path, "r", errors="ignore") as fh:
+        with open(path, errors="ignore") as fh:
             first = json.loads(fh.readline())
     except (OSError, ValueError):
         return False
@@ -676,7 +676,7 @@ def codex_row_shows_review(row: dict) -> bool:
 
 def codex_session_review_ran(path: str) -> bool:
     try:
-        with open(path, "r", errors="ignore") as fh:
+        with open(path, errors="ignore") as fh:
             for line in fh:
                 if not any(k in line for k in ("code-review", "code_review", "codex", "review_mode")):
                     continue
@@ -704,7 +704,7 @@ def code_review_ran(transcript_path: str) -> bool:
 
     for path in files:
         try:
-            with open(path, "r", errors="ignore") as fh:
+            with open(path, errors="ignore") as fh:
                 for line in fh:
                     if CODE_REVIEW_SKILL.search(line):
                         return True
@@ -773,8 +773,8 @@ def main() -> None:
         "Blocked: this command publishes/completes a PR, but neither /code-review nor "
         "/bms-code-review has been run yet in this session (directly or via a subagent), and no completed "
         "`codex exec`/`codex review` code review was found either. Run one of them first, then retry. "
-        "A `codex exec` prompt is only recognised as a review when it says \"code review\" (or names the "
-        "bms-code-review skill), or says \"review\" together with diff, branch, PR, pull request, changes or commit. "
+        'A `codex exec` prompt is only recognised as a review when it says "code review" (or names the '
+        'bms-code-review skill), or says "review" together with diff, branch, PR, pull request, changes or commit. '
         "A codex review counts once it has finished: run it in the foreground as the last command of the line "
         "(no `| tee`, `; echo` or `|| true` after it, which would hide a failure), or backgrounded with `&` "
         "and `-o <file>` so the output file proves completion (a literal path, or `$VAR` assigned earlier in the same "
