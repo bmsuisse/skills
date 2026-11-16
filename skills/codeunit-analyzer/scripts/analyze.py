@@ -60,14 +60,13 @@ def list_codeunits():
 
     tagged_files = []
     if codeunits_dir.exists():
-        for f in list(codeunits_dir.rglob("*.cs")) + list(codeunits_dir.rglob("*.c-al")):
-            tagged_files.append((f, "codeunit"))
+        tagged_files.extend(
+            (f, "codeunit") for f in list(codeunits_dir.rglob("*.cs")) + list(codeunits_dir.rglob("*.c-al"))
+        )
     if tables_dir.exists():
-        for f in list(tables_dir.rglob("*.cs")) + list(tables_dir.rglob("*.c-al")):
-            tagged_files.append((f, "table"))
+        tagged_files.extend((f, "table") for f in list(tables_dir.rglob("*.cs")) + list(tables_dir.rglob("*.c-al")))
     if pages_dir.exists():
-        for f in list(pages_dir.rglob("*.cs")) + list(pages_dir.rglob("*.c-al")):
-            tagged_files.append((f, "page"))
+        tagged_files.extend((f, "page") for f in list(pages_dir.rglob("*.cs")) + list(pages_dir.rglob("*.c-al")))
 
     if not tagged_files:
         return []
@@ -515,8 +514,7 @@ def _compute_setloadfields_urgency(read: dict[str, Any], table_info: dict[str, A
     row_mult = table_info.get("impactMultiplier", 1.0)
     col_mult = table_info.get("columnWidthMultiplier", 1.0)
 
-    score = int((base + loop_bonus) * row_mult * col_mult + flow_bonus)
-    return score
+    return int((base + loop_bonus) * row_mult * col_mult + flow_bonus)
 
 
 def _audit_setloadfields_in_file(file_path: Path, table_metadata: dict[str, Any]) -> list[dict[str, Any]]:
@@ -818,6 +816,7 @@ def main():
             output_file=args.output,
             as_json=args.as_json,
         )
+    return None
 
 
 if __name__ == "__main__":

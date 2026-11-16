@@ -136,7 +136,7 @@ class CodeunitParser:
             self._extract_navrecord_handles(content)
 
             for var_name in self.global_variables:
-                if var_name.startswith("Temp") or var_name.startswith("temp"):
+                if var_name.startswith(("Temp", "temp")):
                     self.temp_table_vars.add(var_name)
 
         except Exception as e:
@@ -182,7 +182,7 @@ class CodeunitParser:
         if not self.table_metadata:
             return None
 
-        for _, info in self.table_metadata.items():
+        for info in self.table_metadata.values():
             if info.get("id") == str(table_id):
                 return info.get("name")
 
@@ -413,7 +413,7 @@ class CodeunitParser:
 
         for dep_type, pattern in patterns.items():
             for match in pattern.finditer(line):
-                dep_name = match.group(1) if match.group(1) else match.group(2)
+                dep_name = match.group(1) or match.group(2)
                 if dep_name:
                     self.dependencies[dep_type].add(dep_name)
 
@@ -587,19 +587,19 @@ class CodeunitParser:
 
         side_effects = []
         for proc_name, data in self.procedures.items():
-            for write in data["writes"]:
-                side_effects.append(
-                    {
-                        "operation": write["operation"],
-                        "tableVar": write.get("tableVar"),
-                        "tableName": write.get("tableName"),
-                        "isTemporary": write.get("isTemporary", False),
-                        "guard": write.get("guard"),
-                        "runTrigger": write.get("runTrigger", True),
-                        "line": write["line"],
-                        "procedure": proc_name,
-                    }
-                )
+            side_effects.extend(
+                {
+                    "operation": write["operation"],
+                    "tableVar": write.get("tableVar"),
+                    "tableName": write.get("tableName"),
+                    "isTemporary": write.get("isTemporary", False),
+                    "guard": write.get("guard"),
+                    "runTrigger": write.get("runTrigger", True),
+                    "line": write["line"],
+                    "procedure": proc_name,
+                }
+                for write in data["writes"]
+            )
 
         return {
             "object_id": self.object_id,

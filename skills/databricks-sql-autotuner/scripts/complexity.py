@@ -19,8 +19,7 @@ from pathlib import Path
 
 def strip_comments(sql: str) -> str:
     sql = re.sub(r"--[^\n]*", "", sql)
-    sql = re.sub(r"/\*.*?\*/", "", sql, flags=re.DOTALL)
-    return sql
+    return re.sub(r"/\*.*?\*/", "", sql, flags=re.DOTALL)
 
 
 def count_lines(sql: str) -> int:

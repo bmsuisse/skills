@@ -476,10 +476,10 @@ def codex_reviews_in_command(command: str, depth: int = 0, pipefail: bool = Fals
         if exe in SHELLS and depth < 2 and "-c" in words[1:-1]:  # bash -c "codex exec ..."
             inner = words[words.index("-c") + 1]
             inner_pipefail = "pipefail" in words and "-o" in words  # bash -o pipefail -c ...
-            for r in codex_reviews_in_command(inner, depth + 1, inner_pipefail):
-                reviews.append(
-                    CodexReview(r.output_file, r.background or shell_background, r.status_visible and visible)
-                )
+            reviews.extend(
+                CodexReview(r.output_file, r.background or shell_background, r.status_visible and visible)
+                for r in codex_reviews_in_command(inner, depth + 1, inner_pipefail)
+            )
             continue
         if exe != "codex":
             continue

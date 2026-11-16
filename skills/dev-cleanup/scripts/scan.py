@@ -51,7 +51,7 @@ def podman_real_gb() -> str:
 
 def categories() -> list[dict]:
     """Each: id, label, path (sized with du), clean (command to run after user confirms), risk."""
-    c = [
+    return [
         {
             "id": "podman",
             "label": "Podman VM disk file; real content inside: " + podman_real_gb(),
@@ -159,7 +159,6 @@ def categories() -> list[dict]:
             "risk": "low",
         },
     ]
-    return c
 
 
 def library_caches() -> list[dict]:

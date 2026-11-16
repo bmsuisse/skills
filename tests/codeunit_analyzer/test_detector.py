@@ -43,8 +43,7 @@ def make_parsed(procedures: dict, object_name: str = "TestCodeunit", object_id: 
 
 
 def detect(procedures: dict, file_path: str = "test.c-al") -> list:
-    bottlenecks = BottleneckDetector(make_parsed(procedures), file_path).detect()
-    return bottlenecks
+    return BottleneckDetector(make_parsed(procedures), file_path).detect()
 
 
 def patterns(bottlenecks: list) -> list[str]:

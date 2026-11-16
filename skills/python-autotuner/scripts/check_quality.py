@@ -26,16 +26,16 @@ def run_ruff(file: str, fix: bool = False) -> dict:
     violations = []
     try:
         raw = json.loads(result.stdout) if result.stdout.strip() else []
-        for v in raw:
-            violations.append(
-                {
-                    "code": v.get("code", ""),
-                    "message": v.get("message", ""),
-                    "line": v.get("location", {}).get("row", 0),
-                    "col": v.get("location", {}).get("column", 0),
-                    "fixable": v.get("fix") is not None,
-                }
-            )
+        violations.extend(
+            {
+                "code": v.get("code", ""),
+                "message": v.get("message", ""),
+                "line": v.get("location", {}).get("row", 0),
+                "col": v.get("location", {}).get("column", 0),
+                "fixable": v.get("fix") is not None,
+            }
+            for v in raw
+        )
     except json.JSONDecodeError:
         pass
 
