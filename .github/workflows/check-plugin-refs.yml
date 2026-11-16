@@ -2,7 +2,7 @@
 name: Check plugins and skills
 on:
   pull_request:
-    paths: [.claude-plugin/**, .agents/plugins/**, skills/**, agents/**, hooks/**, mods/**, scripts/check-plugin-refs.mjs, scripts/validate-skills.mjs, scripts/sync-codex.mjs, tests/hooks/**]
+    paths: [.claude-plugin/**, .agents/plugins/**, skills/**, agents/**, hooks/**, mods/**, scripts/check-plugin-refs.mjs, scripts/validate-skills.mjs, scripts/sync-codex.mjs, scripts/codex-agents.mjs, tests/hooks/**]
 permissions:
   contents: read
 jobs:

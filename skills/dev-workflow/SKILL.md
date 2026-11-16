@@ -14,6 +14,8 @@ description: >
 For anything bigger than a trivial fix, follow this sequence. Skip steps only
 when the tool genuinely isn't available (say so).
 
+Under Codex, dispatch agents from their card in `references/codex-agents/<name>.md`.
+
 1. **Worktree.** Create one for the task (`EnterWorktree`, or `git worktree add`
    if unavailable). If the repo has a `justfile` with a `worktree` recipe, use
    `just worktree` to set it up instead of doing it by hand.
@@ -51,7 +53,7 @@ when the tool genuinely isn't available (say so).
 10. **Watch CI.** Dispatch the `bms-ci-watch` agent (foreground, worktree path in the prompt): it runs
     `bdt pr status --wait` cheaply and answers `RESULT: green|red|needs-approval|still-running`. Don't poll in
     your own thread (`sleep`, a `Monitor` on the build, build API): every poll re-reads your whole context. If checks fail,
-    fix, push and dispatch again. Without agents (codex), run `bdt pr status --wait --timeout 540` yourself and
+    fix, push and dispatch again. When spawning isn't available, run `bdt pr status --wait --timeout 540` yourself and
     re-run it on exit 4 (still running). `bdt pr info` gives the PR link, build state and closed issues. A hook denies hand-written watch scripts (`az repos pr show`/`az pipelines runs`/build-API `curl`, `sleep` loops); if `bdt` is missing, `uv tool install bmsdna-devtools`.
 11. If working from an issue, update it with a summary and implementation
    screenshots once the PR is up.
