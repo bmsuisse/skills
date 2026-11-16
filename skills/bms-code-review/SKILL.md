@@ -39,7 +39,9 @@ blocking bugs and states false facts); don't use it.
 | `bms-review-light` | low | Agent docs & skills, Duplication |
 
 If these agent types are not installed (they ship with the `dev-workflow`
-plugin), fall back to `general-purpose` with `model: "sonnet"`. Merging and
+plugin), fall back to `general-purpose` with `model: "sonnet"`. Under Codex there are no agent types: spawn each
+role from its card, `../dev-workflow/references/codex-agents/<agent type>.md` (a `spawn_agent` call with the model and
+effort it states). Merging and
 report writing (you) stay at your own effort.
 
 ## Effort

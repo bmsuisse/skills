@@ -21,7 +21,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { dirname, join, relative, resolve } from "path";
 import { fileURLToPath } from "url";
-import { buildCodexAgentCards } from "./codex-agents.mjs";
+import { buildCodexAgentCards, CARD_MARKER } from "./codex-agents.mjs";
 
 const root = resolve(fileURLToPath(new URL(".", import.meta.url)), "..");
 const claudePath = join(root, ".claude-plugin", "marketplace.json");
@@ -78,6 +78,15 @@ const expected = `${JSON.stringify(buildCodexMarketplace(JSON.parse(readFileSync
 const expectedCards = buildCodexAgentCards(join(root, "agents"));
 const show = (path) => relative(root, path);
 
+/** Generated cards whose agent no longer exists. Files without the generated marker are not ours and are left alone. */
+function staleCards() {
+  if (!existsSync(cardsDir)) return [];
+  return readdirSync(cardsDir)
+    .filter((name) => name.endsWith(".md") && !(name in expectedCards))
+    .map((name) => join(cardsDir, name))
+    .filter((path) => readFileSync(path, "utf8").startsWith(CARD_MARKER));
+}
+
 /** Paths (relative to the repo) of generated files that are missing, stale or no longer wanted. */
 function outOfSync() {
   const bad = [];
@@ -86,9 +95,7 @@ function outOfSync() {
     const path = join(cardsDir, name);
     if (!existsSync(path) || readFileSync(path, "utf8") !== content) bad.push(show(path));
   }
-  for (const name of existsSync(cardsDir) ? readdirSync(cardsDir) : []) {
-    if (!(name in expectedCards)) bad.push(show(join(cardsDir, name)));
-  }
+  for (const path of staleCards()) bad.push(show(path));
   return bad;
 }
 
@@ -104,8 +111,8 @@ if (process.argv.includes("--check")) {
 } else {
   mkdirSync(dirname(codexPath), { recursive: true });
   writeFileSync(codexPath, expected);
-  rmSync(cardsDir, { recursive: true, force: true });
   mkdirSync(cardsDir, { recursive: true });
+  for (const path of staleCards()) rmSync(path);
   for (const [name, content] of Object.entries(expectedCards)) writeFileSync(join(cardsDir, name), content);
   console.log(`Wrote ${show(codexPath)} and ${Object.keys(expectedCards).length} cards in ${show(cardsDir)}`);
 }
