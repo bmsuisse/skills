@@ -23,8 +23,8 @@ def load_dotenv(path: str = ".env") -> None:
     env_file = Path(path)
     if not env_file.exists():
         return
-    for line in env_file.read_text().splitlines():
-        line = line.strip()
+    for raw_line in env_file.read_text().splitlines():
+        line = raw_line.strip()
         if not line or line.startswith("#") or "=" not in line:
             continue
         key, _, value = line.partition("=")
@@ -52,6 +52,7 @@ def get_installed_connect_version(python_bin: Path | None = None) -> str | None:
         [exe, "-m", "pip", "show", "databricks-connect"],
         capture_output=True,
         text=True,
+        check=False,
     )
     if result.returncode != 0:
         return None

@@ -64,8 +64,8 @@ def extract_bibliography(text: str) -> list[BibEntry]:
         return []
 
     entries: list[BibEntry] = []
-    for line in lines[bib_start:]:
-        line = line.strip()
+    for raw_line in lines[bib_start:]:
+        line = raw_line.strip()
         if not line or line.startswith(("#", "-", ">")):
             continue
 

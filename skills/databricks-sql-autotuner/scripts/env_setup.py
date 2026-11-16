@@ -32,7 +32,7 @@ def venv_python(venv: Path) -> Path:
 
 
 def check_uv() -> None:
-    result = subprocess.run(["uv", "--version"], capture_output=True, text=True)
+    result = subprocess.run(["uv", "--version"], capture_output=True, text=True, check=False)
     if result.returncode != 0:
         print("[error] uv is not installed or not on PATH.", file=sys.stderr)
         print("Install: curl -LsSf https://astral.sh/uv/install.sh | sh", file=sys.stderr)
@@ -79,6 +79,7 @@ def verify_connection(venv: Path, profile: str, cluster_id: str) -> None:
         [str(venv_python(venv)), "-c", code],
         capture_output=True,
         text=True,
+        check=False,
     )
     print(proc.stdout, end="")
     if proc.returncode != 0:

@@ -18,7 +18,7 @@ from pathlib import Path
 
 def run(*cmd: str, cwd: str | None = None) -> str:
     try:
-        return subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=120).stdout
+        return subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=120, check=False).stdout
     except (OSError, subprocess.TimeoutExpired):
         return ""
 

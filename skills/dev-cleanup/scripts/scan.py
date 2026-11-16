@@ -20,7 +20,7 @@ def du_mb(path: Path) -> float:
     if not path.exists():
         return 0.0
     try:
-        out = subprocess.run(["du", "-sk", str(path)], capture_output=True, text=True, timeout=300).stdout
+        out = subprocess.run(["du", "-sk", str(path)], capture_output=True, text=True, timeout=300, check=False).stdout
         return int(out.split()[0]) / 1024
     except (subprocess.TimeoutExpired, ValueError, IndexError):
         return 0.0
@@ -28,7 +28,7 @@ def du_mb(path: Path) -> float:
 
 def cmd_out(*cmd: str) -> str:
     try:
-        return subprocess.run(cmd, capture_output=True, text=True, timeout=30).stdout.strip()
+        return subprocess.run(cmd, capture_output=True, text=True, timeout=30, check=False).stdout.strip()
     except (OSError, subprocess.TimeoutExpired):
         return ""
 

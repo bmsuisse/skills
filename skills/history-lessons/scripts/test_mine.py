@@ -33,6 +33,7 @@ res = subprocess.run(
     [sys.executable, str(pathlib.Path(__file__).parent / "mine.py"), str(d), "--ref", "HEAD"],
     capture_output=True,
     text=True,
+    check=False,
 )
 o = res.stdout
 assert res.returncode == 0, res.stderr

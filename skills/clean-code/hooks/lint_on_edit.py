@@ -39,7 +39,7 @@ def tool(root: Path, name: str) -> list[str] | None:
 
 
 def run(cmd: list[str], cwd: Path) -> tuple[int, str]:
-    p = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=60)
+    p = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=60, check=False)
     return p.returncode, (p.stdout + p.stderr).strip()
 
 

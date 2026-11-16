@@ -31,8 +31,8 @@ def _load_patterns(ref_path: Path) -> list[tuple[str, str, str]]:
     """
     patterns: list[tuple[str, str, str]] = []
     current_category = ""
-    for line in ref_path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
+    for raw_line in ref_path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
         if line.startswith("## "):
             current_category = line[3:].strip()
         elif line.startswith("- ") and current_category:

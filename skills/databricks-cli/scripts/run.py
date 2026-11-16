@@ -11,7 +11,7 @@ from pathlib import Path
 
 def _cli(profile: str, method: str, path: str, body: dict) -> dict:
     cmd = ["databricks", "api", method, path, "--profile", profile, "--json", json.dumps(body)]
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
     if result.returncode != 0:
         print(f"[error] CLI call failed:\n{result.stderr}", file=sys.stderr)
         sys.exit(1)

@@ -57,7 +57,8 @@ def split_simple_commands(command: str) -> list[list[str]]:
 
 
 def is_az_pr_create(command: str) -> bool:
-    for tokens in split_simple_commands(command):
+    for simple_command in split_simple_commands(command):
+        tokens = simple_command
         while tokens and (ASSIGNMENT.match(tokens[0]) or tokens[0] in KEYWORDS):
             tokens = tokens[1:]
         if not tokens:

@@ -30,6 +30,7 @@ def _run(*args: str) -> dict | list | None:
         ["databricks", *args, "--output", "json"],
         capture_output=True,
         text=True,
+        check=False,
     )
     if result.returncode != 0:
         return None

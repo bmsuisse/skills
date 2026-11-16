@@ -21,7 +21,9 @@ def isolated_state(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
 
 def run_hook(command: str, tool_name: str = "Bash", session_id: str = "s1") -> dict | None:
     payload = json.dumps({"tool_name": tool_name, "tool_input": {"command": command}, "session_id": session_id})
-    result = subprocess.run([sys.executable, str(HOOK)], input=payload, capture_output=True, text=True, timeout=10)
+    result = subprocess.run(
+        [sys.executable, str(HOOK)], input=payload, capture_output=True, text=True, timeout=10, check=False
+    )
     assert result.returncode == 0, result.stderr
     return json.loads(result.stdout) if result.stdout.strip() else None
 
@@ -148,7 +150,7 @@ def test_hints_install_when_bdt_is_missing(tmp_path: Path) -> None:
     payload = json.dumps({"tool_name": "Bash", "tool_input": {"command": "az pipelines runs list"}})
     env = {"PATH": str(tmp_path), "HOME": str(tmp_path), "TMPDIR": str(tmp_path)}
     result = subprocess.run(
-        [sys.executable, str(HOOK)], input=payload, capture_output=True, text=True, timeout=10, env=env
+        [sys.executable, str(HOOK)], input=payload, capture_output=True, text=True, timeout=10, env=env, check=False
     )
     assert (
         "uv tool install bmsdna-devtools" in json.loads(result.stdout)["hookSpecificOutput"]["permissionDecisionReason"]

@@ -69,7 +69,7 @@ def edited_files(data: dict) -> list[Path]:
 
 def run(cmd: list[str], cwd: Path) -> tuple[int, str]:
     try:
-        p = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=120)
+        p = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=120, check=False)
     except subprocess.TimeoutExpired:
         return 1, f"`{' '.join(cmd)}` timed out after 120s"
     return p.returncode, (p.stdout + p.stderr).strip()

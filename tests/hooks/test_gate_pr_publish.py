@@ -41,6 +41,7 @@ def run_hook(
         text=True,
         timeout=30,
         env=env,
+        check=False,
     )
     return json.loads(result.stdout) if result.stdout.strip() else None
 

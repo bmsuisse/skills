@@ -155,11 +155,11 @@ def extract_inline_citations(body: str) -> set[str]:
     citations: set[str] = set()
 
     for m in re.compile(r"\(([^)]+,\s*\d{4}(?:\s*;\s*[^)]+,\s*\d{4})*)\)").finditer(body):
-        for part in re.split(r"\s*;\s*", m.group(1)):
+        for raw_part in re.split(r"\s*;\s*", m.group(1)):
             part = re.sub(
                 r"^(?:vgl\.|siehe|e\.g\.,?|z\.B\.,?|cf\.|voir|ibid\.|op\.\s*cit\.|cfr\.)\s+",
                 "",
-                part.strip(),
+                raw_part.strip(),
                 flags=re.IGNORECASE,
             )
             year_match = re.search(r",\s*(\d{4})$", part)
@@ -210,8 +210,8 @@ def extract_bibliography(bib_text: str) -> dict[str, str]:
     """Extract bibliography entries. Returns {normalized_key: full_line}."""
     entries: dict[str, str] = {}
 
-    for line in bib_text.splitlines():
-        line = line.strip()
+    for raw_line in bib_text.splitlines():
+        line = raw_line.strip()
         if not line or line.startswith(("#", "-", ">")):
             continue
 

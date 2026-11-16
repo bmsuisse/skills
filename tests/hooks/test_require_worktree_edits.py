@@ -29,6 +29,7 @@ def run_hook(file_path: str, cwd: Path) -> dict | None:
         text=True,
         cwd=cwd,
         timeout=10,
+        check=False,
     )
     if not result.stdout.strip():
         return None
@@ -159,6 +160,7 @@ def test_no_op_when_no_file_path_given(tmp_path: Path) -> None:
         text=True,
         cwd=tmp_path,
         timeout=10,
+        check=False,
     )
     assert result.stdout.strip() == ""
 
@@ -170,7 +172,9 @@ def test_no_op_when_no_file_path_given(tmp_path: Path) -> None:
 
 def run_apply_patch(patch: str, cwd: Path) -> dict | None:
     payload = json.dumps({"tool_name": "apply_patch", "cwd": str(cwd), "tool_input": {"command": patch}})
-    result = subprocess.run([sys.executable, str(HOOK)], input=payload, capture_output=True, text=True, timeout=10)
+    result = subprocess.run(
+        [sys.executable, str(HOOK)], input=payload, capture_output=True, text=True, timeout=10, check=False
+    )
     return json.loads(result.stdout) if result.stdout.strip() else None
 
 

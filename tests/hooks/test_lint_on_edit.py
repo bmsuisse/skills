@@ -33,6 +33,7 @@ def run_hook(file: Path, env: dict | None = None) -> subprocess.CompletedProcess
         capture_output=True,
         text=True,
         env=env,
+        check=False,
     )
 
 

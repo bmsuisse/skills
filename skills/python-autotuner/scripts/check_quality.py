@@ -21,7 +21,7 @@ def run_ruff(file: str, fix: bool = False) -> dict:
     if fix:
         cmd.append("--fix")
 
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
 
     violations = []
     try:
@@ -58,12 +58,13 @@ def run_ty(file: str) -> dict:
         ["ty", "check", file],
         capture_output=True,
         text=True,
+        check=False,
     )
 
     errors = []
     # ty outputs lines like: path/to/file.py:LINE:COL: error [rule] message
-    for line in (result.stdout + result.stderr).splitlines():
-        line = line.strip()
+    for raw_line in (result.stdout + result.stderr).splitlines():
+        line = raw_line.strip()
         if not line or line.startswith("Found"):
             continue
         # Parse "file.py:10:5: error [rule] message"

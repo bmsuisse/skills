@@ -140,7 +140,8 @@ def scan(command: str) -> tuple[bool, bool, bool]:
         polls = polls or found[0] or (depth > 0 and (found[1] or found[2]))
         pr_query, ci_query = pr_query or found[1], ci_query or found[2]
 
-    for tokens in simple:
+    for simple_command in simple:
+        tokens = simple_command
         while tokens and (ASSIGNMENT.match(tokens[0]) or tokens[0] in KEYWORDS or tokens[0] in LOOPS):
             depth += tokens[0] in LOOPS
             tokens = tokens[1:]

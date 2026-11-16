@@ -42,7 +42,7 @@ def _bunfig_cooldown() -> str:
 
 def run(cmd: list[str], cwd: Path, label: str) -> None:
     print(f"  → {label}")
-    result = subprocess.run(cmd, cwd=cwd)
+    result = subprocess.run(cmd, cwd=cwd, check=False)
     if result.returncode != 0:
         print(f"❌ Failed: {label}", file=sys.stderr)
         sys.exit(result.returncode)
@@ -89,7 +89,7 @@ def _assert_pyproject_tables(pyproject: Path) -> None:
 def run_soft(cmd: list[str], cwd: Path, label: str) -> None:
     """Like run(), but warns instead of aborting — for checks after everything is already written."""
     print(f"  → {label}")
-    if subprocess.run(cmd, cwd=cwd).returncode != 0:
+    if subprocess.run(cmd, cwd=cwd, check=False).returncode != 0:
         print(f"⚠️  {label} reported problems — fix them before committing.", file=sys.stderr)
 
 

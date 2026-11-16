@@ -70,7 +70,7 @@ def run_tune(extra_args: list[str]) -> dict:
     """Run tune.py with the given args and return the parsed JSON result."""
     cmd = [sys.executable, str(TUNE_PY)] + extra_args
     print(f"[baseline] {' '.join(cmd)}", file=sys.stderr)
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
     print(result.stderr, end="", file=sys.stderr)
     if result.returncode != 0:
         print(f"[error] tune.py exited {result.returncode}", file=sys.stderr)

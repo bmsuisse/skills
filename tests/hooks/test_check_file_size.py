@@ -8,7 +8,7 @@ SCRIPT = Path(__file__).resolve().parents[2] / "skills" / "clean-code" / "script
 
 
 def run(*files: Path) -> subprocess.CompletedProcess:
-    return subprocess.run([sys.executable, str(SCRIPT), *map(str, files)], capture_output=True, text=True)
+    return subprocess.run([sys.executable, str(SCRIPT), *map(str, files)], capture_output=True, text=True, check=False)
 
 
 def make(tmp_path: Path, name: str, lines: int) -> Path:
@@ -62,7 +62,11 @@ def test_absolute_paths_under_a_generated_parent_are_still_checked(tmp_path):
     parent = tmp_path / "generated" / "src"
     parent.mkdir(parents=True)
     r = subprocess.run(
-        [sys.executable, str(SCRIPT), str(make(parent, "big.sh", 101))], capture_output=True, text=True, cwd=parent
+        [sys.executable, str(SCRIPT), str(make(parent, "big.sh", 101))],
+        capture_output=True,
+        text=True,
+        cwd=parent,
+        check=False,
     )
     assert r.returncode == 1
 

@@ -59,6 +59,7 @@ def _run_git(directory: str, *args: str) -> subprocess.CompletedProcess:
         capture_output=True,
         text=True,
         timeout=5,
+        check=False,
     )
 
 

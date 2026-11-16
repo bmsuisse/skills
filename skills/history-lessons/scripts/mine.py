@@ -32,7 +32,7 @@ def out(s=""):
 
 
 def run(*a):
-    r = subprocess.run(a, capture_output=True, text=True)
+    r = subprocess.run(a, capture_output=True, text=True, check=False)
     return r.stdout, r.stderr
 
 
@@ -48,10 +48,10 @@ def kind(s, body=""):
 
 
 def first_line(body):
-    for l in body.splitlines():
-        l = l.strip()
-        if l and not TRAILER.match(l):
-            return l[:220]
+    for raw_line in body.splitlines():
+        line = raw_line.strip()
+        if line and not TRAILER.match(line):
+            return line[:220]
     return ""
 
 

@@ -170,7 +170,9 @@ def flag_value(tokens: list[str], *names: str) -> str | None:
 def run_lookup(argv: list[str], cwd: str) -> str | None:
     """stdout of a read-only CLI lookup, or None when it is unavailable or fails."""
     try:
-        result = subprocess.run(argv, cwd=cwd, capture_output=True, text=True, timeout=LOOKUP_TIMEOUT_SECONDS)
+        result = subprocess.run(
+            argv, cwd=cwd, capture_output=True, text=True, timeout=LOOKUP_TIMEOUT_SECONDS, check=False
+        )
     except (OSError, subprocess.SubprocessError):
         return None
     return result.stdout.strip() if result.returncode == 0 else None
@@ -447,8 +449,8 @@ def codex_reviews_in_command(command: str, depth: int = 0, pipefail: bool = Fals
     reviews: list[CodexReview] = []
     env: dict[str, str] = {}
     segments = split_simple_commands(command)
-    for idx, (words, connector) in enumerate(segments):
-        words = list(words)
+    for idx, (segment_words, connector) in enumerate(segments):
+        words = list(segment_words)
         if words[:1] == ["export"]:
             words = words[1:]
         assigned: dict[str, str] = {}

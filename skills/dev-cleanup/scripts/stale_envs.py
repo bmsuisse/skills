@@ -36,7 +36,9 @@ def main() -> None:
                     mb = (
                         int(
                             (
-                                subprocess.run(["du", "-sk", str(p)], capture_output=True, text=True).stdout.split()
+                                subprocess.run(
+                                    ["du", "-sk", str(p)], capture_output=True, text=True, check=False
+                                ).stdout.split()
                                 or ["0"]
                             )[0]
                         )
