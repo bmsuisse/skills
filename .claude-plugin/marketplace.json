@@ -126,7 +126,7 @@
       "description": "Enforces the team dev workflow: worktree-first edits, auto-approved entry into worktree-shaped dirs, a ban on creating PRs via `az repos pr create` (use `bdt pr create`), a ban on hand-wired PR/CI watch scripts (use `bdt pr status --wait`), and a gate that blocks bdt/az/gh commands which publish or complete a PR until /code-review, /bms-code-review or a finished `codex exec`/`codex review` code review has run. Also ships the bms-code-review, bms-plan-review, branching-strategy, issue-triage and agent-coordinator skills.",
       "source": "./",
       "skills": ["./skills/dev-workflow", "./skills/bms-code-review", "./skills/bms-plan-review", "./skills/branching-strategy", "./skills/issue-triage", "./skills/agent-coordinator"],
-      "agents": ["./agents/bms-review-core.md", "./agents/bms-review-standard.md", "./agents/bms-review-light.md", "./agents/bms-ci-watch.md", "./agents/bms-design-review.md"],
+      "agents": ["./agents/bms-review-core.md", "./agents/bms-review-standard.md", "./agents/bms-review-light.md", "./agents/bms-ci-watch.md", "./agents/bms-design-review.md", "./agents/bms-test-writer.md"],
       "hooks": {
         "PreToolUse": [
           {

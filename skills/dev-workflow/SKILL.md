@@ -30,12 +30,13 @@ when the tool genuinely isn't available (say so).
    in it (persistent): each output line is a new comment from someone else. Reply with `bdt issue comment add`.
 3. **Implementation Plan**: If your task is more complex, you do an implementation plan first, and you also upload it to PR (using `bdt pr comment --message-file FILE`). You should usually start with Database, then Backend, then Frontend.
    Then run `/bms-plan-review` on the plan and address its findings before implementing.
-4. **Implement** the task. Keep comments at a fix site short — don't inline
+3b. **Tests first.** For a task with a plan, dispatch the `bms-test-writer` agent (foreground) with the task, the plan and the layer(s): it writes contract tests from the acceptance criteria and contract, without seeing the implementation, and checks they fail for the right reason. Resolve every ambiguity it lists, commit the tests (`test: contract tests`), push. Details, skip rules and the change-request protocol: `references/blind-tests.md`.
+4. **Implement** the task. Don't edit the contract tests (or their fixtures/config) to get green; if one looks wrong, post a change request instead. Keep comments at a fix site short — don't inline
    lengthy explanations of a bug or how it was resolved in source code comments.
    Once a step is done, commit&push. Commit early, commit often.
    see `references/unrelated-bugs.md` if you spot a bug outside the current task's scope.
 5. **Review (mid-work).** Run `/bms-code-review --quick` (or, where it isn't available, `/code-review low`) on the diff after a meaningful chunk and address findings. Cheap, but it only catches the most obvious issues — it is not the pre-publish review.
-6. **Test.** Run a relevant subset of tests (not the full suite — that's CI's
+6. **Test.** Run the contract tests plus a relevant subset of the rest (not the full suite — that's CI's
    job) covering what changed.
 7. **Screenshots.** If the change is visual/UI, capture before/after
    screenshots and attach them to the PR. Do screenshots for mobile and desktop.
@@ -45,7 +46,7 @@ when the tool genuinely isn't available (say so).
    Address the findings and re-dispatch to re-check. Where agents aren't available, capture and run `/design-review` yourself.
    If working from an issue, also post the screenshots as an update on the issue.
    Do not stop the Web server, ask human to click through changes and verify. once ok for human, proceed.
-8. **Pre-publish review (always).** Run `/bms-code-review --full` on the whole diff (or, where it isn't available, `/code-review` at medium, or high for risky changes) and fix findings (ask if unsure). A finished review by another agent also satisfies the gate: `codex exec -C <dir> -s read-only "Use the bms-code-review skill (--full) on the diff ..." < /dev/null` (foreground with nothing piped or chained after it that could hide a failure, i.e. no `| tee`, `; echo` or `|| true`; or backgrounded with `&` and `-o <file>`), or `codex review`; see `bms-code-review`, "Running it through codex". Promotion PRs (source and target both in `dev`/`test`/`main`, see `branching-strategy`) are exempt: skip this step for them. This is the review the PR-publish gate is really for; it is required even if the mid-work `--quick` review was clean, and especially for SQL, auth, concurrency or money handling.
+8. **Pre-publish review (always).** If step 3b ran, first check the contract tests are unchanged (`git diff <tests-commit> -- <test paths>`, see the reference); a difference without an approved change request is blocking. Then run `/bms-code-review --full` on the whole diff (or, where it isn't available, `/code-review` at medium, or high for risky changes) and fix findings (ask if unsure). A finished review by another agent also satisfies the gate: `codex exec -C <dir> -s read-only "Use the bms-code-review skill (--full) on the diff ..." < /dev/null` (foreground with nothing piped or chained after it that could hide a failure, i.e. no `| tee`, `; echo` or `|| true`; or backgrounded with `&` and `-o <file>`), or `codex review`; see `bms-code-review`, "Running it through codex". Promotion PRs (source and target both in `dev`/`test`/`main`, see `branching-strategy`) are exempt: skip this step for them. This is the review the PR-publish gate is really for; it is required even if the mid-work `--quick` review was clean, and especially for SQL, auth, concurrency or money handling.
 9. **Publish** the PR via `bdt pr publish`, which will trigger CI
 10. **Watch CI.** Dispatch the `bms-ci-watch` agent (foreground, worktree path in the prompt): it runs
     `bdt pr status --wait` cheaply and answers `RESULT: green|red|needs-approval|still-running`. Don't poll in

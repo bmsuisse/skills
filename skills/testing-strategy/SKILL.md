@@ -69,6 +69,12 @@ isn't worth building for, e.g. a genuinely external service outside the
 team's control, or a frontend-only test that has no interest in backend
 behavior at all.
 
+## Who writes the committed tests
+
+In `dev-workflow` the committed HTTP/e2e tests come first, from the plan's acceptance criteria and contract, written by
+a separate agent that doesn't see the implementation (step 3b). Keep them to one test per criterion and don't edit
+them to get green; see `dev-workflow/references/blind-tests.md`.
+
 ## Not everything requires tests
 
 A test that is committed should test at minimum 100 LoC, or some complex algorithm or real user interaction in e2e. No pointless tests.
