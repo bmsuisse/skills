@@ -60,7 +60,9 @@ reviews show up in the session for the PR-publish gate). Brief each with
 `references/agent-brief.md`: its worktree command, owned paths, what not to touch, how to integrate, and the
 report format. The agent runs `dev-workflow` steps 1, 4, 5, 6 and 8 (worktree, implement, mid-work `--quick` review,
 targeted tests, then `/bms-code-review --full` on its own diff, findings fixed) and **skips** steps 2, 7 and 9-12:
-no PR, no publish, no CI watch, no screenshots.
+no PR, no publish, no CI watch, no screenshots. Step 3b (contract tests by `bms-test-writer`) is skipped by default: the
+agents write their own slice's tests. If a slice has a plan with acceptance criteria and contract, the coordinator may
+dispatch the writer for it before the wave and pass the tests to the agent as locked (`dev-workflow/references/blind-tests.md`).
 
 Each agent is responsible for testing its own slice: it adds or updates tests for what it changes and runs them
 (targeted, not the full suite) before integrating. The coordinator's checks in step 4 are an integration check, not a

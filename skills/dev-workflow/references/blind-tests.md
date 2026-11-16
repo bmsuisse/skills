@@ -38,7 +38,7 @@ The writer has nothing else to go on, so `bms-plan-review` blocks a plan without
 
 ## Check before publish (step 8)
 
-Run `git diff <sha> -- <test files and test infrastructure>` where `<sha>` is the last `test: contract tests` commit and the paths are the test files plus the fixtures, seed data and test config they use (not the production stubs, which the implementer fills in). The diff covers uncommitted changes too. Any difference needs an approved change request in the PR comments; otherwise treat it as a blocking finding. Also check the suite is still collected and run by CI (no deselected files, no new skip/xfail markers).
+Run `git diff <sha> -- <test files and test infrastructure>` where `<sha>` is the **first** `test: contract tests` commit (so an earlier edit can't hide behind a later approved revision) and the paths are the test files plus the fixtures, seed data and test config they use (not the production stubs, which the implementer fills in). The diff covers uncommitted changes too. Every difference needs a matching approved change request in the PR comments; otherwise treat it as a blocking finding. Also check the suite is still collected and run by CI (no deselected files, no new skip/xfail markers).
 
 ## Limits
 
