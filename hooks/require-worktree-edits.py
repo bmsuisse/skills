@@ -27,6 +27,7 @@ import os
 import re
 import subprocess
 import sys
+from pathlib import Path
 
 # Codex edits files with apply_patch: tool_input.command holds the patch, whose headers name the files it touches.
 PATCH_FILE_HEADER = re.compile(r"^\*\*\* (?:Add File|Update File|Delete File|Move to): (.+?)\s*$", re.MULTILINE)
@@ -64,13 +65,13 @@ def _run_git(directory: str, *args: str) -> subprocess.CompletedProcess:
 
 
 def _nearest_existing_dir(path: str) -> str:
-    directory = os.path.dirname(os.path.abspath(path)) or os.sep
-    while not os.path.isdir(directory):
-        parent = os.path.dirname(directory)
+    directory = Path(os.path.normpath(Path.cwd() / path)).parent
+    while not directory.is_dir():
+        parent = directory.parent
         if parent == directory:
             break
         directory = parent
-    return directory
+    return str(directory)
 
 
 def path_exempt_from_gate(path: str) -> bool:
@@ -110,8 +111,8 @@ def edited_paths(data: dict) -> list[str]:
     patch = tool_input.get("command")
     if data.get("tool_name") != "apply_patch" or not isinstance(patch, str):
         return []
-    cwd = str(data.get("cwd") or os.getcwd())
-    return [p if os.path.isabs(p) else os.path.join(cwd, p) for p in PATCH_FILE_HEADER.findall(patch)]
+    cwd = Path(data.get("cwd") or Path.cwd())
+    return [p if Path(p).is_absolute() else str(cwd / p) for p in PATCH_FILE_HEADER.findall(patch)]
 
 
 def check_path(path: str) -> None:

@@ -102,7 +102,7 @@ class CodeunitParser:
             return
 
         try:
-            with open(self.cs_path, encoding="utf-8", errors="ignore") as f:
+            with self.cs_path.open(encoding="utf-8", errors="ignore") as f:
                 content = f.read()
 
             match = re.search(r'\[NavCodeunit\((\d+),\s*"([^"]+)"\)\]', content)
@@ -200,7 +200,7 @@ class CodeunitParser:
             self.warnings.append(f"Could not parse C/AL file: {e!s}")
 
     def _read_cal_lines(self) -> list[str]:
-        with open(self.cal_path, encoding="utf-8", errors="ignore") as f:
+        with self.cal_path.open(encoding="utf-8", errors="ignore") as f:
             raw_lines = f.readlines()
 
         self.source_code = "".join(raw_lines)

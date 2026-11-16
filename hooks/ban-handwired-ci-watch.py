@@ -27,6 +27,7 @@ import shlex
 import shutil
 import sys
 import tempfile
+from pathlib import Path
 
 ASSIGNMENT = re.compile(r"[A-Za-z_]\w*=")
 HEREDOC = re.compile(r"(?<!<)<<(?!<)-?\s*(['\"]?)([A-Za-z_]\w*)\1")
@@ -167,12 +168,10 @@ def scan(command: str) -> tuple[bool, bool, bool]:
 
 def first_time_in_session(session_id: str) -> bool:
     """True only for the first call with this session id; later calls find the marker and return False."""
-    marker_dir = os.path.join(tempfile.gettempdir(), f"ban-handwired-ci-watch-{os.getuid()}")
-    os.makedirs(marker_dir, mode=0o700, exist_ok=True)
+    marker_dir = Path(tempfile.gettempdir()) / f"ban-handwired-ci-watch-{os.getuid()}"
+    marker_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
     try:
-        os.close(
-            os.open(os.path.join(marker_dir, hashlib.sha256(session_id.encode()).hexdigest()), os.O_CREAT | os.O_EXCL)
-        )
+        os.close(os.open(marker_dir / hashlib.sha256(session_id.encode()).hexdigest(), os.O_CREAT | os.O_EXCL))
     except FileExistsError:
         return False
     return True
@@ -192,7 +191,7 @@ def should_block(command: str, session_id: str) -> str | None:
 def bdt_hint() -> str:
     if shutil.which("bdt"):
         return ""
-    if os.path.exists(os.path.expanduser("~/.local/bin/bdt")):
+    if Path("~/.local/bin/bdt").expanduser().exists():
         return ' `bdt` is installed in ~/.local/bin but not on PATH: `export PATH="$HOME/.local/bin:$PATH"`.'
     return " `bdt` is not installed: `uv tool install bmsdna-devtools` (update with `uv tool upgrade bmsdna-devtools`)."
 

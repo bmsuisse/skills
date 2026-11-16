@@ -383,7 +383,7 @@ def cmd_scan(output_file=None, limit: int | None = 25):
                 }
             )
 
-        with open(output_file, "w") as f:
+        with Path(output_file).open("w") as f:
             json.dump(output_data, f, indent=2)
 
         print(f"\n\nFull report saved to: {output_file}")
@@ -740,7 +740,7 @@ def cmd_setloadfields(filename: str | None, top: int | None, output_file: str | 
         _print_setloadfields_report(findings, top)
 
     if output_file:
-        with open(output_file, "w") as fh:
+        with Path(output_file).open("w") as fh:
             json.dump(findings, fh, indent=2)
         print(f"\nFull findings saved to: {output_file}")
 

@@ -198,7 +198,7 @@ def main() -> None:
     output: dict = {"benchmarks": results}
 
     if args.compare:
-        with open(args.compare) as f:
+        with Path(args.compare).open() as f:
             baseline = json.load(f)
         output["comparison"] = _compare(baseline, output)
         if not args.as_json:

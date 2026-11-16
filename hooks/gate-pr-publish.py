@@ -83,7 +83,6 @@ token and does not look like an actual invocation - only real, unquoted, adjacen
 command words trigger the gate.
 """
 
-import glob
 import json
 import os
 import re
@@ -92,6 +91,7 @@ import subprocess
 import sys
 from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
 
 # Accepts the built-in /code-review and BMS's /bms-code-review, optionally plugin-prefixed
 # ("plugin:code-review").
@@ -406,7 +406,7 @@ def expand_vars(text: str, env: dict[str, str], use_environ: bool = False) -> st
 
 def expand_path(path: str, env: dict[str, str]) -> str | None:
     """Expand variables (assignments seen in the command, then the environment) and ~."""
-    path = os.path.expanduser(expand_vars(path, env, use_environ=True))
+    path = str(Path(expand_vars(path, env, use_environ=True)).expanduser())
     return None if "$" in path or "`" in path else path
 
 
@@ -463,7 +463,7 @@ def codex_reviews_in_command(command: str, depth: int = 0, pipefail: bool = Fals
                     pipefail = m.group(1) == "-"
             continue
         # nohup / env / timeout 600 / npx -y ... in front of codex
-        while words and os.path.basename(words[0]) in WRAPPER_COMMANDS:
+        while words and Path(words[0]).name in WRAPPER_COMMANDS:
             words.pop(0)
             while words and (words[0].startswith("-") or re.match(r"[A-Za-z_]\w*=|\d+[smhd]?$", words[0])):
                 words.pop(0)
@@ -472,7 +472,7 @@ def codex_reviews_in_command(command: str, depth: int = 0, pipefail: bool = Fals
         _start, end = list_bounds(segments, idx)
         shell_background = segments[end][1] == "&"
         visible = status_is_codex(segments, idx, pipefail)
-        exe = os.path.basename(words[0])
+        exe = Path(words[0]).name
         if exe in SHELLS and depth < 2 and "-c" in words[1:-1]:  # bash -c "codex exec ..."
             inner = words[words.index("-c") + 1]
             inner_pipefail = "pipefail" in words and "-o" in words  # bash -o pipefail -c ...
@@ -522,9 +522,9 @@ def output_file_written(path: str, cwd: str, started: float | None) -> bool:
     """codex writes `-o <file>` when the review is done: it must exist, be non-empty and be newer than the call."""
     if started is None:  # without the call's timestamp "newer than the call" cannot be told
         return False
-    full = path if os.path.isabs(path) else os.path.join(cwd, path)
+    full = Path(path) if Path(path).is_absolute() else Path(cwd) / path
     try:
-        st = os.stat(full)
+        st = full.stat()
     except (OSError, ValueError):  # ValueError: embedded NUL byte
         return False
     return st.st_size > 0 and st.st_mtime >= started
@@ -549,7 +549,7 @@ def codex_review_ran_in(path: str) -> bool:
     errors: dict[str, bool] = {}  # tool_use id -> tool_result is_error
     notifications: dict[str, str] = {}  # tool_use id -> task-notification status
     try:
-        with open(path, errors="ignore") as fh:
+        with Path(path).open(errors="ignore") as fh:
             for line in fh:
                 if "codex" not in line and "tool_result" not in line and "task-notification" not in line:
                     continue
@@ -598,7 +598,7 @@ def scan_row(row: object, calls: dict, errors: dict[str, bool], notifications: d
                 calls[tool_id] = (
                     reviews,
                     bool(tool_input.get("run_in_background")),
-                    str(row.get("cwd") or os.getcwd()),
+                    str(row.get("cwd") or Path.cwd()),
                     started,
                 )
         elif block.get("type") == "tool_result" and str(block.get("tool_use_id")) in calls:
@@ -615,7 +615,7 @@ CODEX_SKILL_FILE = re.compile(r"skills/(?:bms-)?code-review/SKILL\.md")
 
 def is_codex_transcript(path: str) -> bool:
     try:
-        with open(path, errors="ignore") as fh:
+        with Path(path).open(errors="ignore") as fh:
             first = json.loads(fh.readline())
     except (OSError, ValueError):
         return False
@@ -627,7 +627,7 @@ def shell_command_of(argv: object) -> str:
     if not isinstance(argv, list):
         return str(argv or "")
     words = [str(w) for w in argv]
-    if len(words) >= 3 and os.path.basename(words[0]) in SHELLS and words[1] in ("-c", "-lc", "-cl"):
+    if len(words) >= 3 and Path(words[0]).name in SHELLS and words[1] in ("-c", "-lc", "-cl"):
         return words[2]
     return shlex.join(words)
 
@@ -638,7 +638,7 @@ FILE_READERS = {"cat", "sed", "head", "tail", "less", "more", "bat", "nl", "awk"
 def reads_review_skill(command: str) -> bool:
     """True when a simple command of `command` is a file reader (cat, sed, ...) given the review skill's SKILL.md."""
     return any(
-        os.path.basename(words[0]).lower() in FILE_READERS and any(CODEX_SKILL_FILE.search(w) for w in words[1:])
+        Path(words[0]).name.lower() in FILE_READERS and any(CODEX_SKILL_FILE.search(w) for w in words[1:])
         for words, _ in split_simple_commands(command)
         if words
     )
@@ -666,7 +666,7 @@ def codex_row_shows_review(row: dict) -> bool:
     if reads_review_skill(command):
         return True
     started = item.get("started_at_ms") or payload.get("started_at_ms")
-    cwd = str(item.get("cwd") or "").removeprefix("file://") or os.getcwd()
+    cwd = str(item.get("cwd") or "").removeprefix("file://") or str(Path.cwd())
     return any(
         review_finished(review, False, None, False, cwd, started / 1000 if isinstance(started, (int, float)) else None)
         for review in codex_reviews_in_command(command)
@@ -675,7 +675,7 @@ def codex_row_shows_review(row: dict) -> bool:
 
 def codex_session_review_ran(path: str) -> bool:
     try:
-        with open(path, errors="ignore") as fh:
+        with Path(path).open(errors="ignore") as fh:
             for line in fh:
                 if not any(k in line for k in ("code-review", "code_review", "codex", "review_mode")):
                     continue
@@ -691,7 +691,7 @@ def codex_session_review_ran(path: str) -> bool:
 
 
 def code_review_ran(transcript_path: str) -> bool:
-    if not transcript_path or not os.path.exists(transcript_path):
+    if not transcript_path or not Path(transcript_path).exists():
         return False
     if is_codex_transcript(transcript_path):
         return codex_session_review_ran(transcript_path)
@@ -699,11 +699,11 @@ def code_review_ran(transcript_path: str) -> bool:
     files = [transcript_path]
     if transcript_path.endswith(".jsonl"):
         session_dir = transcript_path[: -len(".jsonl")]
-        files += glob.glob(os.path.join(session_dir, "subagents", "*.jsonl"))
+        files += [str(p) for p in (Path(session_dir) / "subagents").glob("*.jsonl")]
 
     for path in files:
         try:
-            with open(path, errors="ignore") as fh:
+            with Path(path).open(errors="ignore") as fh:
                 for line in fh:
                     if CODE_REVIEW_SKILL.search(line):
                         return True
@@ -765,7 +765,7 @@ def main() -> None:
     if code_review_ran(data.get("transcript_path", "")):
         return
 
-    if is_promotion_pr(command, str(data.get("cwd") or os.getcwd())):
+    if is_promotion_pr(command, str(data.get("cwd") or Path.cwd())):
         return
 
     deny(

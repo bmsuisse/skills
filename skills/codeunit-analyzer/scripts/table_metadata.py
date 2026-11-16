@@ -28,7 +28,7 @@ class TableMetadataLoader:
     @staticmethod
     def _load_single_json(json_file: Path) -> tuple[str, dict[str, Any]] | None:
         try:
-            with open(json_file, encoding="utf-8") as f:
+            with json_file.open(encoding="utf-8") as f:
                 data = json.load(f)
 
             table_name = data.get("table_name", "")

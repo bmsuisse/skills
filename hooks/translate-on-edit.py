@@ -63,7 +63,7 @@ def edited_files(data: dict) -> list[Path]:
     paths = [tool_input.get("file_path")]
     if isinstance(tool_input.get("command"), str):
         paths += PATCH_FILE_HEADER.findall(tool_input["command"])
-    base = Path(data.get("cwd") or os.getcwd())
+    base = Path(data.get("cwd") or Path.cwd())
     return [(base / p).resolve() for p in paths if isinstance(p, str) and p and Path(p).name == TARGET]
 
 
