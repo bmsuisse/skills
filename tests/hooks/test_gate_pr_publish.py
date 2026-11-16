@@ -78,7 +78,9 @@ def test_denies_without_review(tmp_path: Path, skill: str | None) -> None:
 REVIEW_PROMPT = "Use the bms-code-review skill (full mode, --full) on the diff against origin/main. Review only."
 
 
-def bash_call(command: str, tool_id: str = "toolu_1", background: bool = False, timestamp: str | None = None) -> dict:
+def bash_call(
+    command: str, tool_id: str = "toolu_1", background: bool = False, timestamp: str | int | None = None
+) -> dict:
     tool_input: dict = {"command": command}
     if background:
         tool_input["run_in_background"] = True

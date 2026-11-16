@@ -4,6 +4,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+from typing import TypeGuard
 
 import pytest
 
@@ -18,7 +19,7 @@ def run_hook(command: str, tool_name: str = "Bash") -> dict | None:
     return json.loads(result.stdout) if result.stdout.strip() else None
 
 
-def is_denied(response: dict | None) -> bool:
+def is_denied(response: dict | None) -> TypeGuard[dict]:
     return response is not None and response["hookSpecificOutput"]["permissionDecision"] == "deny"
 
 

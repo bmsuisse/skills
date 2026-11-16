@@ -10,6 +10,7 @@ performance improvements, optionally fetching EXPLAIN COST plans.
 from __future__ import annotations
 
 import argparse
+import io
 import json
 import re
 import sys
@@ -25,8 +26,8 @@ from tqdm import tqdm
 if TYPE_CHECKING:
     from databricks.sdk import WorkspaceClient
 
-if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
-    sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
+if isinstance(sys.stdout, io.TextIOWrapper) and sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 ROOT = Path(__file__).parent.parent.parent.parent
 

@@ -81,7 +81,8 @@ def list_clusters(profile: str) -> list[dict]:
 
 
 def get_cluster_detail(profile: str, cluster_id: str) -> dict | None:
-    return _run("clusters", "get", cluster_id, "--profile", profile)
+    detail = _run("clusters", "get", cluster_id, "--profile", profile)
+    return detail if isinstance(detail, dict) else None
 
 
 def extract_catalog_schema(detail: dict) -> tuple[str, str]:

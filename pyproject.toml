@@ -93,6 +93,26 @@ ban-relative-imports = "all"
 [tool.ty.src]
 exclude = [".worktrees", ".claude", "skills/*/evals/fixtures"]
 
+[tool.ty.environment]
+# Skill scripts import their sibling modules by bare name (they are run as `python scripts/<name>.py`).
+extra-paths = ["skills/codeunit-analyzer", "skills/codeunit-analyzer/scripts", "skills/databricks-cli/scripts"]
+
+[tool.ty.analysis]
+# Third-party packages that individual skill scripts need are installed on demand when a skill runs
+# (`uv run --with ...`), they are not dependencies of this repository.
+allowed-unresolved-imports = [
+    "bs4",
+    "databricks.**",
+    "networkx",
+    "playwright.**",
+    "plotly.**",
+    "pyspark.**",
+    "scholarly",
+    "sqlglot.**",
+    "tqdm",
+    "yaml",
+]
+
 [tool.yamlfix]
 line_length = 119
 

@@ -55,8 +55,8 @@ def lint(file: Path) -> str:
         return out if code == 1 else ""  # 1 = violations; 2 = ruff/config error, which must not block edits
     if file.suffix in JS:
         root = find_up(file.parent, ("biome.json", "biome.jsonc"))
-        biome = root and tool(root, "biome")
-        if not biome:
+        biome = tool(root, "biome") if root else None
+        if root is None or not biome:
             return ""
         code, out = run([*biome, "check", "--write", "--colors=off", "--no-errors-on-unmatched", str(file)], root)
         return out if code == 1 else ""

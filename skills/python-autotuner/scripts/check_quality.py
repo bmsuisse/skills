@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import json
 import subprocess
+from typing import Any
 
 
 def run_ruff(file: str, fix: bool = False) -> dict:
@@ -23,7 +24,7 @@ def run_ruff(file: str, fix: bool = False) -> dict:
 
     result = subprocess.run(cmd, capture_output=True, text=True, check=False)
 
-    violations = []
+    violations: list[dict[str, Any]] = []
     try:
         raw = json.loads(result.stdout) if result.stdout.strip() else []
         violations.extend(
