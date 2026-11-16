@@ -178,7 +178,7 @@ def library_caches() -> list[dict]:
             "clean": f"rm -rf '{d}'",
             "risk": "low: app rebuilds it",
         }
-        for d, s in zip(dirs, sizes)
+        for d, s in zip(dirs, sizes, strict=False)
     ]
 
 
@@ -190,7 +190,7 @@ def main() -> None:
 
     cats = categories()
     with ThreadPoolExecutor(8) as ex:
-        for cat, s in zip(cats, ex.map(lambda c: du_mb(c["path"]), cats)):
+        for cat, s in zip(cats, ex.map(lambda c: du_mb(c["path"]), cats), strict=False):
             cat["size_mb"] = s
     cats += library_caches()
     rows = sorted((c for c in cats if c["size_mb"] >= a.min_mb), key=lambda c: -c["size_mb"])

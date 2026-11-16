@@ -2,13 +2,13 @@ import bisect
 import json
 from functools import cache
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar
 
 from helpers import run_in_processpool
 
 
 class TableMetadataLoader:
-    SIZE_CATEGORIES = {
+    SIZE_CATEGORIES: ClassVar[dict[str, dict[str, Any]]] = {
         "tiny": {"max": 1000, "multiplier": 0.1, "severity": "10% of baseline (minimal impact)"},
         "small": {"max": 10000, "multiplier": 0.5, "severity": "50% of baseline (minor impact)"},
         "medium": {"max": 100000, "multiplier": 1.0, "severity": "baseline severity"},
@@ -18,7 +18,7 @@ class TableMetadataLoader:
 
     # Column-width categories used by SETLOADFIELDS severity scoring.
     # A wider table means more bytes wasted on every SELECT * when SETLOADFIELDS is missing.
-    COLUMN_WIDTH_CATEGORIES: dict[str, dict[str, Any]] = {
+    COLUMN_WIDTH_CATEGORIES: ClassVar[dict[str, dict[str, Any]]] = {
         "narrow": {"max": 10, "multiplier": 0.5, "label": "narrow (≤10 fields)"},
         "medium": {"max": 30, "multiplier": 1.0, "label": "medium (11-30 fields)"},
         "wide": {"max": 60, "multiplier": 1.5, "label": "wide (31-60 fields)"},
@@ -69,9 +69,9 @@ class TableMetadataLoader:
 
     @cache
     @staticmethod
-    def load_metadata(dir: str | None = None) -> dict[str, dict[str, Any]]:
+    def load_metadata(directory: str | None = None) -> dict[str, dict[str, Any]]:
         script_dir = Path(__file__).parent
-        data_dir = Path(dir) if dir else script_dir.parent.parent.parent / "data" / "tables"
+        data_dir = Path(directory) if directory else script_dir.parent.parent.parent / "data" / "tables"
 
         if not data_dir.exists():
             return {}

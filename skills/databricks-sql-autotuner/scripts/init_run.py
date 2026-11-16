@@ -68,7 +68,7 @@ def current_sha() -> str:
 
 def run_tune(extra_args: list[str]) -> dict:
     """Run tune.py with the given args and return the parsed JSON result."""
-    cmd = [sys.executable, str(TUNE_PY)] + extra_args
+    cmd = [sys.executable, str(TUNE_PY), *extra_args]
     print(f"[baseline] {' '.join(cmd)}", file=sys.stderr)
     result = subprocess.run(cmd, capture_output=True, text=True, check=False)
     print(result.stderr, end="", file=sys.stderr)
@@ -78,7 +78,7 @@ def run_tune(extra_args: list[str]) -> dict:
     # tune.py prints JSON to stdout
     stdout = result.stdout.strip()
     # Strip leading '=' separator line if present
-    lines = [l for l in stdout.splitlines() if not l.startswith("=")]
+    lines = [line for line in stdout.splitlines() if not line.startswith("=")]
     try:
         return json.loads("\n".join(lines))
     except json.JSONDecodeError:

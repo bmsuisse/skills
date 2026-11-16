@@ -348,7 +348,7 @@ def analyze_sql(sql: str) -> list[tuple[str, str]]:
         if pattern.search(sql):
             warnings.append((name, f"[{name}] {msg}"))
 
-    # Repeated source scan (≥2×)
+    # Repeated source scan (>=2x)
     sources = re.findall(r"\bfrom\s+(\w+\.\w+)", sql, re.IGNORECASE)
     sources += re.findall(r"\bjoin\s+(\w+\.\w+)", sql, re.IGNORECASE)
     counts: dict[str, int] = defaultdict(int)
@@ -359,7 +359,7 @@ def analyze_sql(sql: str) -> list[tuple[str, str]]:
             warnings.append(
                 (
                     "Repeated scan",
-                    f"[Repeated scan] '{tbl}' referenced {cnt}× — consider materializing as a CTE",
+                    f"[Repeated scan] '{tbl}' referenced {cnt}\u00d7 — consider materializing as a CTE",
                 )
             )
 
@@ -473,7 +473,7 @@ def render_graph(
         else:
             node_colors.append(COLOR_COOL)
 
-        # size: 18–60 px, linear in in-degree
+        # size: 18-60 px, linear in in-degree
         node_sizes.append(18 + 42 * deg / max_deg)
 
         node_text.append(f"<b>{nd}</b><br>In-degree (dependents): {deg}<br>Row count: {rc_str}")

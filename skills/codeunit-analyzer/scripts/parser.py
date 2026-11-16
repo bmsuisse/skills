@@ -1,11 +1,10 @@
 import re
-from functools import cache
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar
 
 
 class CodeunitParser:
-    RESERVED_WORDS = {
+    RESERVED_WORDS: ClassVar[set[str]] = {
         "INIT",
         "INSERT",
         "MODIFY",
@@ -53,7 +52,7 @@ class CodeunitParser:
         "POWER",
     }
 
-    STATEMENT_KEYWORDS = ["IF", "WHILE", "WITH", "CASE", "UNTIL", "FOR", "REPEAT"]
+    STATEMENT_KEYWORDS: ClassVar[list[str]] = ["IF", "WHILE", "WITH", "CASE", "UNTIL", "FOR", "REPEAT"]
 
     def __init__(self, cal_path, table_metadata=None):
         cal_path = Path(cal_path)
@@ -88,13 +87,14 @@ class CodeunitParser:
         self.loop_depth = 0
         self.in_loop = False
         self.filtered_vars = set()
+        self._report = None
 
-    @cache
     def parse(self):
-        self._parse_cs_companion()
-        self._parse_cal()
-
-        return self._build_report()
+        if self._report is None:
+            self._parse_cs_companion()
+            self._parse_cal()
+            self._report = self._build_report()
+        return self._report
 
     def _parse_cs_companion(self):
         if not self.cs_path or not self.cs_path.exists():

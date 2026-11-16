@@ -446,7 +446,7 @@ def codex_reviews_in_command(command: str, depth: int = 0, pipefail: bool = Fals
     reviews: list[CodexReview] = []
     env: dict[str, str] = {}
     segments = split_simple_commands(command)
-    for idx, (segment_words, connector) in enumerate(segments):
+    for idx, (segment_words, _connector) in enumerate(segments):
         words = list(segment_words)
         if words[:1] == ["export"]:
             words = words[1:]
@@ -469,7 +469,7 @@ def codex_reviews_in_command(command: str, depth: int = 0, pipefail: bool = Fals
                 words.pop(0)
         if not words:
             continue
-        start, end = list_bounds(segments, idx)
+        _start, end = list_bounds(segments, idx)
         shell_background = segments[end][1] == "&"
         visible = status_is_codex(segments, idx, pipefail)
         exe = os.path.basename(words[0])

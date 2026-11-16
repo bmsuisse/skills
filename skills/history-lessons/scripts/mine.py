@@ -95,7 +95,7 @@ def header(repo, ref, cs):
 def reverts(repo, cs, top):
     out("## Reverts (something was wrong enough to undo)")
     n = 0
-    for sha, date, subj, body, fs in cs:
+    for sha, date, subj, body, _fs in cs:
         if kind(subj, body) != "revert":
             continue
         why = first_line(body)
@@ -133,7 +133,7 @@ def refactors(cs, top):
 def rule_words(cs, top):
     out("## Commits whose message states a cause or rule (read these first)")
     n = 0
-    for sha, date, subj, body, fs in cs:
+    for sha, date, subj, body, _fs in cs:
         if kind(subj, body) in {"revert", "docs", "test", "chore"}:
             continue
         text = subj + "\n" + body

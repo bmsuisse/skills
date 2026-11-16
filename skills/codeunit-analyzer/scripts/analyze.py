@@ -2,11 +2,11 @@
 """C-AL codeunit, table, and page analyzer.
 
 Sub-commands:
-  list                 – list all available .cs/.c-al files
-  analyze <file>       – deep-dive into one file
-  scan                 – project-wide bottleneck scan
-  optimize <file>      – phased optimization suggestions
-  setloadfields        – dedicated SETLOADFIELDS / SELECT-* audit
+  list                 - list all available .cs/.c-al files
+  analyze <file>       - deep-dive into one file
+  scan                 - project-wide bottleneck scan
+  optimize <file>      - phased optimization suggestions
+  setloadfields        - dedicated SETLOADFIELDS / SELECT-* audit
 """
 
 import argparse
@@ -502,9 +502,9 @@ def _compute_setloadfields_urgency(read: dict[str, Any], table_info: dict[str, A
 
     Factors:
       - Base                    40 pts   (any read without SETLOADFIELDS costs something)
-      - Loop penalty           +20 pts   (fired once per iteration → N× cost)
-      - Row impact multiplier  ×row_mult (large tables → more data on wire)
-      - Column width multiplier×col_mult (wide tables → more bytes per row)
+      - Loop penalty           +20 pts   (fired once per iteration → Nx cost)
+      - Row impact multiplier  xrow_mult (large tables → more data on wire)
+      - Column width multiplierxcol_mult (wide tables → more bytes per row)
       - FlowField bonus        +15 pts   (without SETLOADFIELDS BC calculates ALL FlowFields)
     """
     base = 40
@@ -551,7 +551,7 @@ def _audit_setloadfields_in_file(file_path: Path, table_metadata: dict[str, Any]
 
             reasons: list[str] = []
             if in_loop:
-                reasons.append("inside loop (×N cost)")
+                reasons.append("inside loop (\u00d7N cost)")
             if has_ff:
                 reasons.append("table has FlowFields (BC calculates ALL on SELECT *)")
             if field_count > 30:

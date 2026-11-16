@@ -7,16 +7,19 @@ import sys
 import tempfile
 
 d = pathlib.Path(tempfile.mkdtemp())
-g = lambda *a: (
-    subprocess.run(
+
+
+def g(*a):
+    return subprocess.run(
         ["git", "-C", str(d), "-c", "user.name=t", "-c", "user.email=t@t", *a],
         check=True,
         capture_output=True,
         text=True,
     ).stdout
-)
+
+
 g("init", "-q", "-b", "main")
-for i, (msg, body) in enumerate(
+for i, (msg, _body) in enumerate(
     [
         ("feat: add cache", ""),
         ("fix: stale cache\n\nRoot cause: cache keyed on layout, never invalidated after prompt fixes.", ""),

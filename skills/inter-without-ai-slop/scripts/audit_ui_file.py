@@ -28,8 +28,8 @@ def hex_to_hsl(hex_color):
     if len(hex_color) == 3:
         hex_color = "".join(c * 2 for c in hex_color)
     r, g, b = (int(hex_color[i : i + 2], 16) / 255 for i in (0, 2, 4))
-    h, l, s = colorsys.rgb_to_hls(r, g, b)
-    return h * 360, s, l
+    h, light, s = colorsys.rgb_to_hls(r, g, b)
+    return h * 360, s, light
 
 
 def find_hex_colors(text):
@@ -40,13 +40,13 @@ def check_accent_tells(text):
     findings = []
     for hex_color in find_hex_colors(text):
         try:
-            h, s, l = hex_to_hsl(hex_color)
+            h, s, light = hex_to_hsl(hex_color)
         except ValueError:
             continue
-        if s < 0.35 or l < 0.15 or l > 0.85:
+        if s < 0.35 or light < 0.15 or light > 0.85:
             continue  # too desaturated/dark/light to read as "the accent"
         for name, tell_hex in KNOWN_TELLS.items():
-            th, ts, tl = hex_to_hsl(tell_hex)
+            th, _ts, _tl = hex_to_hsl(tell_hex)
             hue_dist = min(abs(h - th), 360 - abs(h - th))
             if hue_dist <= HUE_THRESHOLD_DEG:
                 findings.append(f"{hex_color} is close to the {name} tell (hue distance {hue_dist:.0f}°)")

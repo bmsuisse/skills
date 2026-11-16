@@ -279,7 +279,7 @@ def verify_entry(entry: BibEntry, client: httpx.Client, use_scholar: bool) -> Ve
 
 def _check_scholarly_available() -> bool:
     try:
-        import scholarly  # noqa: F401
+        import scholarly
 
         return True
     except ImportError:

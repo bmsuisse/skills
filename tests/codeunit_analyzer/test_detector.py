@@ -61,19 +61,19 @@ def test_no_commit_no_large_transaction():
 
 
 def test_small_transaction_with_commit_no_bottleneck():
-    # 5 DELETEs × 3 = 15, below threshold 30
+    # 5 DELETEs x 3 = 15, below threshold 30
     writes = [{"operation": "COMMIT"}] + [{"operation": "DELETE", "isTemporary": False} for _ in range(5)]
     assert "large_transaction" not in patterns(detect({"P": make_proc(writes=writes)}))
 
 
 def test_large_transaction_detected():
-    # 10 DELETEs × 3 = 30, hits threshold
+    # 10 DELETEs x 3 = 30, hits threshold
     writes = [{"operation": "COMMIT"}] + [{"operation": "DELETE", "isTemporary": False} for _ in range(10)]
     assert "large_transaction" in patterns(detect({"P": make_proc(writes=writes)}))
 
 
 def test_large_transaction_severity_critical_at_weight_60():
-    # 20 DELETEs × 3 = 60 → critical
+    # 20 DELETEs x 3 = 60 → critical
     writes = [{"operation": "COMMIT"}] + [{"operation": "DELETE", "isTemporary": False} for _ in range(20)]
     bt = next(b for b in detect({"P": make_proc(writes=writes)}) if b["pattern"] == "large_transaction")
     assert bt["severity"] == "critical"
@@ -281,7 +281,7 @@ def _write_op(table: str, op: str = "MODIFY") -> dict:
 
 
 def test_heavy_read_few_writes_suggests_index():
-    # 5 reads, 0 writes → reads >= 4× writes → missing_index_candidate
+    # 5 reads, 0 writes → reads >= 4x writes → missing_index_candidate
     reads = [_read_op("Customer") for _ in range(5)]
     assert "missing_index_candidate" in patterns(detect({"P": make_proc(reads=reads)}))
 
@@ -294,7 +294,7 @@ def test_balanced_read_write_no_index_suggestion():
 
 
 def test_heavy_write_few_reads_warns_index_overhead():
-    # 5 writes, 0 reads → writes >= 4× reads → index_overhead
+    # 5 writes, 0 reads → writes >= 4x reads → index_overhead
     writes = [_write_op("Entry") for _ in range(5)]
     assert "index_overhead" in patterns(detect({"P": make_proc(writes=writes)}))
 

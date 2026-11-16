@@ -40,7 +40,7 @@ def main_repos(root: Path, depth: int) -> list[Path]:
 
 def worktrees_of(repo: Path) -> list[dict]:
     out, wts, cur = run("git", "worktree", "list", "--porcelain", cwd=str(repo)), [], {}
-    for line in out.splitlines() + [""]:
+    for line in [*out.splitlines(), ""]:
         if not line:
             if cur and Path(cur["worktree"]) != repo:
                 wts.append(
@@ -61,7 +61,7 @@ def worktrees_of(repo: Path) -> list[dict]:
 
 def active_cwds() -> list[str]:
     """Working dirs of all running processes, one lsof call (per-worktree lsof +D is far too slow)."""
-    return [l[1:] for l in run("lsof", "-w", "-d", "cwd", "-Fn").splitlines() if l.startswith("n/")]
+    return [line[1:] for line in run("lsof", "-w", "-d", "cwd", "-Fn").splitlines() if line.startswith("n/")]
 
 
 def inspect(wt: dict, cwds: list[str], idle_hours: float) -> dict:
@@ -83,8 +83,11 @@ def inspect(wt: dict, cwds: list[str], idle_hours: float) -> dict:
     active = any(c == p or c.startswith(p + "/") for c in cwds)
     last_commit = int(run("git", "log", "-1", "--format=%ct", cwd=p).strip() or 0)
     mt = max(
-        [Path(p).stat().st_mtime, last_commit]
-        + [f.stat().st_mtime for f in Path(p).glob("*") if f.name != "node_modules" and f.exists()][:200]
+        [
+            Path(p).stat().st_mtime,
+            last_commit,
+            *[f.stat().st_mtime for f in Path(p).glob("*") if f.name != "node_modules" and f.exists()][:200],
+        ]
     )
     idle_h = (time.time() - mt) / 3600
     why = [
