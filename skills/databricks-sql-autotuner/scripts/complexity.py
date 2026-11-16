@@ -41,7 +41,6 @@ def count_subqueries(sql: str) -> int:
     # Count SELECT keywords that appear inside parentheses (i.e. not the outermost one)
     depth = 0
     count = 0
-    i = 0
     tokens = re.split(r"(\(|\)|\bSELECT\b)", sql, flags=re.IGNORECASE)
     for token in tokens:
         if token == "(":

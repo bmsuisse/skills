@@ -525,14 +525,14 @@ def _audit_setloadfields_in_file(file_path: Path, table_metadata: dict[str, Any]
     except Exception:
         return []
 
-    READ_OPS = {"FINDSET", "FINDFIRST", "FIND", "FINDLAST", "GET"}
+    read_ops = {"FINDSET", "FINDFIRST", "FIND", "FINDLAST", "GET"}
     findings: list[dict[str, Any]] = []
 
     for proc_name, proc_data in data.get("procedures", {}).items():
         for read in proc_data.get("reads", []):
             if read.get("isTemporary"):
                 continue
-            if read.get("operation") not in READ_OPS:
+            if read.get("operation") not in read_ops:
                 continue
             if read.get("hasLoadFields"):
                 continue  # already has SETLOADFIELDS — no issue

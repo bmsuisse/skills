@@ -949,24 +949,24 @@ class BottleneckDetector:
 
     def _detect_index_recommendations(self):
         """Codeunit-level pass: aggregate reads/writes per table and emit index hints."""
-        READ_OPS = {"FINDSET", "FIND", "FINDFIRST", "FINDLAST", "GET"}
-        WRITE_OPS = {"INSERT", "MODIFY", "DELETE", "MODIFYALL", "DELETEALL"}
-        MIN_OPS = 5
-        RATIO = 4
+        read_ops = {"FINDSET", "FIND", "FINDFIRST", "FINDLAST", "GET"}
+        write_ops = {"INSERT", "MODIFY", "DELETE", "MODIFYALL", "DELETEALL"}
+        min_ops = 5
+        ratio = 4
 
         reads_by_table: dict[str, int] = {}
         writes_by_table: dict[str, int] = {}
 
         for proc_data in self.data.get("procedures", {}).values():
             for r in proc_data.get("reads", []):
-                if r.get("isTemporary") or r["operation"] not in READ_OPS:
+                if r.get("isTemporary") or r["operation"] not in read_ops:
                     continue
                 table = r.get("tableName", "Unknown")
                 if table and table != "Unknown":
                     reads_by_table[table] = reads_by_table.get(table, 0) + 1
 
             for w in proc_data.get("writes", []):
-                if w.get("isTemporary") or w["operation"] not in WRITE_OPS:
+                if w.get("isTemporary") or w["operation"] not in write_ops:
                     continue
                 table = w.get("tableName", "Unknown")
                 if table and table != "Unknown":
@@ -983,7 +983,7 @@ class BottleneckDetector:
             reads = reads_by_table.get(table, 0)
             writes = writes_by_table.get(table, 0)
 
-            if reads >= MIN_OPS and reads >= RATIO * max(writes, 1):
+            if reads >= min_ops and reads >= ratio * max(writes, 1):
                 severity = "medium" if reads >= 10 else "low"
                 score = 30 + min(reads * 2, 20)
                 self.bottlenecks.append(
@@ -999,7 +999,7 @@ class BottleneckDetector:
                     }
                 )
 
-            elif writes >= MIN_OPS and writes >= RATIO * max(reads, 1):
+            elif writes >= min_ops and writes >= ratio * max(reads, 1):
                 severity = "low"
                 score = 25 + min(writes * 2, 15)
                 self.bottlenecks.append(

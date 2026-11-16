@@ -12,6 +12,7 @@ Usage:
     python scripts/verify_scholar.py [path/to/essay.md]
 """
 
+import importlib
 import os
 import re
 import sys
@@ -279,8 +280,7 @@ def verify_entry(entry: BibEntry, client: httpx.Client, use_scholar: bool) -> Ve
 
 def _check_scholarly_available() -> bool:
     try:
-        import scholarly
-
+        importlib.import_module("scholarly")
         return True
     except ImportError:
         return False

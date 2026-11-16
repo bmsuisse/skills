@@ -376,7 +376,7 @@ def validate_queries_checksum(spark, original: str, optimized: str) -> dict:
     Suitable for large tables where full EXCEPT ALL is too expensive.
     Checks row count, then SUM + COUNT of every numeric/boolean column.
     """
-    _NUMERIC = (ByteType, ShortType, IntegerType, LongType, FloatType, DoubleType, DecimalType)
+    numeric_types = (ByteType, ShortType, IntegerType, LongType, FloatType, DoubleType, DecimalType)
 
     spark.sql(f"CREATE OR REPLACE TEMP VIEW _tuner_original AS {original}")
     spark.sql(f"CREATE OR REPLACE TEMP VIEW _tuner_optimized AS {optimized}")
@@ -400,7 +400,7 @@ def validate_queries_checksum(spark, original: str, optimized: str) -> dict:
     for field in schema.fields:
         col = f"`{field.name}`"
         safe = re.sub(r"[^a-zA-Z0-9]", "_", field.name)
-        if isinstance(field.dataType, _NUMERIC):
+        if isinstance(field.dataType, numeric_types):
             agg_exprs += [f"SUM({col}) AS sum_{safe}", f"COUNT({col}) AS cnt_{safe}"]
             checksum_cols.append(field.name)
         elif isinstance(field.dataType, BooleanType):

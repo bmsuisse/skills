@@ -169,23 +169,23 @@ def extract_inline_citations(body: str) -> set[str]:
                     citations.add(key)
 
     # Character class covering EN/DE/FR/IT surnames (accented letters in body of name)
-    _CAP = r"[A-ZÄÖÜÀÂÇÉÈÊËÎÏÔÛÙÜŸŒÆÌÒÚ]"
-    _LOW = r"[a-zäöüéèàâçêëîïôûùüÿœæìòú\-]"
-    _SUR = rf"(?:Mc|Mac)?{_CAP}{_LOW}+"
+    cap_re = r"[A-ZÄÖÜÀÂÇÉÈÊËÎÏÔÛÙÜŸŒÆÌÒÚ]"
+    low_re = r"[a-zäöüéèàâçêëîïôûùüÿœæìòú\-]"
+    sur_re = rf"(?:Mc|Mac)?{cap_re}{low_re}+"
 
     # Narrative two-author: EN "and", DE "und", FR "et" (≠ "et al."), IT "e"
-    for m in re.compile(rf"({_SUR})\s+(?:und|and|et(?!\s+al\.?\b)|e(?=\s+{_CAP}))\s+({_SUR})\s+\((\d{{4}})\)").finditer(
-        body
-    ):
+    for m in re.compile(
+        rf"({sur_re})\s+(?:und|and|et(?!\s+al\.?\b)|e(?=\s+{cap_re}))\s+({sur_re})\s+\((\d{{4}})\)"
+    ).finditer(body):
         citations.add(f"{m.group(1).lower()} & {m.group(2).lower()}, {m.group(3)}")
 
     # Narrative et al.: "Author et al. (Year)"
-    for m in re.compile(rf"({_SUR})\s+et\s+al\.\s+\((\d{{4}})\)").finditer(body):
+    for m in re.compile(rf"({sur_re})\s+et\s+al\.\s+\((\d{{4}})\)").finditer(body):
         citations.add(f"{m.group(1).lower()} et al., {m.group(2)}")
 
     # Narrative with preposition — German, French, Italian
-    _PREP = r"(?:nach|von|laut|bei|selon|d'apr[eè]s|par|secondo|stando\s+a)"
-    for m in re.compile(rf"{_PREP}\s+({_SUR}(?:\s+et\s+al\.)?)\s+\((\d{{4}})\)").finditer(body):
+    prep_re = r"(?:nach|von|laut|bei|selon|d'apr[eè]s|par|secondo|stando\s+a)"
+    for m in re.compile(rf"{prep_re}\s+({sur_re}(?:\s+et\s+al\.)?)\s+\((\d{{4}})\)").finditer(body):
         author_raw, year = m.group(1).strip(), m.group(2)
         if "et al." in author_raw:
             citations.add(f"{author_raw.split()[0].lower()} et al., {year}")
@@ -194,7 +194,7 @@ def extract_inline_citations(body: str) -> set[str]:
 
     # Simple narrative: "Author (Year)"
     # Skip second-author words already captured by the two-author pattern above.
-    for m in re.compile(rf"(?<![(\w])({_SUR})\s+\((\d{{4}})\)").finditer(body):
+    for m in re.compile(rf"(?<![(\w])({sur_re})\s+\((\d{{4}})\)").finditer(body):
         author = m.group(1)
         if author.lower() in _STOPWORDS:
             continue
@@ -222,16 +222,16 @@ def extract_bibliography(bib_text: str) -> dict[str, str]:
         year = year_match.group(1)
         author_part = line[: year_match.start()].strip().rstrip(",").rstrip(".")
 
-        _BIB_CAP = r"[A-ZÄÖÜÀÂÇÉÈÊËÎÏÔÛÙÜÌÒÚ]"
-        _BIB_LOW = r"[a-zäöüéèàâçêëîïôûùüìòú\-]"
+        bib_cap = r"[A-ZÄÖÜÀÂÇÉÈÊËÎÏÔÛÙÜÌÒÚ]"
+        bib_low = r"[a-zäöüéèàâçêëîïôûùüìòú\-]"
         authors: list[str] = []
         for part in re.split(r"\s*&\s*", author_part):
-            surname_matches = re.findall(rf"((?:Mc|Mac)?{_BIB_CAP}{_BIB_LOW}+),\s*{_BIB_CAP}", part)
+            surname_matches = re.findall(rf"((?:Mc|Mac)?{bib_cap}{bib_low}+),\s*{bib_cap}", part)
             if surname_matches:
                 authors.extend(surname_matches)
             else:
                 m = re.match(
-                    rf"((?:Mc|Mac)?{_BIB_CAP}[{_BIB_CAP[1:-1]}a-zäöüéèàâçêëîïôûùüìòú\- ]+)",
+                    rf"((?:Mc|Mac)?{bib_cap}[{bib_cap[1:-1]}a-zäöüéèàâçêëîïôûùüìòú\- ]+)",
                     part.strip(),
                 )
                 if m:
