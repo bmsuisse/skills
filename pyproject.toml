@@ -39,6 +39,11 @@ exclude = [
 reportMissingImports = false
 reportMissingModuleSource = false
 
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# codeunit-analyzer's scripts import their sibling modules by bare name
+pythonpath = ["skills/codeunit-analyzer", "skills/codeunit-analyzer/scripts", "skills/databricks-cli/scripts"]
+
 [tool.ruff]
 line-length = 120
 indent-width = 4
