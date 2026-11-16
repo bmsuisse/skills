@@ -40,7 +40,7 @@ reportMissingImports = false
 reportMissingModuleSource = false
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tests", "skills/history-lessons/scripts"]
 # codeunit-analyzer's scripts import their sibling modules by bare name
 pythonpath = ["skills/codeunit-analyzer", "skills/codeunit-analyzer/scripts", "skills/databricks-cli/scripts"]
 

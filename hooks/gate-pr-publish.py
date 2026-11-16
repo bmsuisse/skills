@@ -84,6 +84,7 @@ token and does not look like an actual invocation - only real, unquoted, adjacen
 command words trigger the gate.
 """
 
+import contextlib
 import json
 import os
 import re
@@ -407,7 +408,9 @@ def expand_vars(text: str, env: dict[str, str], use_environ: bool = False) -> st
 
 def expand_path(path: str, env: dict[str, str]) -> str | None:
     """Expand variables (assignments seen in the command, then the environment) and ~."""
-    path = str(Path(expand_vars(path, env, use_environ=True)).expanduser())
+    path = expand_vars(path, env, use_environ=True)
+    with contextlib.suppress(RuntimeError):  # unknown `~user`: keep the text as it is
+        path = str(Path(path).expanduser())
     return None if "$" in path or "`" in path else path
 
 
