@@ -15,5 +15,5 @@ Answer in at most 15 lines, nothing else:
 
 - `RESULT: green`, `RESULT: red`, `RESULT: needs-approval` or `RESULT: still-running`
 - the PR link, if `bdt` printed one
-- if `bdt` shows the PR as merged (completed): a line `MERGED: clean up now with bdt cleanup worktree` reminding the caller, whatever the result
+- if `bdt` shows the PR as merged (completed): a line `MERGED: clean up now with bdt cleanup worktree --confirm` reminding the caller, whatever the result
 - for red: one line per failing check, its name and the error line `bdt` printed (max 200 characters); don't investigate
