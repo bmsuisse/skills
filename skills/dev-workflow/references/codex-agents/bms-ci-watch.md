@@ -19,5 +19,5 @@ Answer in at most 15 lines, nothing else:
 - for cancelled: the cancel reason `bdt` printed, if any
 - for conflicts: the message `bdt` printed, with the conflicting paths if it lists them
 - for abandoned: the reason `bdt` printed, if any
-- for merged (`bdt` shows the PR as completed; wins over green or red): remind the caller to clean up now with `bdt cleanup worktree --confirm`
+- for merged (`bdt` shows the PR as completed; wins over green or red): a separate line `CLEANUP: do it now with bdt cleanup worktree --confirm`
 - for red: one line per failing check, its name and the error line `bdt` printed (max 200 characters); don't investigate
