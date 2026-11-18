@@ -27,7 +27,8 @@ The plugin approach installs skills directly into Claude Code and keeps them up 
     "ui@bmsuisse-skills": true,
     "writing@bmsuisse-skills": true,
     "bms@bmsuisse-skills": true,
-    "caveman@bmsuisse-skills": true
+    "caveman@bmsuisse-skills": true,
+    "mattpocock-skills@bmsuisse-skills": true
   }
 }
 ```
@@ -61,6 +62,7 @@ Skills are now active. Type `/` to see available slash commands.
 | `writing` | remove-ai-writing, scientific-revision | Writing & docs |
 | `bms` | Master skill + all core standards | All standards via `/bms` |
 | `caveman` | caveman, caveman-review, caveman-commit | Token-efficient comms |
+| `mattpocock-skills` | grill-me, to-spec, to-tickets, tdd, code-review, diagnosing-bugs, ... *(from mattpocock/skills)* | Engineering workflows |
 | `azure-deploy` | azure-deploy | Azure deployments |
 | `bdt-status` | (a Claude Code *mod*, no skills; needs Claude Code ≥ 2.1.287 and `bdt` ≥ 0.30.0, ≥ 0.46.0 to list several PRs) shows one row per open PR of the branch, e.g. `PR #69 feat: mod ✗ failing · closes #68` (title cut at 50 characters), above the prompt, from `bdt pr info --json --all` | Seeing the PRs, their issues and the build state without leaving the session |
 | `azure-diagnostics` | azure-diagnostics | Azure diagnostics |
