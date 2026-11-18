@@ -109,6 +109,30 @@ def categories() -> list[dict]:
             "risk": "low: re-downloaded on build",
         },
         {
+            "id": "sccache",
+            "label": "sccache compile cache",
+            "path": next(
+                (p for p in (HOME / "Library/Caches/Mozilla.sccache", HOME / ".cache/sccache") if p.exists()),
+                HOME / ".cache/sccache",
+            ),
+            "clean": "sccache --stop-server; rm -rf <path>",
+            "risk": "low: slower next build",
+        },
+        {
+            "id": "rustup",
+            "label": "rustup toolchains (`rustup toolchain list`)",
+            "path": HOME / ".rustup/toolchains",
+            "clean": "rustup toolchain uninstall <name>   # list first, keep the default",
+            "risk": "medium: a repo pinning that toolchain re-installs it",
+        },
+        {
+            "id": "nuget",
+            "label": "NuGet package cache",
+            "path": HOME / ".nuget/packages",
+            "clean": "dotnet nuget locals all --clear",
+            "risk": "low: re-downloaded on restore",
+        },
+        {
             "id": "gradle",
             "label": "gradle caches",
             "path": HOME / ".gradle/caches",

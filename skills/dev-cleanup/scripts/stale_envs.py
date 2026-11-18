@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Read-only: find big node_modules / .venv / target dirs in projects untouched for N days.
-Deletable because they regenerate (`bun install`, `uv sync`, `cargo build`).
+"""Read-only: find big node_modules / .venv / target / bin / obj dirs in projects untouched for N days.
+Deletable because they regenerate (`bun install`, `uv sync`, `cargo build`, `dotnet build`).
 
 Usage: stale_envs.py [ROOT=$AZDO_WORK_DIR|$BMS_WORK_DIR|~/projects] [--days 30] [--min-mb 100]
 """
@@ -11,7 +11,17 @@ import subprocess
 import time
 from pathlib import Path
 
-NAMES = {"node_modules", ".venv", "target", ".next", ".turbo"}
+NAMES = {"node_modules", ".venv", "target", "bin", "obj", ".next", ".turbo"}
+DOTNET_PROJECTS = (".csproj", ".fsproj", ".vbproj")
+
+
+def is_env_dir(name: str, parent_files: list[str]) -> bool:
+    """`target`, `bin` and `obj` are common names: they only count next to the manifest that makes them build output."""
+    if name == "target":
+        return "Cargo.toml" in parent_files
+    if name in {"bin", "obj"}:
+        return any(f.endswith(DOTNET_PROJECTS) for f in parent_files)
+    return True
 
 
 def main() -> None:
@@ -24,14 +34,11 @@ def main() -> None:
     a = ap.parse_args()
     cutoff = time.time() - a.days * 86400
     hits = []
-    for dp, dirs, _ in os.walk(Path(a.root).expanduser()):
+    for dp, dirs, files in os.walk(Path(a.root).expanduser()):
         keep = []
         for d in dirs:
-            if d in NAMES:
+            if d in NAMES and is_env_dir(d, files):
                 p = Path(dp, d)
-                # `target` only counts next to a Cargo.toml (else it may be real data)
-                if d == "target" and not Path(dp, "Cargo.toml").exists():
-                    continue
                 if p.stat().st_mtime < cutoff:
                     mb = (
                         int(

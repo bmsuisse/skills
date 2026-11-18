@@ -2,8 +2,8 @@
 name: dev-cleanup
 plugin: dev-cleanup
 description: >
-  Free disk space on a developer workstation: scan podman/docker storage, uv/npm/bun/pnpm/pip/cargo/gradle
-  caches, app caches in ~/Library/Caches, stale git worktrees and old node_modules/.venv, show an overview
+  Free disk space on a developer workstation: scan podman/docker storage, uv/npm/bun/pnpm/pip/cargo/NuGet/gradle
+  caches, app caches in ~/Library/Caches, stale git worktrees and old node_modules/.venv/target/bin/obj, show an overview
   with sizes and risk, and let the user pick what to clean. Use for "clean up my machine", "disk is full",
   "free up space", "clear caches", "podman prune", "uv cache", "stale worktrees", "remove old worktrees",
   "what is eating my disk", "need more disk space", "orphaned test databases", "drop old pgdevkit DBs", even
@@ -31,7 +31,7 @@ python3 $S/scan.py                    # caches, podman/docker, app caches: size 
 bdt cleanup worktrees "$ROOT"        # DRY RUN: worktrees fully merged into origin/main|test (+ their test DBs)
 bdt cleanup orphaned-dbs "$ROOT"     # DRY RUN: pgdevkit test DBs whose worktree is already gone
 python3 $S/worktrees.py "$ROOT"      # every git worktree: size, dirty, unpushed, locked, active, idle
-python3 $S/stale_envs.py "$ROOT"     # node_modules/.venv/target untouched for 30d+
+python3 $S/stale_envs.py "$ROOT"     # node_modules/.venv/target/bin/obj untouched for 30d+
 df -h ~ | tail -1                     # record free space before
 ```
 
@@ -94,7 +94,12 @@ Run the `clean` command shown by `scan.py` for each picked row. Specifics that m
   frees only the reclaimable part and the Mac's free space barely moves. Space comes back via
   `podman machine ssh -- sudo fstrim -av` (non-destructive, offer it first); recreating the machine frees the rest
   but deletes all containers and volumes, so only with explicit agreement. Check `podman ps` first.
-- **uv / npm / bun / pnpm / brew**: their own `cache clean` / `prune` commands, not `rm -rf`.
+- **uv / npm / bun / pnpm / brew / NuGet**: their own `cache clean` / `prune` / `dotnet nuget locals all --clear`
+  commands, not `rm -rf`.
+- **Rust**: `target/` dirs (stale ones via `stale_envs.py`, next to a `Cargo.toml`) are the big win; the cargo
+  registry/sccache are cheap to clear. Installed toolchains are a decision row: show `rustup toolchain list` and
+  never uninstall the default.
+- **.NET**: stale `bin/` + `obj/` (only next to a `.csproj`/`.fsproj`/`.vbproj`) come back with `dotnet build`.
 - Do not touch `~/Library/Caches` entries that were not listed; Apple and system caches are not ours.
 
 ## 4. Report
