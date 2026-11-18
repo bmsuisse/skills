@@ -323,6 +323,96 @@ def main() -> None:
         """,
     )
 
+    # index.html — the app is localized itself, so browser auto-translation must stay off
+    # (it rewrites the DOM under React); `lang` starts at "en" and src/lib/i18n.ts sets the real one.
+    write(
+        fe / "index.html",
+        """\
+        <!doctype html>
+        <html lang="en" translate="no" class="notranslate">
+          <head>
+            <meta charset="UTF-8" />
+            <meta name="google" content="notranslate" />
+            <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+            <title>__PROJECT__</title>
+          </head>
+          <body>
+            <div id="root"></div>
+            <script type="module" src="/src/main.tsx"></script>
+          </body>
+        </html>
+        """.replace("__PROJECT__", project),
+    )
+
+    # src/lib/i18n.ts — language store + `useTranslate()` over the git-ignored locales/<lng>.json
+    # that `bdt translate` generates from translations.toml. Also keeps <html lang> in sync.
+    write(
+        fe / "src" / "lib" / "i18n.ts",
+        """\
+        import { useCallback } from 'react'
+        import { create } from 'zustand'
+        import de from '@/locales/de.json'
+        import en from '@/locales/en.json'
+        import fr from '@/locales/fr.json'
+        import it from '@/locales/it.json'
+
+        export type LngCode = 'en' | 'de' | 'fr' | 'it'
+
+        export const languages: { code: LngCode; name: string }[] = [
+          { code: 'en', name: 'English' },
+          { code: 'de', name: 'Deutsch' },
+          { code: 'fr', name: 'Français' },
+          { code: 'it', name: 'Italiano' },
+        ]
+
+        const translations: Record<LngCode, Record<string, string>> = { en, de, fr, it }
+
+        function isLngCode(value: string | null | undefined): value is LngCode {
+          return value === 'en' || value === 'de' || value === 'fr' || value === 'it'
+        }
+
+        function getInitialLng(): LngCode {
+          const stored = localStorage.getItem('app_lng')
+          if (isLngCode(stored)) return stored
+          for (const candidate of navigator.languages) {
+            const base = candidate.split('-')[0]
+            if (isLngCode(base)) return base
+          }
+          return 'en'
+        }
+
+        function applyLngToDocument(lng: LngCode): void {
+          document.documentElement.lang = lng
+        }
+
+        interface I18nState {
+          lng: LngCode
+          setLanguage: (lng: LngCode) => void
+        }
+
+        export const useI18nStore = create<I18nState>((set) => ({
+          lng: getInitialLng(),
+          setLanguage: (lng) => {
+            localStorage.setItem('app_lng', lng)
+            applyLngToDocument(lng)
+            set({ lng })
+          },
+        }))
+
+        applyLngToDocument(useI18nStore.getState().lng)
+
+        export function useTranslate(): (key: string, defaultValue?: string) => string {
+          const lng = useI18nStore((s) => s.lng)
+          // Stable identity per language: callers put `t` in useMemo/useCallback deps.
+          return useCallback(
+            (key, defaultValue) => translations[lng][key] ?? defaultValue ?? key,
+            [lng],
+          )
+        }
+        """,
+    )
+
     # src/main.tsx — QueryClientProvider + RouterProvider
     write(
         fe / "src" / "main.tsx",
@@ -334,6 +424,7 @@ def main() -> None:
         import { queryClient } from './lib/queryClient'
         import { routeTree } from './routeTree.gen'
         import './lib/api'
+        import './lib/i18n'
         import './index.css'
 
         const router = createRouter({
@@ -475,31 +566,29 @@ def main() -> None:
         import { useQuery } from '@tanstack/react-query'
         import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@bmsuisse/ui'
         import { healthOptions } from '@/lib/generated/@tanstack/react-query.gen'
+        import { useTranslate } from '@/lib/i18n'
 
         export const Route = createFileRoute('/')({
           component: Home,
         })
 
         function Home() {
+          const t = useTranslate()
           const { data, isLoading } = useQuery(healthOptions())
 
           return (
             <main className="mx-auto max-w-2xl p-8">
               <Card>
                 <CardHeader>
-                  <CardTitle>Hello</CardTitle>
+                  <CardTitle>{t('HELLO')}</CardTitle>
                   <CardDescription>
-                    Backend: {isLoading ? '…' : data?.status ?? 'unreachable'}
+                    {t('BACKEND')}: {isLoading ? '…' : (data?.status ?? t('UNREACHABLE'))}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Button>Get started</Button>
+                  <Button>{t('GET_STARTED')}</Button>
                 </CardContent>
               </Card>
-              <p className="mt-6 text-sm text-muted-foreground">
-                UI components come from <code>@bmsuisse/ui</code>. For anything it
-                doesn't have: <code>bunx --bun shadcn@latest add &lt;component&gt;</code>
-              </p>
             </main>
           )
         }
@@ -895,7 +984,6 @@ def main() -> None:
                 file = "translations.toml"
                 languages = ["en", "de", "fr", "it"]
                 output = ["frontend/src/locales"]
-                nested = true
                 scan = ["frontend/src"]
                 """
             )
@@ -937,11 +1025,29 @@ def main() -> None:
     write(
         root / "translations.toml",
         """\
-        [ADD_BUTTON]
-        en = "Add"
-        de = "Hinzufügen"
-        fr = "Ajouter"
-        it = "Aggiungi"
+        [HELLO]
+        en = "Hello"
+        de = "Hallo"
+        fr = "Bonjour"
+        it = "Ciao"
+
+        [GET_STARTED]
+        en = "Get started"
+        de = "Loslegen"
+        fr = "Commencer"
+        it = "Inizia"
+
+        [BACKEND]
+        en = "Backend"
+        de = "Backend"
+        fr = "Backend"
+        it = "Backend"
+
+        [UNREACHABLE]
+        en = "unreachable"
+        de = "nicht erreichbar"
+        fr = "injoignable"
+        it = "non raggiungibile"
         """,
     )
 
@@ -1412,6 +1518,9 @@ def main() -> None:
         - URL state (filters, pagination): TanStack Router search params, not Zustand.
         """,
     )
+
+    # Generate the git-ignored frontend/src/locales/<lng>.json that src/lib/i18n.ts imports.
+    run(["uv", "run", "bdt", "translate"], root, "bdt translate (generate locale JSON)")
 
     # Everything is written — normalize all generated Python so the project starts lint-clean.
     run(["uv", "run", "ruff", "format", "--quiet"], root, "ruff format (normalize generated code)")
