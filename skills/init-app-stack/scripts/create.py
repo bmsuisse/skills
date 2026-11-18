@@ -582,17 +582,13 @@ def main() -> None:
                 <CardHeader>
                   <CardTitle>{t('HELLO')}</CardTitle>
                   <CardDescription>
-                    Backend: {isLoading ? '…' : data?.status ?? 'unreachable'}
+                    {t('BACKEND')}: {isLoading ? '…' : (data?.status ?? t('UNREACHABLE'))}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <Button>{t('GET_STARTED')}</Button>
                 </CardContent>
               </Card>
-              <p className="mt-6 text-sm text-muted-foreground">
-                UI components come from <code>@bmsuisse/ui</code>. For anything it
-                doesn't have: <code>bunx --bun shadcn@latest add &lt;component&gt;</code>
-              </p>
             </main>
           )
         }
@@ -1040,6 +1036,18 @@ def main() -> None:
         de = "Loslegen"
         fr = "Commencer"
         it = "Inizia"
+
+        [BACKEND]
+        en = "Backend"
+        de = "Backend"
+        fr = "Backend"
+        it = "Backend"
+
+        [UNREACHABLE]
+        en = "unreachable"
+        de = "nicht erreichbar"
+        fr = "injoignable"
+        it = "non raggiungibile"
         """,
     )
 
