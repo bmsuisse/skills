@@ -36,7 +36,8 @@ bun update --latest <pkg>               # majors: one package/ecosystem per comm
 
 ## Cooldown
 
-Every project resolves with a **5-day cooldown**: a release younger than that is not picked, so a hijacked or
+Every project has a **5-day cooldown** (a resolver filter for uv, bun and Cargo; a `bdt deps cooldown` check for Gradle and
+NuGet, see below): a release younger than that is not picked, so a hijacked or
 malicious release is normally pulled before we install it (most such releases are removed within days; the window is
 a policy choice, not a guarantee). It only acts when a version is *resolved* (`uv lock`, `bun update`/`add`, `cargo update`/`add`);
 a version already in the lockfile stays, and `uvx`, `cargo install` or global installs ignore it.
