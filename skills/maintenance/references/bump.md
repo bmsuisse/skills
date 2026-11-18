@@ -2,9 +2,10 @@
 
 Rule for this mode: see "never lock" in [SKILL.md](../SKILL.md).
 
-**Run per project directory**: every `uv.lock` / `bun.lock`
-(`find . \( -name uv.lock -o -name bun.lock \) -not -path '*/node_modules/*' -not -path './.*'`). Nested projects
+**Run per project directory**: every `uv.lock` / `bun.lock` / Gradle version catalog
+(`find . \( -name uv.lock -o -name bun.lock -o -name libs.versions.toml \) -not -path '*/node_modules/*' -not -path './.*'`). Nested projects
 (`tests_e2e/`) and separate frontends are not covered by a root command; bun often has no workspaces, so `-r` doesn't help.
+Android/Kotlin (Gradle): see [Gradle](#gradle).
 
 ```bash
 uv tree --outdated --depth 1 --all-groups
@@ -64,6 +65,28 @@ minimumReleaseAgeExcludes = ["@bmsuisse/ui", "@bmsuisse/datagrid"]   # every @bm
 - `bun update` rewrites the range in `package.json` to the resolved version; expected.
 - Frozen installs in CI (`uv sync --locked`, `bun install --frozen-lockfile`): flag a pipeline that re-resolves.
 - A fix younger than the cooldown: see [audit.md](audit.md#fixes-younger-than-the-cooldown), not an edit of this config.
+
+## Gradle
+
+Android/Kotlin projects pin exact versions in `gradle/libs.versions.toml` (no ranges, no `+`), and Gradle has **no
+cooldown setting**, so the cooldown is a check instead of a resolver filter:
+
+```bash
+bdt deps cooldown --path . --ecosystem Maven --base origin/dev    # versions this branch adds or changes: none younger than 5 days
+bdt deps cooldown --path . --ecosystem Maven --cooldown-days 5    # all pinned versions (slow, one request each)
+```
+
+- **Bump**: change the versions in the catalog (one library family per commit: they share a `version.ref`), take the
+  newest version that is already past the cooldown, not the newest release. Look versions up on Maven Central / Google
+  Maven; `bdt deps cooldown` shows the age of whatever the branch pinned. Then build and run the unit tests
+  (`./gradlew test`, plus `assembleDebug` for an app); read the changelog for AGP, Kotlin and Compose majors, and keep
+  AGP, Gradle wrapper, Kotlin and the Compose BOM in a combination their release notes allow.
+- **Exemption** for a security fix younger than the cooldown: `bdt deps advisories` names it, then
+  `bdt deps cooldown --exempt group:artifact` passes for that one package (per invocation, nothing committed), see
+  [audit.md](audit.md#fixes-younger-than-the-cooldown).
+- A project that wants the check on every pull request runs the `--base` form in its pipeline against the target branch.
+- Libraries without a version in the catalog (managed by the Compose BOM) are not seen by `bdt deps`; the BOM itself is.
+  Transitive dependencies are not seen either unless the project uses Gradle dependency locking (`gradle.lockfile`).
 
 ## If it breaks
 

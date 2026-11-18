@@ -43,7 +43,7 @@ version). It is exempted from the cooldown only through this flow, never by edit
 Run `bun audit` / `uv audit` first as usual: they stay the per-repo check. Only for a fix the cooldown blocks, run
 `bdt deps advisories [--path DIR ...]`. It adds what the two audits don't give for both ecosystems (`uv audit` has no
 severity, `bun audit` queries npm's own database and gives no fixed version; neither reports `MAL-` advisories): the
-fixed version, severity, CISA KEV, and the fix's age against the cooldown. It reads OSV (PyPI and npm only; other
+fixed version, severity, CISA KEV, and the fix's age against the cooldown. It reads OSV (PyPI, npm and Maven/Gradle; other
 sources are listed as unsupported) and reports per locked package one status:
 
 | Status | Action |
@@ -70,6 +70,10 @@ uv lock --check                                                            # and
 bun update X
 cp /tmp/bunfig.bak bunfig.toml                                             # restore: the committed config is unchanged
 ```
+
+Gradle has no cooldown setting, so there is nothing to bypass in the manifest: set the fixed version in the catalog
+(`gradle/libs.versions.toml`) and pass the exception to the check, `bdt deps cooldown --exempt group:artifact` (the
+`advisories` report prints the command). `bdt deps advisories` only sees what the catalog / `gradle.lockfile` pins.
 
 The PR lists every exception (advisory, severity, KEV, fixed version, release age) and what stayed informational.
 An advisory proves the *old* version bad, not the new one good: a hijacked "fix" release is the residual risk, so the
