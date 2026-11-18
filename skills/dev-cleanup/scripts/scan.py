@@ -51,6 +51,10 @@ def podman_real_gb() -> str:
 
 def categories() -> list[dict]:
     """Each: id, label, path (sized with du), clean (command to run after user confirms), risk."""
+    sccache_dir = next(
+        (p for p in (HOME / "Library/Caches/Mozilla.sccache", HOME / ".cache/sccache") if p.exists()),
+        HOME / ".cache/sccache",
+    )
     return [
         {
             "id": "podman",
@@ -111,11 +115,8 @@ def categories() -> list[dict]:
         {
             "id": "sccache",
             "label": "sccache compile cache",
-            "path": next(
-                (p for p in (HOME / "Library/Caches/Mozilla.sccache", HOME / ".cache/sccache") if p.exists()),
-                HOME / ".cache/sccache",
-            ),
-            "clean": "sccache --stop-server; rm -rf <path>",
+            "path": sccache_dir,
+            "clean": f"sccache --stop-server; rm -rf '{sccache_dir}'",
             "risk": "low: slower next build",
         },
         {
