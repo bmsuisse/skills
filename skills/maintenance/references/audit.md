@@ -40,10 +40,11 @@ uv lock --upgrade-package <pkg> && uv sync
 A fix newer than the [cooldown](bump.md#cooldown) is blocked (`bun audit fix` "blocked", `uv lock` keeps the old
 version). It is exempted from the cooldown only through this flow, never by editing the config.
 
-Run `bun audit` / `uv audit` first as usual: they stay the per-repo check. Only for a fix the cooldown blocks, run
+Run `bun audit` / `uv audit` first as usual: they stay the per-repo check (Rust: `cargo audit` if installed; .NET:
+`dotnet list package --vulnerable --include-transitive`). Only for a fix the cooldown blocks, run
 `bdt deps advisories [--path DIR ...]`. It adds what the two audits don't give for both ecosystems (`uv audit` has no
 severity, `bun audit` queries npm's own database and gives no fixed version; neither reports `MAL-` advisories): the
-fixed version, severity, CISA KEV, and the fix's age against the cooldown. It reads OSV (PyPI, npm and Maven/Gradle; other
+fixed version, severity, CISA KEV, and the fix's age against the cooldown. It reads OSV (PyPI, npm, Maven/Gradle, crates.io and NuGet; other
 sources are listed as unsupported) and reports per locked package one status:
 
 | Status | Action |
@@ -70,6 +71,15 @@ uv lock --check                                                            # and
 bun update X
 cp /tmp/bunfig.bak bunfig.toml                                             # restore: the committed config is unchanged
 ```
+
+```bash
+# Rust (Cargo >= 1.100): the override covers the whole resolve, so check what else the lock picked up
+CARGO_RESOLVER_INCOMPATIBLE_PUBLISH_AGE=allow cargo update X@<locked> --precise <fixed>
+bdt deps cooldown --ecosystem crates.io --base HEAD --exempt X     # no other version in the lock diff inside the cooldown
+```
+
+NuGet's cooldown does not gate a pinned restore, so like Gradle there is nothing to bypass: `dotnet add package X --version <fixed>`
+(a transitive one: reference it directly), `dotnet restore --force-evaluate`, then `bdt deps cooldown --ecosystem NuGet --base HEAD --exempt X`.
 
 Gradle has no cooldown setting, so there is nothing to bypass in the manifest: set the fixed version in the catalog
 (`gradle/libs.versions.toml`) and pass the exception to the check, `bdt deps cooldown --exempt group:artifact` (the

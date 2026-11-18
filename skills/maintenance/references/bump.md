@@ -2,10 +2,10 @@
 
 Rule for this mode: see "never lock" in [SKILL.md](../SKILL.md).
 
-**Run per project directory**: every `uv.lock` / `bun.lock` / Gradle version catalog
-(`find . \( -name uv.lock -o -name bun.lock -o -name libs.versions.toml \) -not -path '*/node_modules/*' -not -path './.*'`). Nested projects
+**Run per project directory**: every `uv.lock` / `bun.lock` / Gradle version catalog / `Cargo.lock` / `packages.lock.json`
+(`find . \( -name uv.lock -o -name bun.lock -o -name libs.versions.toml -o -name Cargo.lock -o -name packages.lock.json \) -not -path '*/node_modules/*' -not -path '*/target/*' -not -path './.*'`). Nested projects
 (`tests_e2e/`) and separate frontends are not covered by a root command; bun often has no workspaces, so `-r` doesn't help.
-Android/Kotlin (Gradle): see [Gradle](#gradle).
+Android/Kotlin (Gradle): see [Gradle](#gradle). Rust: [Rust](#rust-cargo). .NET: [.NET](#net-nuget).
 
 ```bash
 uv tree --outdated --depth 1 --all-groups
@@ -36,10 +36,11 @@ bun update --latest <pkg>               # majors: one package/ecosystem per comm
 
 ## Cooldown
 
-Every project resolves with a **5-day cooldown**: a release younger than that is not picked, so a hijacked or
+Every project has a **5-day cooldown** (a resolver filter for uv, bun and Cargo; a `bdt deps cooldown` check for Gradle and
+NuGet, see below): a release younger than that is not picked, so a hijacked or
 malicious release is normally pulled before we install it (most such releases are removed within days; the window is
-a policy choice, not a guarantee). It only acts when a version is *resolved* (`uv lock`, `bun update`/`add`); a version
-already in the lockfile stays, and `uvx` or global installs ignore it.
+a policy choice, not a guarantee). It only acts when a version is *resolved* (`uv lock`, `bun update`/`add`, `cargo update`/`add`);
+a version already in the lockfile stays, and `uvx`, `cargo install` or global installs ignore it.
 
 ```toml
 # pyproject.toml (uv >= 0.9.17): a relative span, never an absolute date; uv.lock records it as `exclude-newer-span`
@@ -55,11 +56,19 @@ minimumReleaseAge = 432000                                   # seconds
 minimumReleaseAgeExcludes = ["@bmsuisse/ui", "@bmsuisse/datagrid"]   # every @bmsuisse/* package the project uses
 ```
 
+```toml
+# .cargo/config.toml (Cargo >= 1.100; env CARGO_REGISTRY_GLOBAL_MIN_PUBLISH_AGE): same relative span, "0" turns it off
+[registry]
+global-min-publish-age = "5 days"
+```
+
 - **Our own packages are exempt**: `bmsdna-devtools`, `pgdevkit` and the `@bmsuisse/*` packages (today `@bmsuisse/ui`, `@bmsuisse/datagrid`).
   Neither tool takes a wildcard (bun 1.4.2 and 1.4.4 ignore `@bmsuisse/*`), so list, by exact name, each one the project depends on. They are public on PyPI/npm:
   the exemption is only safe while BMS alone controls publishing those names.
-- A project without the config gets it as its own first commit, with a PR note. `uv lock --upgrade` / `bun update` then
-  see only releases older than the window.
+- A project without the config gets it as its own first commit, with a PR note. `uv lock --upgrade` / `bun update` /
+  `cargo update` then see only releases older than the window. Cargo does not gate git and path dependencies or a
+  registry without publish times (`registries.<name>.min-publish-age` per registry); if nothing old enough satisfies a
+  requirement, `cargo update` fails instead of picking the young release.
 - Our private Azure DevOps feed reports upload times, so no extra config. For an index without them uv treats the
   files as unavailable: opt that index/package out, don't drop the cooldown.
 - `bun update` rewrites the range in `package.json` to the resolved version; expected.
@@ -87,6 +96,40 @@ bdt deps cooldown --path . --ecosystem Maven --cooldown-days 5    # all pinned v
 - A project that wants the check on every pull request runs the `--base` form in its pipeline against the target branch.
 - Libraries without a version in the catalog (managed by the Compose BOM) are not seen by `bdt deps`; the BOM itself is.
   Transitive dependencies are not seen either unless the project uses Gradle dependency locking (`gradle.lockfile`).
+
+## Rust (Cargo)
+
+`Cargo.lock` is committed (applications and CI use `--locked`). The cooldown is native: `[registry] global-min-publish-age`
+above, Cargo >= 1.100 (older Cargo ignores it: `bdt deps cooldown --ecosystem crates.io --base origin/<target>` is the
+check there).
+
+```bash
+cargo update --dry-run        # what a compatible bump would take; then `cargo update` (stays inside the Cargo.toml ranges)
+cargo add pkg@X               # raise a range in Cargo.toml (one family per commit), then build and test
+cargo test --locked           # and `cargo clippy` if the repo uses it
+```
+
+- Take the newest version past the cooldown, not the newest release; read the changelog of 0.x crates (a minor can break).
+- Exemption for a security fix younger than the cooldown: see [audit.md](audit.md#fixes-younger-than-the-cooldown).
+
+## .NET (NuGet)
+
+Reproducible restores need `<RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>` (it writes `packages.lock.json`;
+CI restores with `--locked-mode`). A project without lockfiles is not seen by `bdt deps`: flag it, and add the property as its
+own first commit. NuGet's own cooldown (per source in `nuget.config`) does not gate a pinned restore, so the cooldown is a
+check, like Gradle:
+
+```bash
+bdt deps cooldown --path . --ecosystem NuGet --base origin/dev    # versions this branch adds or changes: none younger than 5 days
+dotnet list package --outdated                                    # candidates; take the newest version past the cooldown
+dotnet add package X --version V && dotnet restore --force-evaluate   # rewrites packages.lock.json; then build and test
+```
+
+- Transitive packages are bumped by referencing them directly (or a central pin in `Directory.Packages.props`), then
+  `dotnet restore --force-evaluate`.
+- Exemption for a security fix younger than the cooldown: `bdt deps cooldown --exempt PackageId` for that one package
+  (per invocation, nothing committed), see [audit.md](audit.md#fixes-younger-than-the-cooldown).
+- A project that wants the check on every pull request runs the `--base` form in its pipeline against the target branch.
 
 ## If it breaks
 
