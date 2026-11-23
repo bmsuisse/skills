@@ -15,6 +15,8 @@ description: >
 
 # Design Review
 
+> If the repo has a `DESIGN_REVIEW.md`, read it first; its rules take precedence over this skill.
+
 Review a web app or page for visual design quality. This is not a UX audit
 (usability, workflow, friction) — it checks whether the design is
 **professional, consistent, and polished**: would a design-conscious person

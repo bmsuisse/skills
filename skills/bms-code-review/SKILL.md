@@ -12,6 +12,8 @@ description: >
 
 # BMS code review
 
+> If the repo has a `REVIEW.md`, read it first and pass it to every subagent; its rules take precedence over this skill.
+
 Reviews the current diff (or a PR number/branch given as argument) by
 delegating to specialised subagents. You are the orchestrator: gather context,
 spawn subagents **in parallel** (single message, multiple Agent calls), merge
