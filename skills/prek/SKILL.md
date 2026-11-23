@@ -27,7 +27,7 @@ files at commit time.
   included — see Step 6 and `references/secret-detection.md`.
 - **File-size guard**: `scripts/check_files.py` (local hook, always included) — blocks
   commits containing files over a per-extension line-count limit, and (for `.sql`)
-  forbidden join patterns. BMS convention, seen in mdmapp and OneSales.
+  forbidden join patterns. A BMS convention.
 
 ---
 
@@ -66,7 +66,7 @@ project with no files yet, use the declared stack to decide.
 ## Step 2: Write scripts/check_files.py
 
 Always write this file, regardless of detected file types — it's the file-size
-and forbidden-pattern guard (mdmapp/OneSales convention), gated per-extension
+and forbidden-pattern guard (a BMS convention), gated per-extension
 by `LINE_LIMITS` so it's a no-op for extensions a project doesn't use.
 
 ```python

@@ -1120,7 +1120,7 @@ def main() -> None:
     # scoped Postgres database (project + git branch), the frontend built once and
     # served by the backend's StaticFiles mount (see main.py) instead of a separate
     # Vite dev server, and a port picked so it never collides with another
-    # worktree/agent's preview or `just dev`. Modeled on OneSales's
+    # worktree/agent's preview or `just dev`. Modeled on an existing BMS app's
     # scripts/agent_preview.py, minus the MS-Entra-auth-bypass bits this scaffold
     # has no equivalent of (no auth here at all yet).
     write(
