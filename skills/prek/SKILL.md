@@ -4,11 +4,11 @@ plugin: coding
 description: >
   Set up code formatting and pre-commit hooks using prek (fast Rust-based
   alternative to pre-commit) with prek.toml config. Use whenever the user
-  wants to configure prek, add formatters, set up pre-commit hooks, or enforce
-  code style. Triggers on "set up prek", "add formatting", "configure
-  formatters", "pre-commit setup", "add ruff", "set up biome",
-  "configure sqlfmt". Works on new and existing projects. Always use when
-  init-app-stack has just run.
+  wants to configure prek, add formatters, set up pre-commit hooks, add secret
+  detection, or enforce code style. Triggers on "set up prek", "add
+  formatting", "configure formatters", "pre-commit setup", "add ruff", "set up
+  biome", "configure sqlfmt", "detect secrets". Works on new and existing
+  projects. Always use when init-app-stack has just run.
 ---
 
 # Prek — Pre-commit Formatter Setup
@@ -23,9 +23,11 @@ files at commit time.
 - **TypeScript/JS**: `bunx --bun @biomejs/biome check --write` (local hook, also lints
   and organizes imports)
 - **YAML**: builtin check-yaml (if .yaml/.yml files present)
+- **Secrets**: `detect-secrets` (reviewed `.secrets.baseline`) + `detect-private-key`, always
+  included — see Step 6 and `references/secret-detection.md`.
 - **File-size guard**: `scripts/check_files.py` (local hook, always included) — blocks
   commits containing files over a per-extension line-count limit, and (for `.sql`)
-  forbidden join patterns. BMS convention, seen in mdmapp and OneSales.
+  forbidden join patterns. A BMS convention.
 
 ---
 
@@ -64,7 +66,7 @@ project with no files yet, use the declared stack to decide.
 ## Step 2: Write scripts/check_files.py
 
 Always write this file, regardless of detected file types — it's the file-size
-and forbidden-pattern guard (mdmapp/OneSales convention), gated per-extension
+and forbidden-pattern guard (a BMS convention), gated per-extension
 by `LINE_LIMITS` so it's a no-op for extensions a project doesn't use.
 
 ```python
@@ -218,6 +220,17 @@ hooks = [
         "shell",
         "markdown",
     ] },
+]
+
+[[repos]]                                 # always include — secret detection (Step 6)
+repo = "builtin"
+hooks = [{ id = "detect-private-key" }]
+
+[[repos]]                                 # always include; extend `exclude` with generated/huge data files (Step 6)
+repo = "https://github.com/Yelp/detect-secrets"
+rev = "v1.5.0"                            # verify: https://github.com/Yelp/detect-secrets/releases
+hooks = [
+    { id = "detect-secrets", args = ["--baseline", ".secrets.baseline"], exclude = "uv\\.lock|bun\\.lock|package-lock\\.json|pnpm-lock\\.yaml|yarn\\.lock|\\.lock\\.json$|\\.test_data\\.json$|^\\.secrets\\.baseline$" },
 ]
 ```
 
@@ -457,7 +470,24 @@ config files.
 
 ---
 
-## Step 6: Install the git hook
+## Step 6: Secret detection baseline and CI
+
+The hooks from Step 3 need a baseline, and CI must run them on pull requests. Details, pitfalls and the exact
+Azure DevOps / GitHub Actions step: [references/secret-detection.md](references/secret-detection.md). In short:
+
+1. List tracked files over ~800 KB and exclude generated/vendored data in the hook's `exclude` and the scan (a single huge
+   JSON/CSV makes the scan run 15+ minutes), then
+   `uvx detect-secrets scan --exclude-files '<regex>' > .secrets.baseline`.
+2. `git add .secrets.baseline prek.toml` **before** `prek run` (an unstaged baseline makes the hook error out).
+3. Triage the findings without printing values. Harmless ones are fine in the baseline; real-looking secrets stay
+   *unaudited*, are reported to the user (file:line + type) and should be rotated, never waved through.
+4. Add the `update-secrets-baseline` / `check-secrets` just recipes if the project has a `justfile`.
+5. If the project has a pipeline that validates PRs, add the "Secret detection (prek)" step from the reference (PR builds
+   scan changed files, nightly/manual builds everything). Do not invent a pipeline when there is none: tell the user.
+
+---
+
+## Step 7: Install the git hook
 
 ```bash
 prek install
@@ -467,7 +497,7 @@ This writes `.git/hooks/pre-commit` automatically — no manual hook file needed
 
 ---
 
-## Step 7: Run formatters on all existing files
+## Step 8: Run formatters on all existing files
 
 ```bash
 prek run --all-files
@@ -484,3 +514,5 @@ report it clearly and suggest the install command. Don't fail silently.
 - `prek run --all-files` runs all hooks manually on every file
 - The git hook fires automatically on `git commit`
 - What was added/merged into `pyproject.toml`
+- Secret detection: the baseline size, which findings (file:line + type, no values) look real and need rotating, and
+  whether a CI step was added (or why not)

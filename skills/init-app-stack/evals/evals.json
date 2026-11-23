@@ -16,7 +16,8 @@
         "The backend dev command is `uv run dev` (granian under the hood)",
         "The frontend dev command is `bun run dev` on port 5173",
         "The scaffolded pyproject.toml contains a strict [tool.ruff.lint] config (ANN, FAST, PERF, TID, ...) with ANN401 ignored, and ruff + ty are dev dependencies",
-        "A root biome.json with strict lint rules (noExplicitAny, noNonNullAssertion, noFloatingPromises, ...) is written, @biomejs/biome is a frontend dev dependency, and the Vite template's oxlint is removed"
+        "A root biome.json with strict lint rules (noExplicitAny, noNonNullAssertion, noFloatingPromises, ...) is written, @biomejs/biome is a frontend dev dependency, and the Vite template's oxlint is removed",
+        "The scaffolded justfile has update-secrets-baseline and check-secrets recipes, and the assistant says /prek then sets up detect-secrets + detect-private-key with a .secrets.baseline (and that a PR-scoped 'Secret detection (prek)' CI step belongs in any Azure DevOps pipeline that validates PRs)"
       ]
     },
     {

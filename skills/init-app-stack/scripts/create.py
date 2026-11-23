@@ -1120,7 +1120,7 @@ def main() -> None:
     # scoped Postgres database (project + git branch), the frontend built once and
     # served by the backend's StaticFiles mount (see main.py) instead of a separate
     # Vite dev server, and a port picked so it never collides with another
-    # worktree/agent's preview or `just dev`. Modeled on OneSales's
+    # worktree/agent's preview or `just dev`. Modeled on an existing BMS app's
     # scripts/agent_preview.py, minus the MS-Entra-auth-bypass bits this scaffold
     # has no equivalent of (no auth here at all yet).
     write(
@@ -1387,6 +1387,15 @@ def main() -> None:
         # Run backend tests (spins up/reuses the shared pgdevkit test container)
         test:
             uv run pytest
+
+        # Re-scan for secrets and update .secrets.baseline (written by the prek skill; the detect-secrets hook flags anything not in it)
+        update-secrets-baseline:
+            uvx detect-secrets scan --baseline .secrets.baseline
+
+        # Same check CI runs: detect-secrets + private-key detection over every tracked file
+        check-secrets:
+            uvx prek run --all-files detect-secrets
+            uvx prek run --all-files detect-private-key
         """.replace("__BE_PORT__", str(be_port)).replace("__FE_PORT__", str(fe_port)),
     )
 
