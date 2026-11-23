@@ -1,7 +1,7 @@
 # Secret detection with prek
 
-Every BMS repo runs two secret hooks, locally on commit and in CI on pull requests: `detect-secrets` (Yelp, with a
-reviewed `.secrets.baseline`) and `detect-private-key`. This file holds the details the `prek` skill's Step 6 points to.
+Projects set up with this skill run two secret hooks, locally on commit and in CI on pull requests: `detect-secrets` (Yelp,
+with a reviewed `.secrets.baseline`) and `detect-private-key`. This file holds the details the `prek` skill's Step 6 points to.
 
 ## Hooks (already in the Step 3 `prek.toml`)
 
