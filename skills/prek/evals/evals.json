@@ -41,12 +41,28 @@
       "files": [],
       "expectations": [
         "prek.toml uses [[repos]] array-of-tables structure",
-        "prek.toml has ONLY a local biome hook (no ruff-pre-commit, no sqlfmt repos)",
+        "prek.toml has a local biome hook and no ruff-pre-commit or sqlfmt repos (only the always-on secret-detection repos besides it)",
         "biome.json is written with indentWidth: 4, indentStyle: \"space\" and lineWidth: 120",
         "biome.json enables linter rules beyond the defaults (noExplicitAny, noNonNullAssertion, noConsole, useImportType, noFloatingPromises) and organizeImports",
         "@biomejs/biome is a dev dependency (not exact-pinned) and the prek hook runs the local binary (no version in the entry)",
         "prek install is run to wire up the git hook",
         "User is told which formatters were installed and how to run manually"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Set up prek secret detection for my Azure DevOps repo. It has an azure-pipelines.yml that validates PRs, a justfile, and a 60 MB generated export at data/export.json. Some existing code has a hard-coded connection string with a password in config/dev.yaml.",
+      "expected_output": "prek.toml with detect-private-key (builtin) and detect-secrets (Yelp, --baseline .secrets.baseline) with the lock-file excludes plus data/export.json excluded, a staged .secrets.baseline, just recipes, a PR-scoped CI step, and the real-looking finding reported without its value",
+      "files": [],
+      "expectations": [
+        "prek.toml has a builtin repo with detect-private-key and a https://github.com/Yelp/detect-secrets repo with detect-secrets using args --baseline .secrets.baseline",
+        "The detect-secrets exclude covers lock files, \\.test_data\\.json and the 60 MB data/export.json, and the same exclude is used when generating the baseline (so the scan does not run for 15+ minutes)",
+        ".secrets.baseline is generated and `git add`ed before prek run is used to verify the hooks",
+        "The connection-string finding in config/dev.yaml is left unaudited (not marked is_secret false), reported to the user by file:line and type without printing the value, and rotation is recommended",
+        "The justfile gets update-secrets-baseline and check-secrets recipes",
+        "A 'Secret detection (prek)' step is added to azure-pipelines.yml: PullRequest builds fetch the target branch into a private ref (refs/secret-scan/base) with --no-write-fetch-head and run prek with --from-ref/--to-ref, Schedule/Manual builds run --all-files, other builds exit 0",
+        "The pipeline diff only adds the new step: no existing step is modified (in particular nothing that sets or uses FETCH_HEAD)",
+        "The user is told that a Build validation policy on the target branch is needed for the step to run on PRs"
       ]
     }
   ]
