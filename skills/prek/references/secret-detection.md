@@ -64,7 +64,7 @@ job that runs on PRs, after `uv` is installed (or install it: `curl -LsSf https:
     set -e
     case "$(Build.Reason)" in
       PullRequest)
-        git -c http.extraheader="AUTHORIZATION: bearer $(System.AccessToken)" fetch --no-write-fetch-head origin "refs/heads/$(System.PullRequest.TargetBranchName):refs/secret-scan/base"
+        git -c http.extraheader="AUTHORIZATION: bearer $(System.AccessToken)" fetch --no-write-fetch-head origin "+refs/heads/$(System.PullRequest.TargetBranchName):refs/secret-scan/base"
         scope="--from-ref refs/secret-scan/base --to-ref HEAD" ;;
       Schedule|Manual) scope="--all-files" ;;
       *) echo "Not a PR or nightly/manual build: nothing to scan"; exit 0 ;;
@@ -79,6 +79,9 @@ Rules learned the hard way:
 - **Private ref + `--no-write-fetch-head`.** Other steps rely on `FETCH_HEAD` (database diff base, ruff/sqlfmt diffs); a plain
   `git fetch` would overwrite it. Do not use `--depth=N` where the checkout has full history (it makes the repo shallow and
   breaks the merge base); in a depth-1 checkout of the PR merge commit it is fine.
+- **Force the ref (`+refs/heads/...:refs/secret-scan/base`).** Self-hosted agents keep their workspace between builds, so the
+  ref from the previous build still exists; without the `+` the next fetch is rejected as non-fast-forward (always in a
+  shallow checkout, where git cannot prove the new tip descends from the old one) and the step fails after a few seconds.
 - **No nightly `schedules:` entry** (or the PR job is skipped on pushes): the all-files case never runs. Add
   `IndividualCI` to the all-files case (small repos) or a scheduled job, and say so in the PR.
 - **A PR build only exists if the target branch has a Build validation policy** (`bdt pr status` says "No build policy is
