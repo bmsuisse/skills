@@ -37,7 +37,7 @@
     {
       "id": 3,
       "prompt": "I have a TypeScript/React project (no Python, no SQL). Add prek with biome for pre-commit formatting.",
-      "expected_output": "prek.toml with only a local biome hook, biome.json written, prek install run",
+      "expected_output": "prek.toml with a local biome hook plus the always-on secret-detection hooks (no ruff/sqlfmt), biome.json written, prek install run",
       "files": [],
       "expectations": [
         "prek.toml uses [[repos]] array-of-tables structure",
