@@ -10,6 +10,8 @@ description: >
 
 # Maintenance
 
+> If the repo has a `MAINTENANCE.md`, read it first; its rules take precedence over this skill.
+
 `/maintenance dead-code | bump | lint | audit | prod | nightly | xfail | db-perf | cost | tests | incident | all`. No argument: ask which.
 `all` runs them in the order `prod`, `nightly`, `xfail`, `tests`, `db-perf`, `cost` (what is broken now, so the upkeep
 runs against a known baseline), then `dead-code`, `bump`, `lint`, `audit` (remove first, so less is upgraded), one commit series per mode. `incident` is event-driven and never part of `all`.
