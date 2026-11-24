@@ -17,34 +17,38 @@ description: >
 Flow is always **scan, show overview, user picks, delete only the picks, report freed space**. Deleting is the
 easy part; the value is a trustworthy overview, because worktrees and images can hold work the user cares about.
 
-Everything except `~/.claude` goes through **`bdt cleanup`** (bmsdna-devtools >= 1.4, `uv tool upgrade bmsdna-devtools`; check with
-`bdt cleanup --help`). Read-only reports: `caches`, `stale-envs`, `inspect`. Removal: `worktrees` knows which
-worktrees are fully merged and drops the pgdevkit test DB(s) that belong to them, which `git worktree remove` alone
-leaves behind. `~/.claude` has no bdt command: Claude Code never removes old plugin versions, so
-`scripts/claude_home.py` (next to this file) reports and cleans them.
+Everything goes through **`bdt cleanup`** (bmsdna-devtools >= 1.8). Read-only reports: `caches`, `stale-envs`,
+`inspect`, `claude-home`. Removal: `worktrees` knows which worktrees are fully merged and drops the pgdevkit test
+DB(s) that belong to them, which `git worktree remove` alone leaves behind; `claude-plugins` removes the old plugin
+versions Claude Code never cleans up itself.
+
+Before the scan run `bdt cleanup claude-home --help`. If it fails (old bdt), run `uv tool upgrade bmsdna-devtools`
+first; the older `caches`/`stale-envs`/`inspect` commands (< 1.4) are missing the same way.
 
 ## 1. Scan (read-only, run in parallel, in the background if slow)
 
 ```bash
-# repo root = the work dir `bdt find-repo` uses, so every tool scans the same tree
+# repo root = the work dir `bdt find-repo` uses, so every tool scans the same tree (Windows: ROOT=C:/Projects)
 ROOT="${AZDO_WORK_DIR:-${BMS_WORK_DIR:-$HOME/projects}}"
 bdt cleanup caches                   # caches, podman/docker, app caches: size + risk + clean command
 bdt cleanup worktrees "$ROOT"        # DRY RUN: worktrees fully merged into origin/main|test|dev, or local main|test|dev if no remote (+ their DBs)
 bdt cleanup orphaned-dbs "$ROOT"     # DRY RUN: pgdevkit test DBs whose worktree is already gone
 bdt cleanup inspect "$ROOT"          # every git worktree: size, dirty, unpushed, locked, active, idle
 bdt cleanup stale-envs "$ROOT"       # node_modules/.venv/target/bin/obj untouched for 30d+
-python3 -I <this skill dir>/scripts/claude_home.py "$ROOT"  # old plugin versions + orphaned .claude/worktrees dirs
+bdt cleanup claude-home "$ROOT"      # old Claude Code plugin versions + orphaned .claude/worktrees dirs
 df -h ~ | tail -1                    # record free space before
 ```
 
-`caches`, `inspect`, `stale-envs` and `claude_home.py` only read. Both `bdt cleanup worktrees` and `orphaned-dbs` only print what they
+`caches`, `inspect`, `stale-envs` and `claude-home` only read. Both `bdt cleanup worktrees` and `orphaned-dbs` only print what they
 would remove until `--yes` is passed, so running them in the scan step is safe. The two DB-aware ones need the
 Postgres of the pgdevkit test container reachable (`localhost:54322` by default, `--pg-host/--pg-port/--pg-user` or
 `PGHOST/PGPORT/PGUSER` to change); if it is down, say so and use `inspect` for the worktree rows.
 
-`du` over large trees takes minutes; start them all at once and say so, rather than going silent. Add `--json` to
-`caches`, `stale-envs` and `inspect` when you need to filter. `ROOT` follows `AZDO_WORK_DIR`/`BMS_WORK_DIR` (same as
-`bdt find-repo`, default `~/projects`); change it only if the user keeps repos elsewhere.
+`du` over large trees takes minutes and the commands print nothing until done; start them all at once and say so,
+rather than going silent. Add `--json` to `caches`, `stale-envs`, `inspect` and `claude-home` when you need to
+filter. `ROOT` follows `AZDO_WORK_DIR`/`BMS_WORK_DIR` (same as `bdt find-repo`, default `~/projects`; `C:/Projects`
+on Windows, where the shell default above does not apply, so set `ROOT` by hand); if the user keeps repos elsewhere,
+ask for it or set the variable, otherwise the first scan fails on a missing directory.
 
 ## 2. Present one overview, then ask
 
@@ -60,12 +64,12 @@ whether test DBs go with them) sorted by size, grouped by risk, so the user deci
 - **Needs a decision**: podman/docker (`prune -a` removes every image not in use), HuggingFace models, volumes,
   worktrees marked `review: ...` by `bdt cleanup inspect` (list the reason: dirty, N unpushed, locked, active, recently
   touched), orphaned DBs flagged as a possible standing reference DB (`--include-caution`, verify first).
-- **Safe by default (Claude Code)**: plugin versions marked `stale` by `claude_home.py` (not in
+- **Safe by default (Claude Code)**: plugin versions marked `stale` by `bdt cleanup claude-home` (not in
   `installed_plugins.json`, no live session; Claude re-creates what it needs on next update).
 - **Needs a decision (Claude Code)**: `orphan` dirs under `.claude/worktrees`: git no longer knows them (gitdir gone),
   so the files in there are the only copy and there is no branch to recover from. Show each with size and
   "touched N days ago" (newest file two levels deep), and let the user pick; anything touched recently deserves a look first.
-  The script marks dirs with a running process inside as `review`; re-run it right before `rm -rf`.
+  Dirs with a running process inside are marked `review`; re-run `claude-home` right before `rm -rf`.
 - **Never offer**: worktrees with uncommitted changes or unpushed commits; locked ones; ones with an active
   process (that is another Claude session working there). Show them, but only as "kept, because ...".
 
@@ -110,16 +114,35 @@ Run the `clean` command shown by `bdt cleanup caches` for each picked row. Speci
   registry/sccache are cheap to clear. Installed toolchains are a decision row: show `rustup toolchain list` and
   never uninstall the default.
 - **.NET**: stale `bin/` + `obj/` (only next to a `.csproj`/`.fsproj`/`.vbproj`) come back with `dotnet build`.
-- **Claude plugin cache**: `python3 -I <skill dir>/scripts/claude_home.py --delete-plugins [PATH ...]` removes `stale` versions
-  after the user confirmed the list: only the given paths if the user picked a subset, else all. The script re-checks
-  installed/live state at delete time and skips versions used by a live session.
+- **Claude plugin cache**: `bdt cleanup claude-plugins --yes [PATH ...]` removes `stale` versions after the user
+  confirmed the list (run it without `--yes` for the dry run): only the given paths if the user picked a subset, else
+  all. It re-checks installed/live state at delete time and skips versions used by a live session.
   Do not `rm -rf ~/.claude/plugins` itself: installed versions, `data/` and `installed_plugins.json` live there.
-- **Orphaned `.claude/worktrees` dirs**: `claude_home.py` rows with verdict `orphan`; after the user picked them,
+- **Orphaned `.claude/worktrees` dirs**: `claude-home` rows with verdict `orphan`; after the user picked them,
   `rm -rf <path>` (git has no metadata left, so `git worktree remove` fails). Rows marked
   `review: owned by another clone` belong to a live worktree of another clone: use `bdt cleanup inspect` there,
   never delete them from here. Worktrees git still knows under `.claude/worktrees` already show up in
   `bdt cleanup inspect|worktrees` like any other.
 - Do not touch `~/Library/Caches` entries that were not listed; Apple and system caches are not ours.
+
+## Windows (Git Bash)
+
+Same flow; differences to know about:
+
+- Run the commands from Git Bash: it provides `du`, `df -h ~` and `rm -rf`. `python3` is not needed any more (no
+  scripts); `bdt find-repo` defaults to `C:/Projects`, but the `ROOT=` line above would give `$HOME/projects`: set `ROOT` (or
+  `AZDO_WORK_DIR`) yourself.
+- There is no `lsof`, so `bdt` cannot list running processes: `inspect` rows say `review: cannot tell if a process is
+  inside` and `claude-home` marks no `.claude/worktrees` dir as `orphan`. Treat those rows as "needs a decision" and ask
+  the user to close other editor/Claude sessions in them first. Plugin versions are unaffected: their liveness check
+  does not need process listing.
+- `bdt cleanup orphaned-dbs` can crash with `Psycopg cannot use the 'ProactorEventLoop'` (a pgdevkit bug on Windows).
+  Say so, skip that row, and do not drop the databases with raw `psql`.
+- `bdt cleanup caches` only knows the macOS/Linux cache locations, so expect few rows; for the rest use the tool's
+  own command (`uv cache clean`, `npm cache clean --force`). Podman `fstrim`, Xcode and `~/Library/Caches` do not apply.
+- `bdt cleanup worktrees` and `inspect` also list worktrees under `%TEMP%` or `/tmp` that belong to another agent
+  session's scratch dir. Flag those rows as "another session's temp dir" in the overview: the owner may not expect
+  them to disappear.
 
 ## 4. Report
 
