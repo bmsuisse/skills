@@ -64,7 +64,8 @@ whether test DBs go with them) sorted by size, grouped by risk, so the user deci
   `installed_plugins.json`, no live session; Claude re-creates what it needs on next update).
 - **Needs a decision (Claude Code)**: `orphan` dirs under `.claude/worktrees`: git no longer knows them (gitdir gone),
   so the files in there are the only copy and there is no branch to recover from. Show each with size and
-  "touched N days ago", and let the user pick; anything touched recently deserves a look first.
+  "touched N days ago" (newest file two levels deep), and let the user pick; anything touched recently deserves a look first.
+  The script marks dirs with a running process inside as `review`; re-run it right before `rm -rf`.
 - **Never offer**: worktrees with uncommitted changes or unpushed commits; locked ones; ones with an active
   process (that is another Claude session working there). Show them, but only as "kept, because ...".
 
@@ -109,8 +110,9 @@ Run the `clean` command shown by `bdt cleanup caches` for each picked row. Speci
   registry/sccache are cheap to clear. Installed toolchains are a decision row: show `rustup toolchain list` and
   never uninstall the default.
 - **.NET**: stale `bin/` + `obj/` (only next to a `.csproj`/`.fsproj`/`.vbproj`) come back with `dotnet build`.
-- **Claude plugin cache**: `python3 -I <skill dir>/scripts/claude_home.py --delete-plugins` removes every `stale`
-  version after the user confirmed the list (versions used by a live session are skipped by the script).
+- **Claude plugin cache**: `python3 -I <skill dir>/scripts/claude_home.py --delete-plugins [PATH ...]` removes `stale` versions
+  after the user confirmed the list: only the given paths if the user picked a subset, else all. The script re-checks
+  installed/live state at delete time and skips versions used by a live session.
   Do not `rm -rf ~/.claude/plugins` itself: installed versions, `data/` and `installed_plugins.json` live there.
 - **Orphaned `.claude/worktrees` dirs**: `claude_home.py` rows with verdict `orphan`; after the user picked them,
   `rm -rf <path>` (git has no metadata left, so `git worktree remove` fails). Rows marked

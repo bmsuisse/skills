@@ -9,7 +9,7 @@ process is registered in its `.in_use/<pid>` files (`.orphaned_at` is Claude's o
 Worktrees that git still knows are covered by `bdt cleanup inspect|worktrees|worktree`. This script lists only
 dirs under `.claude/worktrees` that git does NOT know (`orphan`: gitdir gone), which bdt cannot see.
 
-Usage: claude_home.py [ROOT=$AZDO_WORK_DIR|$BMS_WORK_DIR|~/projects] [--json] [--depth 2] [--delete-plugins]
+Usage: claude_home.py [ROOT=$AZDO_WORK_DIR|$BMS_WORK_DIR|~/projects] [--json] [--depth 2] [--delete-plugins [PATH ...]]
 """
 
 import argparse
@@ -43,8 +43,8 @@ def pid_alive(pid: int) -> bool:
     return True
 
 
-def plugin_versions() -> list[dict]:
-    """Every cached plugin version that is not installed anywhere, with a verdict."""
+def plugin_versions(with_size: bool = True) -> list[dict]:
+    """Every cached plugin version that is not installed anywhere, with a verdict (re-read each call)."""
     try:
         installed = json.loads((PLUGINS / "installed_plugins.json").read_text())["plugins"]
     except (OSError, ValueError, KeyError):
@@ -67,7 +67,7 @@ def plugin_versions() -> list[dict]:
                 version=ver.name,
                 orphaned_days=round(age_d) if age_d is not None else None,
                 live_pids=live,
-                size_mb=round(du_mb(ver)),
+                size_mb=round(du_mb(ver)) if with_size else 0,
                 verdict="review: used by a live process" if live else "stale",
             )
         )
@@ -84,8 +84,30 @@ def registered_worktrees(repo: Path) -> set[Path]:
     return {Path(line.split(" ", 1)[1]).resolve() for line in out.splitlines() if line.startswith("worktree ")}
 
 
+def active_cwds() -> list[str]:
+    """Working dirs of all running processes, one lsof call."""
+    try:
+        out = subprocess.run(["lsof", "-w", "-d", "cwd", "-Fn"], capture_output=True, text=True, timeout=60).stdout
+    except (OSError, subprocess.TimeoutExpired):
+        return []
+    return [line[1:] for line in out.splitlines() if line.startswith("n/")]
+
+
+def newest_mtime(w: Path) -> float:
+    """Newest mtime among the dir and its entries two levels deep (node_modules/.git skipped): a cheap 'last used'."""
+    skip = {"node_modules", ".git", ".venv"}
+    times = [w.stat().st_mtime]
+    for c in w.iterdir():
+        if c.name in skip:
+            continue
+        times.append(c.stat().st_mtime)
+        if c.is_dir() and not c.is_symlink():
+            times += [g.stat().st_mtime for g in list(c.iterdir())[:200]]
+    return max(times)
+
+
 def unregistered_claude_worktrees(root: Path, depth: int) -> list[dict]:
-    rows, stack = [], [(root, 0)]
+    rows, stack, cwds = [], [(root, 0)], active_cwds()
     while stack:
         d, n = stack.pop()
         if (d / ".git").is_dir():
@@ -96,9 +118,15 @@ def unregistered_claude_worktrees(root: Path, depth: int) -> list[dict]:
                     continue
                 gitfile = w / ".git"
                 ptr = gitfile.read_text().strip().removeprefix("gitdir:").strip() if gitfile.is_file() else ""
-                if ptr and Path(ptr).exists():
-                    # another clone's admin dir is still alive: that clone owns it (bdt cleanup inspect there)
+                active = any(c == str(w) or c.startswith(f"{w}/") for c in cwds)
+                if gitfile.is_dir():
+                    verdict, why = "review: standalone clone", ".git is a directory"
+                elif (
+                    ptr and (w / ptr).exists()
+                ):  # relative pointers resolve against the worktree; absolute ones ignore `w`
                     verdict, why = "review: owned by another clone", f"gitdir {ptr}"
+                elif active:
+                    verdict, why = "review: active process inside", "gitdir missing" if ptr else "no .git file"
                 else:
                     verdict, why = "orphan", "gitdir missing" if ptr else "no .git file"
                 rows.append(
@@ -107,7 +135,7 @@ def unregistered_claude_worktrees(root: Path, depth: int) -> list[dict]:
                         repo=str(d),
                         why=why,
                         size_mb=round(du_mb(w)),
-                        idle_days=round((time.time() - w.stat().st_mtime) / 86400),
+                        idle_days=round((time.time() - newest_mtime(w)) / 86400),
                         verdict=verdict,
                     )
                 )
@@ -120,16 +148,17 @@ def unregistered_claude_worktrees(root: Path, depth: int) -> list[dict]:
     return sorted(rows, key=lambda r: -r["size_mb"])
 
 
-def delete_stale_plugins(rows: list[dict]) -> None:
-    freed = 0
-    for r in rows:
-        if r["verdict"] == "stale":
+def delete_stale_plugins(only: list[str]) -> None:
+    """Re-checks installed/live state right now (no du in between), then removes the stale versions (only the --only paths if given)."""
+    freed, wanted = 0, {str(Path(o).resolve()) for o in only}
+    for r in plugin_versions(with_size=False):
+        if r["verdict"] == "stale" and (not wanted or str(Path(r["path"]).resolve()) in wanted):
             shutil.rmtree(r["path"], ignore_errors=True)
-            freed += r["size_mb"]
+            freed += 1
     for p in sorted((PLUGINS / "cache").glob("*/*")):  # plugin dirs left with no version at all
         if p.is_dir() and not any(p.iterdir()):
             p.rmdir()
-    print(f"removed stale plugin versions, freed about {freed / 1024:.1f} GB")
+    print(f"removed {freed} stale plugin versions")
 
 
 def main() -> None:
@@ -140,14 +169,17 @@ def main() -> None:
     ap.add_argument("--depth", type=int, default=2)
     ap.add_argument("--json", action="store_true")
     ap.add_argument(
-        "--delete-plugins", action="store_true", help="remove every `stale` plugin version (after the user confirmed)"
+        "--delete-plugins",
+        nargs="*",
+        metavar="PATH",
+        help="remove `stale` plugin versions (re-checked at delete time); only the given PATHs if any, else all",
     )
     a = ap.parse_args()
 
-    plugins = plugin_versions()
-    if a.delete_plugins:
-        delete_stale_plugins(plugins)
+    if a.delete_plugins is not None:
+        delete_stale_plugins(a.delete_plugins)
         return
+    plugins = plugin_versions()
     wts = unregistered_claude_worktrees(Path(a.root).expanduser(), a.depth)
     if a.json:
         json.dump(dict(plugins=plugins, worktrees=wts), sys.stdout, indent=2)
