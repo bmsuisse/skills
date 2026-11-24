@@ -64,6 +64,18 @@
         "Presents the list and asks before running with --yes",
         "Does not hand-roll `git worktree remove` loops when bdt is available"
       ]
+    },
+    {
+      "id": 7,
+      "prompt": "clean up ~/.claude, old plugins and old worktrees pile up there",
+      "expected_output": "Runs claude_home.py read-only, shows stale plugin versions and orphaned .claude/worktrees dirs with sizes and age, asks which to remove, then deletes only the picks.",
+      "assertions": [
+        "Runs scripts/claude_home.py (read-only) before any deletion",
+        "Shows stale plugin versions and orphan .claude/worktrees dirs with sizes and asks before removing",
+        "Does not rm -rf ~/.claude/plugins as a whole or any plugin version used by a live session or listed in installed_plugins.json",
+        "Does not delete `review: owned by another clone` worktree dirs",
+        "Removes only the orphan dirs the user picked, and git-known worktrees only via bdt cleanup"
+      ]
     }
   ]
 }

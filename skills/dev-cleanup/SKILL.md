@@ -3,10 +3,11 @@ name: dev-cleanup
 plugin: dev-cleanup
 description: >
   Free disk space on a developer workstation: scan podman/docker storage, uv/npm/bun/pnpm/pip/cargo/NuGet/gradle
-  caches, app caches in ~/Library/Caches, stale git worktrees and old node_modules/.venv/target/bin/obj, show an overview
+  caches, app caches in ~/Library/Caches, stale git worktrees, old node_modules/.venv/target/bin/obj and Claude Code leftovers (old plugin versions in
+  ~/.claude/plugins/cache, orphaned dirs in .claude/worktrees), show an overview
   with sizes and risk, and let the user pick what to clean. Use for "clean up my machine", "disk is full",
   "free up space", "clear caches", "podman prune", "uv cache", "stale worktrees", "remove old worktrees",
-  "what is eating my disk", "need more disk space", "orphaned test databases", "drop old pgdevkit DBs", even
+  "what is eating my disk", "need more disk space", "orphaned test databases", "drop old pgdevkit DBs", "clean up ~/.claude", "old claude plugins", even
   if the user names only one of these. Uses `bdt cleanup` for merged worktrees and their pgdevkit test DBs.
   Never deletes before the user has seen the overview and chosen.
 ---
@@ -16,10 +17,11 @@ description: >
 Flow is always **scan, show overview, user picks, delete only the picks, report freed space**. Deleting is the
 easy part; the value is a trustworthy overview, because worktrees and images can hold work the user cares about.
 
-Everything goes through **`bdt cleanup`** (bmsdna-devtools >= 1.4, `uv tool upgrade bmsdna-devtools`; check with
+Everything except `~/.claude` goes through **`bdt cleanup`** (bmsdna-devtools >= 1.4, `uv tool upgrade bmsdna-devtools`; check with
 `bdt cleanup --help`). Read-only reports: `caches`, `stale-envs`, `inspect`. Removal: `worktrees` knows which
 worktrees are fully merged and drops the pgdevkit test DB(s) that belong to them, which `git worktree remove` alone
-leaves behind.
+leaves behind. `~/.claude` has no bdt command: Claude Code never removes old plugin versions, so
+`scripts/claude_home.py` (next to this file) reports and cleans them.
 
 ## 1. Scan (read-only, run in parallel, in the background if slow)
 
@@ -31,10 +33,11 @@ bdt cleanup worktrees "$ROOT"        # DRY RUN: worktrees fully merged into orig
 bdt cleanup orphaned-dbs "$ROOT"     # DRY RUN: pgdevkit test DBs whose worktree is already gone
 bdt cleanup inspect "$ROOT"          # every git worktree: size, dirty, unpushed, locked, active, idle
 bdt cleanup stale-envs "$ROOT"       # node_modules/.venv/target/bin/obj untouched for 30d+
+python3 -I <this skill dir>/scripts/claude_home.py "$ROOT"  # old plugin versions + orphaned .claude/worktrees dirs
 df -h ~ | tail -1                    # record free space before
 ```
 
-`caches`, `inspect` and `stale-envs` only read. Both `bdt cleanup worktrees` and `orphaned-dbs` only print what they
+`caches`, `inspect`, `stale-envs` and `claude_home.py` only read. Both `bdt cleanup worktrees` and `orphaned-dbs` only print what they
 would remove until `--yes` is passed, so running them in the scan step is safe. The two DB-aware ones need the
 Postgres of the pgdevkit test container reachable (`localhost:54322` by default, `--pg-host/--pg-port/--pg-user` or
 `PGHOST/PGPORT/PGUSER` to change); if it is down, say so and use `inspect` for the worktree rows.
@@ -57,6 +60,11 @@ whether test DBs go with them) sorted by size, grouped by risk, so the user deci
 - **Needs a decision**: podman/docker (`prune -a` removes every image not in use), HuggingFace models, volumes,
   worktrees marked `review: ...` by `bdt cleanup inspect` (list the reason: dirty, N unpushed, locked, active, recently
   touched), orphaned DBs flagged as a possible standing reference DB (`--include-caution`, verify first).
+- **Safe by default (Claude Code)**: plugin versions marked `stale` by `claude_home.py` (not in
+  `installed_plugins.json`, no live session; Claude re-creates what it needs on next update).
+- **Needs a decision (Claude Code)**: `orphan` dirs under `.claude/worktrees`: git no longer knows them (gitdir gone),
+  so the files in there are the only copy and there is no branch to recover from. Show each with size and
+  "touched N days ago", and let the user pick; anything touched recently deserves a look first.
 - **Never offer**: worktrees with uncommitted changes or unpushed commits; locked ones; ones with an active
   process (that is another Claude session working there). Show them, but only as "kept, because ...".
 
@@ -101,6 +109,14 @@ Run the `clean` command shown by `bdt cleanup caches` for each picked row. Speci
   registry/sccache are cheap to clear. Installed toolchains are a decision row: show `rustup toolchain list` and
   never uninstall the default.
 - **.NET**: stale `bin/` + `obj/` (only next to a `.csproj`/`.fsproj`/`.vbproj`) come back with `dotnet build`.
+- **Claude plugin cache**: `python3 -I <skill dir>/scripts/claude_home.py --delete-plugins` removes every `stale`
+  version after the user confirmed the list (versions used by a live session are skipped by the script).
+  Do not `rm -rf ~/.claude/plugins` itself: installed versions, `data/` and `installed_plugins.json` live there.
+- **Orphaned `.claude/worktrees` dirs**: `claude_home.py` rows with verdict `orphan`; after the user picked them,
+  `rm -rf <path>` (git has no metadata left, so `git worktree remove` fails). Rows marked
+  `review: owned by another clone` belong to a live worktree of another clone: use `bdt cleanup inspect` there,
+  never delete them from here. Worktrees git still knows under `.claude/worktrees` already show up in
+  `bdt cleanup inspect|worktrees` like any other.
 - Do not touch `~/Library/Caches` entries that were not listed; Apple and system caches are not ours.
 
 ## 4. Report
