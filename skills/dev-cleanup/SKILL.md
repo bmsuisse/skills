@@ -28,7 +28,7 @@ first; the older `caches`/`stale-envs`/`inspect` commands (< 1.4) are missing th
 ## 1. Scan (read-only, run in parallel, in the background if slow)
 
 ```bash
-# repo root = the work dir `bdt find-repo` uses, so every tool scans the same tree
+# repo root = the work dir `bdt find-repo` uses, so every tool scans the same tree (Windows: ROOT=C:/Projects)
 ROOT="${AZDO_WORK_DIR:-${BMS_WORK_DIR:-$HOME/projects}}"
 bdt cleanup caches                   # caches, podman/docker, app caches: size + risk + clean command
 bdt cleanup worktrees "$ROOT"        # DRY RUN: worktrees fully merged into origin/main|test|dev, or local main|test|dev if no remote (+ their DBs)
@@ -46,9 +46,9 @@ Postgres of the pgdevkit test container reachable (`localhost:54322` by default,
 
 `du` over large trees takes minutes and the commands print nothing until done; start them all at once and say so,
 rather than going silent. Add `--json` to `caches`, `stale-envs`, `inspect` and `claude-home` when you need to
-filter. `ROOT` follows `AZDO_WORK_DIR`/`BMS_WORK_DIR` (same as `bdt find-repo`, default `~/projects`, `C:/Projects`
-on Windows); if the user keeps repos elsewhere, ask for it or set the variable, otherwise the first scan fails on a
-missing directory.
+filter. `ROOT` follows `AZDO_WORK_DIR`/`BMS_WORK_DIR` (same as `bdt find-repo`, default `~/projects`; `C:/Projects`
+on Windows, where the shell default above does not apply, so set `ROOT` by hand); if the user keeps repos elsewhere,
+ask for it or set the variable, otherwise the first scan fails on a missing directory.
 
 ## 2. Present one overview, then ask
 
@@ -130,7 +130,8 @@ Run the `clean` command shown by `bdt cleanup caches` for each picked row. Speci
 Same flow; differences to know about:
 
 - Run the commands from Git Bash: it provides `du`, `df -h ~` and `rm -rf`. `python3` is not needed any more (no
-  scripts); `ROOT` defaults to `C:/Projects`, so set `AZDO_WORK_DIR` if the repos live elsewhere.
+  scripts); `bdt find-repo` defaults to `C:/Projects`, but the `ROOT=` line above would give `$HOME/projects`: set `ROOT` (or
+  `AZDO_WORK_DIR`) yourself.
 - There is no `lsof`, so `bdt` cannot list running processes: `inspect` rows say `review: cannot tell if a process is
   inside` and `claude-home` marks no `.claude/worktrees` dir as `orphan`. Treat those rows as "needs a decision" and ask
   the user to close other editor/Claude sessions in them first. Plugin versions are unaffected: their liveness check
