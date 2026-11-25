@@ -267,7 +267,13 @@ def settle(page: Page, ms: int) -> None:
         if not page.evaluate("""() => !!document.querySelector('[aria-busy=true], .animate-pulse, .animate-spin')"""):
             break
         page.wait_for_timeout(250)
-    # finite animations (chart entrances, slide-ins) end before the capture; infinite ones (spinners) are ignored
+    still(page)
+    page.wait_for_timeout(400)
+
+
+def still(page: Page) -> None:
+    """Finite animations and CSS transitions (chart entrances, slide-ins, a theme's colour fade) end; spinners are ignored."""
+    page.wait_for_timeout(100)  # a transition starts on the next style pass
     try:
         page.wait_for_function(
             "() => document.getAnimations().every(a => a.playState !== 'running' || a.effect?.getTiming().iterations === Infinity)",
@@ -275,7 +281,6 @@ def settle(page: Page, ms: int) -> None:
         )
     except Exception:
         pass
-    page.wait_for_timeout(400)
 
 
 THUMB_WIDTH = 1000  # px: a viewport copy a model reads for about a third of a full page's tokens
@@ -536,12 +541,12 @@ def main() -> int:
             results.append({"path": path, "title": page.title(), **files, "problems": problems, "styles": probe["styles"], "graphics": probe["graphics"]})
             if args.also_dark:  # the same screen in dark: switch the preference, capture, switch back; no navigation
                 page.emulate_media(color_scheme="dark")
-                page.wait_for_timeout(400)
+                still(page)  # a colour fade measured mid-way reports light-mode contrast as dark
                 (out / "dark").mkdir(exist_ok=True)
                 dark_problems = [p for p in page.evaluate(PROBE)["problems"] if p["kind"] in ("low-contrast", "popup-offscreen")]
                 results[-1]["dark"] = {**capture(page, out / "dark" / f"{slug(path)}.png", dark_problems, args.thumb, None), "problems": dark_problems}
                 page.emulate_media(color_scheme=args.color_scheme)
-                page.wait_for_timeout(200)
+                still(page)
             if args.open_dialogs:
                 results += open_dialogs(page, path, out, args.open_dialogs, opened, errors, problems, args.open_label,
                                         inner_dropdowns=args.open_dropdowns, thumb=args.thumb)
