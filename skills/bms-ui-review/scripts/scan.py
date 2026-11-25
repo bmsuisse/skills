@@ -189,7 +189,8 @@ def locale_checks(locales: list[Path], base_lang: str) -> list[tuple[str, str, s
     for lang, (f, tr) in files.items():
         if f == bf:
             continue
-        missing = [k for k in bv if k not in tr]
+        present = keys(f)
+        missing = [k for k in keys(bf) if k not in present]
         if missing:
             out.append(("missing-key", f"{f}: {len(missing)} keys", ", ".join(missing[:8])))
         bare = lambda s: re.sub(r"\{[^}]*\}|[^\w\s]", " ", s).strip()  # noqa: E731
@@ -296,6 +297,14 @@ def third_party_dark(src: list[Path]) -> list[tuple[str, str, str]]:
                 and not re.search(r"colorMode=|\bdark\b.*\bcontrols|className=\{[^}]*dark", own):
             out.append(("third-party-dark", f"{pkg} in {users[0]}" + (f" (+{len(users) - 1})" if len(users) > 1 else ""), f"no .dark override for .{prefix}* found"))
     return out
+
+
+KEY = re.compile(r"""^\s*(?:["']([\w.\-]+)["']|([\w\-]+\.[\w.\-]+))\s*:""")  # quoted or dotted: not a "Word:" line of a long value
+
+
+def keys(f: Path) -> set[str]:
+    """Every key of a locale file, also those whose value continues on the next lines (entries() reads one-line values)."""
+    return {m.group(1) or m.group(2) for line in f.read_text(errors="ignore").splitlines() if (m := KEY.match(line))}
 
 
 def entries(f: Path) -> dict[str, str]:
