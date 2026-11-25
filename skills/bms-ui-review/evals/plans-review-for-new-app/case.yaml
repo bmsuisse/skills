@@ -1,0 +1,8 @@
+schema_version: "1.1"
+name: plans-review-for-new-app
+context:
+  scaffold_script: place-files.sh
+expected_outcome: |
+  A concrete plan with commands: static scan first (shared packages, wording), crawls in light, dark and the
+  longest language at desktop width only, the routes passed as start paths with a real article id, dev auth
+  instead of a real account, explorers for states, parallel reviewers and a ranked report.

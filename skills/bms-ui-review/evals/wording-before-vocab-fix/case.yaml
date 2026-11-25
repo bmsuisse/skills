@@ -1,0 +1,8 @@
+schema_version: "1.1"
+name: wording-before-vocab-fix
+context:
+  scaffold_script: place-files.sh
+expected_outcome: |
+  A ranked list from the static checks: the outdated @bmsuisse/ui reported once as an update to do first,
+  the translations that use one word for two meanings (fr annuler, it annulla for Cancel and Discard),
+  the mixed "Add X" / "Add a X" forms, judged rather than dumped, and a CI check proposed for the vocabulary.

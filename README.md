@@ -26,6 +26,7 @@
 | [bms-code-review](./skills/bms-code-review/) | BMS code review that fans out one focused subagent per concern (architecture, duplication, security, correctness, age… |
 | [bms-frontend-design](./skills/bms-frontend-design/) | The BMS visual identity for internal web apps, built on the shared `@bmsuisse/ui` (sidebar/nav, form, dialog, and oth… |
 | [bms-plan-review](./skills/bms-plan-review/) | Review an implementation plan before any code is written: checks it against BMS conventions and the existing skills (… |
+| [bms-ui-review](./skills/bms-ui-review/) | Whole-app UI review of a BMS web app: crawl every screen, run automatic checks, then review the screenshots for incon… |
 | [bmsapp-native](./skills/bmsapp-native/) | Use when a web app or FastAPI backend should talk to the BMS iOS app (`@bmsuisse/app-native`, `bmsdna-app-native`). T… |
 | [bmsui](./skills/bmsui/) | Pick the right shared component from `@bmsuisse/ui` / `@bmsuisse/datagrid` before writing a local one: dialogs, forms… |
 | [branching-strategy](./skills/branching-strategy/) | Set up or audit a repo's dev -> test -> main branching, build policies, per-area test labels and nightly deploy. |
