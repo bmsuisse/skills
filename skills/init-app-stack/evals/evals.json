@@ -31,7 +31,8 @@
         "Includes bmsuisse/pgdevkit's `pgdevkit` skill and frames it as required/always-install for Postgres work, not optional",
         "Includes bmsuisse/devtools' `bmsdna-devtools` skill",
         "Mentions the install locations (.claude/skills/, .agents/skills/, .agent/skills/) are gitignored and only the lock file is committed",
-        "No Nuxt or nuxt-ui skill is mentioned (those are from the old stack)"
+        "No Nuxt or nuxt-ui skill is mentioned (those are from the old stack)",
+        "Does NOT list the pydantic/skills skills (building-pydantic-ai-agents, pydantic-ai-harness) as default installs — they are only for apps with AI/LLM features"
       ]
     },
     {
@@ -90,6 +91,47 @@
         "Shows how to use the new type/endpoint, e.g. importing from `@/lib/generated/types.gen` or a query-options hook from `@/lib/generated/@tanstack/react-query.gen`",
         "Does NOT suggest manually writing TypeScript types that mirror the Pydantic model",
         "Does NOT say the generated output is gitignored — it's committed"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "Scaffold a new app called 'contract-assistant' where users upload a contract and chat with an LLM that answers questions about it, with the answer streamed into the UI.",
+      "expected_output": "Runs scripts/create.py contract-assistant, then (because the app has AI features) installs the Pydantic skills via `skillup add pydantic/skills --skill building-pydantic-ai-agents --skill pydantic-ai-harness`, adds Pydantic AI to the backend with `uv add \"pydantic-ai-slim[<provider>]\"`, keeps the agent in FastAPI and streams the answer to the frontend over SSE (references/fastapi-sse.md), and tests the agent with TestModel/FunctionModel rather than a real model.",
+      "files": [],
+      "expectations": [
+        "The assistant runs scripts/create.py with contract-assistant as the project name",
+        "Uses Pydantic AI for the LLM part — not LangChain, LlamaIndex, or a raw openai/anthropic SDK client",
+        "Adds the dependency with uv (e.g. `uv add \"pydantic-ai-slim[openai]\"` or another provider extra), not pip",
+        "Installs the companion skills with `skillup add pydantic/skills --skill building-pydantic-ai-agents` (pydantic-ai-harness optional), not the plugin marketplace or `npx skills add`",
+        "The agent runs in the FastAPI backend, not in the browser, and the answer is streamed to the frontend via SSE",
+        "Tests the agent with Pydantic AI's TestModel or FunctionModel instead of calling a real model"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "Users of my app upload Parquet and Excel files and I need to filter and aggregate them in the FastAPI backend. Which library should I add?",
+      "expected_output": "Use DuckDB (`uv add duckdb`): it reads Parquet/CSV/Excel natively and does the filtering/aggregation in SQL, returning plain Python rows via fetchall()/fetchone(). Avoid pyarrow (a very large wheel) and DuckDB's .arrow()/.fetch_arrow_table(), which require it; check `uv tree --invert --package pyarrow` that no new dependency pulls it in transitively.",
+      "files": [],
+      "expectations": [
+        "Recommends DuckDB, added with `uv add duckdb`",
+        "Does NOT recommend adding pyarrow (or pandas with a pyarrow engine) for reading the Parquet files",
+        "Explains pyarrow should be avoided because it is a very large package",
+        "Returns results with `.fetchall()`/`.fetchone()` (or similar plain-row APIs), not `.arrow()`/`.fetch_arrow_table()`",
+        "Mentions checking for transitive pyarrow with `uv tree --invert --package pyarrow` (or equivalent)"
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "My app's backend needs to run SQL queries against our Databricks SQL warehouse and show the results in a DataGrid. How should I query Databricks?",
+      "expected_output": "Use arrowbricks (`uv add arrowbricks`), not databricks-sql-connector: async, zero required dependencies, no pyarrow. Query with `connect(...)`/cursor and `await cursor.fetchall_arrow()` (consumable directly by DuckDB) or `client.stream_query_json(...)` for streaming; row tuples need the `arrowbricks[arro3]` extra. Install the skill with `skillup add bmsuisse/arrowbricks --skill arrowbricks`. The endpoint returns a Pydantic response model so the typed client is regenerated with `just generate-api`.",
+      "files": [],
+      "expectations": [
+        "Uses arrowbricks, added with `uv add arrowbricks`",
+        "Does NOT use databricks-sql-connector, databricks-sdk's statement execution, or pyodbc for the queries",
+        "Uses the async API (`async with connect(...)` / `await cursor.execute(...)`), not a blocking call inside an async FastAPI handler",
+        "Does NOT add pyarrow; Arrow results go to DuckDB directly or row tuples come via the `arrowbricks[arro3]` extra",
+        "Installs the companion skill with `skillup add bmsuisse/arrowbricks --skill arrowbricks`",
+        "Does NOT hard-code the Databricks token in source (reads it from settings/env)"
       ]
     }
   ]
