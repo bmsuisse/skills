@@ -37,6 +37,7 @@
 | [coding-guidelines-python](./skills/coding-guidelines-python/) | Apply and enforce Python-specific coding standards. Use alongside coding-guidelines for any Python file — covers typi… |
 | [coding-guidelines-sql](./skills/coding-guidelines-sql/) | SQL and data warehouse coding guidelines for the BME data platform. Use whenever writing, reviewing, or refactoring S… |
 | [coding-guidelines-typescript](./skills/coding-guidelines-typescript/) | Apply and enforce TypeScript-specific coding standards. Use alongside coding-guidelines for any TypeScript file — cov… |
+| [consolidate-tests](./skills/consolidate-tests/) | Shrink a pytest suite to fewer, clearer tests with the same behavioural strength: parametrize copy-paste variants, me… |
 | [cross-repo-discovery](./skills/cross-repo-discovery/) | Find where a repo lives — locally or in the Azure DevOps org — before assuming a piece of functionality doesn't exist… |
 | [data-modeling-dimensional](./skills/data-modeling-dimensional/) | Dimensional data modeling guide for the Fabricks platform — covers the full pipeline from staging through raw, transf… |
 | [databricks-cli](./skills/databricks-cli/) | Databricks CLI operations: auth, profiles, data exploration, bundles, and notebook execution. Use this skill for ANY… |
