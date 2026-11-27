@@ -94,6 +94,15 @@ This installs:
 - `pgdevkit` — the Postgres conventions this scaffold's backend already follows (`pgdevkit.db`'s psycopg CRUD helpers, the `database/` schema-as-code folder, `pgdb testdb` for tests). **Always install this one whenever the project touches Postgres** — `backend/db.py` and `database/` are built directly on it, not a loose suggestion.
 - `bmsdna-devtools` — the `bdt` CLI (PR status/create, worktrees, commits, Azure logs); prefer it over raw `git`/`az`/`gh` once installed
 
+**Only if the app has AI/LLM features** (chat, agents, extraction, summarisation, tool calling), also add Pydantic's skills — skip this for apps without them:
+
+```bash
+skillup add pydantic/skills --skill building-pydantic-ai-agents --skill pydantic-ai-harness
+```
+
+- `building-pydantic-ai-agents` — [Pydantic AI](https://pydantic.dev/docs/ai/overview/coding-agent-skills/) agents, tools, structured output, streaming, testing
+- `pydantic-ai-harness` — [Pydantic AI Harness](https://github.com/pydantic/skills/tree/main/plugins/pydantic-ai-harness) capabilities (memory, context management, delegation/planning, Code Mode, safety controls); only needed once the agent uses `capabilities=[...]`
+
 `skillup add` writes real copies into `.claude/skills/`, `.agents/skills/`, and `.agent/skills/` (one per agent runtime) and pins commit SHAs in `.agents/skills.lock.json`. The scaffold's `.gitignore` already excludes the three `skills/` directories — commit only the lock file, and run `skillup sync` to restore on a new machine.
 
 ---
@@ -134,6 +143,9 @@ where the goal is consistency across apps rather than differentiation.
       user = await pg_retrieve(conn, UserRow, {"id": user_id})
   ```
   Simple CRUD uses `pgdevkit.db`'s `pg_*` helpers (named `%(name)s` params, never positional or f-string SQL). Anything with joins/CTEs/aggregations gets its own `.sql` file under `backend/db/queries/`, loaded via `pgdevkit.db.SqlLoader`. The schema itself lives as `.sql` files under `database/` (see [`references/postgres-pgdevkit.md`](references/postgres-pgdevkit.md)) — `pgdb testdb` applies it for tests, a human applies it to production.
+- AI/LLM features (only when the app needs them — the scaffold adds none): use **[Pydantic AI](https://github.com/pydantic/pydantic-ai)**, not LangChain or a raw provider SDK. Add it with `uv add "pydantic-ai-slim[<provider>]"` (e.g. `openai`, `anthropic`), plus `uv add pydantic-ai-harness` only if you use harness capabilities. Load the `building-pydantic-ai-agents` / `pydantic-ai-harness` skills from Step 3 first. Keep agents in the backend; stream responses to the frontend via SSE (see [`references/fastapi-sse.md`](references/fastapi-sse.md)) and test with Pydantic AI's `TestModel`/`FunctionModel` instead of calling a real model.
+- Avoid **pyarrow** (a very large wheel that bloats installs and container images). For Parquet/CSV/Excel reading, exports or analytical queries, use **DuckDB** (`uv add duckdb`, see the `duckdb` skill): it reads and writes these formats natively, and `.fetchall()`/`.fetchone()` return plain Python rows. Don't call `.arrow()`/`.fetch_arrow_table()` (they need pyarrow), and before adding a dependency check `uv tree --invert --package pyarrow` that it doesn't pull pyarrow in transitively. Only add pyarrow when a library you can't avoid genuinely requires it, and say why in the PR.
+- Databricks SQL (only when the app queries Databricks): use **[arrowbricks](https://github.com/bmsuisse/arrowbricks)** (`uv add arrowbricks`), not `databricks-sql-connector`. It's async (fits FastAPI), has zero required dependencies (no pyarrow), and `await cursor.fetchall_arrow()` goes straight into DuckDB (`duckdb.sql("select … from table")`) without pyarrow; `client.stream_query_json(...)` streams rows as NDJSON for an SSE endpoint. Row tuples (`fetchall()`) need the `arrowbricks[arro3]` extra. Install its skill first: `skillup add bmsuisse/arrowbricks --skill arrowbricks`.
 - Frontend routing: **file-based** via `@tanstack/router-plugin` — add files under `src/routes/`, route tree is auto-generated.
 - Data fetching: **TanStack Query** only — do not roll `useEffect + fetch`. Use `queryOptions` for reusable query definitions.
 - Forms: **TanStack Form** (`@tanstack/react-form`) — use `useForm` + `form.Field` with `@bmsuisse/ui`'s `Input`/`Label`/`FormField` primitives. Do not add react-hook-form.
