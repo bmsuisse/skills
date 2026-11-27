@@ -100,13 +100,14 @@
     },
     {
       "name": "fabricks-data",
-      "description": "Fabricks data skills: SQL analysis, domain glossary, and DevOps issue triage/resolution",
+      "description": "Fabricks data skills: SQL analysis, domain glossary, DevOps issue triage/resolution, and CIP e-shop debugging",
       "source": "./",
       "skills": [
         "./skills/fabricks-glossary",
         "./skills/fabricks-sql-analyzer",
         "./skills/fabricks-devops-issues",
-        "./skills/fabricks-devops-issues-resolver"
+        "./skills/fabricks-devops-issues-resolver",
+        "./skills/cip-debugging"
       ]
     },
     {
