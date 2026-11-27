@@ -52,7 +52,7 @@ Akeneo / OneTrade ─► core.dim_akeneo_product, core.dim_article, core.dim_ake
     - Columns: `id, item, topic, step, env, operation (insert|delete|dry_delete), timestamp`.
     - The format is mixed: a `parquet.` glob over all items works, but a single item can be Delta (`DELTA_INVALID_FORMAT` → use `delta.`).
     - The full `cip/*/logs/logs` glob takes several minutes. Narrow it when you can, e.g. `cip/product_*_prod/logs/logs` or a single item.
-    - **An `insert` row does not prove the id was sent.** `upload_to_cip` logs every row of the feed table, including tombstoned (`__is_deleted`) and non-current rows, on every run. Confirm with the table state (`__is_current` and not `__is_deleted`) and the error table.
+    - **Older `insert` rows don't prove a send.** Until Fabricks.Runtime PR 39836 (end of Nov 2026), `upload_to_cip` logged every row of the feed table as `insert` on every run, including tombstoned and non-current rows. Since that fix, an `insert` row means the id was in that run's upload and CIP accepted it (202). For older rows, confirm with the table state (`__is_current` and not `__is_deleted`) and the error table.
     - Manual notebooks (`deletes_to_cip`, resends) don't write this log. See `references/deletes.md` for finding them.
   - **Error table** `logs/error`: read it with `delta.` (`parquet.` fails). Use one path per item.
     - Columns: `batch, error_msg, timestamp`.

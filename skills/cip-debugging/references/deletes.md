@@ -61,8 +61,8 @@ feed to another (e.g. into a promotion) makes the old feed send a delete** — t
    before the delete-logging fix, by a manual notebook, or by CIP itself.
    Manual notebooks never log, so if the logs show no delete, go to step 6.
    Log dirs are named per item **without always carrying the env**. Filter on the `env` column; prod
-   rows are `prd` or, in older rows, `prod`. Remember that `insert` rows copy the whole table, tombstones
-   included, so they don't prove a send.
+   rows are `prd` or, in older rows, `prod`. `insert` rows written before Fabricks.Runtime PR 39836 (end of
+   Nov 2026) copy the whole table, tombstones included, so they don't prove a send.
 3. **Why the feed tombstoned it** — current state of the id in every CIP table:
    ```sql
    show tables in distribution like 'cip_product*_prod'
