@@ -2,9 +2,9 @@
 name: maintenance
 plugin: maintenance
 description: >
-  Periodic upkeep of BMS uv/bun/Gradle/Cargo/NuGet repos, one mode per run: dead-code, bump, lint, audit, prod, nightly, xfail, db-perf,
+  Periodic upkeep of BMS uv/bun/Gradle/Cargo/NuGet repos, one mode per run: dead-code, bump, lint, audit, prod, nightly, warnings, xfail, db-perf,
   cost, tests, incident (security incident / supply chain attack), all. Use for "maintenance", "bump dependencies",
-  "bun audit", "uv audit", "CVE", "nightly failed", "slow queries", "azure cost spike", "flaky tests". Invoke as
+  "bun audit", "uv audit", "CVE", "nightly failed", "build warnings", "slow queries", "azure cost spike", "flaky tests". Invoke as
   `/maintenance <mode>`. Not for reviewing a pending diff.
 ---
 
@@ -12,8 +12,8 @@ description: >
 
 > If the repo has a `MAINTENANCE.md`, read it first; its rules take precedence over this skill.
 
-`/maintenance dead-code | bump | lint | audit | prod | nightly | xfail | db-perf | cost | tests | incident | all`. No argument: ask which.
-`all` runs them in the order `prod`, `nightly`, `xfail`, `tests`, `db-perf`, `cost` (what is broken now, so the upkeep
+`/maintenance dead-code | bump | lint | audit | prod | nightly | warnings | xfail | db-perf | cost | tests | incident | all`. No argument: ask which.
+`all` runs them in the order `prod`, `nightly`, `warnings`, `xfail`, `tests`, `db-perf`, `cost` (what is broken now, so the upkeep
 runs against a known baseline), then `dead-code`, `bump`, `lint`, `audit` (remove first, so less is upgraded), one commit series per mode. `incident` is event-driven and never part of `all`.
 Work in a worktree and make a separate commit for each step of a mode (`/dev-workflow`). Use `uv` and `bun` only (Gradle: the wrapper; Rust: `cargo`; .NET: `dotnet`), never hand-edit lockfiles.
 
@@ -45,18 +45,19 @@ Read the reference for the requested mode, then follow it.
 | `audit` | [references/audit.md](references/audit.md) |
 | `prod` | [references/prod.md](references/prod.md) |
 | `nightly` | [references/nightly.md](references/nightly.md) |
+| `warnings` | [references/warnings.md](references/warnings.md) |
 | `xfail` | [references/xfail.md](references/xfail.md) |
 | `db-perf` | [references/db-perf.md](references/db-perf.md) |
 | `cost` | [references/cost.md](references/cost.md) (uses the `azure-cost` skill) |
 | `tests` | [references/tests.md](references/tests.md) |
 | `incident` | [references/incident.md](references/incident.md) |
 
-`prod`, `nightly`, `db-perf`, `cost` and the flaky half of `tests` mostly *find* things: their output is issues, with no duplicates.
+`prod`, `nightly`, `warnings`, `db-perf`, `cost` and the flaky half of `tests` mostly *find* things: their output is issues, with no duplicates.
 Before creating one, `bdt issue search --state all --since-days 0 "<keywords>"`, and one issue per root cause. Only
 small, clear fixes become PRs.
 
 ## PR
 
 Per mode: what was removed / bumped (old → new, majors marked) / linted (config changes, rules enabled) / fixed (advisory id, severity), what was left behind
-or excluded and why (issue link), checks run. For `prod`, `nightly`, `db-perf`, `cost`, `tests`: what was checked, findings and the issue
+or excluded and why (issue link), checks run. For `prod`, `nightly`, `warnings`, `db-perf`, `cost`, `tests`: what was checked, findings and the issue
 links (new or existing), before/after numbers for fixes. Don't merge it yourself.
