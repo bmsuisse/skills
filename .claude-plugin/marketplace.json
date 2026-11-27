@@ -210,6 +210,14 @@
       }
     },
     {
+      "name": "mattpocock-skills",
+      "description": "Matt Pocock's engineering skills: grilling, to-spec/to-tickets, TDD, code review, diagnosing bugs, domain modelling, handoff and more.",
+      "source": {
+        "source": "github",
+        "repo": "mattpocock/skills"
+      }
+    },
+    {
       "name": "writing",
       "description": "Writing skills: Documentation, technical writing, and content creation",
       "source": "./",

@@ -104,6 +104,7 @@ Add to `~/.claude/settings.json` to install all plugins:
     "writing@bmsuisse-skills": true,
     "ui@bmsuisse-skills": true,
     "caveman@bmsuisse-skills": true,
+    "mattpocock-skills@bmsuisse-skills": true,
     "azure-deploy@bmsuisse-skills": true,
     "azure-diagnostics@bmsuisse-skills": true
   }
@@ -120,6 +121,7 @@ Add to `~/.claude/settings.json` to install all plugins:
 | `writing@bmsuisse-skills`          | Scientific and academic writing revision                                  |
 | `bms@bmsuisse-skills`              | BMsuisse master skill (`/bms`, `/bms sql`, `/bms python`, `/bms data`)     |
 | `caveman@bmsuisse-skills`          | Ultra-compressed caveman communication mode (~75% token reduction)        |
+| `mattpocock-skills@bmsuisse-skills`| Matt Pocock's engineering skills (grilling, specs, TDD, code review, ...) |
 | `azure-deploy@bmsuisse-skills`     | Azure deployments via azd/terraform/az with validation and RBAC checks    |
 | `azure-diagnostics@bmsuisse-skills`| Azure production diagnostics via AppLens, Monitor, and resource health    |
 
@@ -138,6 +140,7 @@ Then run these commands in Claude Code to apply the configuration:
 /plugin install writing@bmsuisse-skills
 /plugin install bms@bmsuisse-skills
 /plugin install caveman@bmsuisse-skills
+/plugin install mattpocock-skills@bmsuisse-skills
 /plugin install azure-deploy@bmsuisse-skills
 /plugin install azure-diagnostics@bmsuisse-skills
 
@@ -201,6 +204,7 @@ Each plugin bundles a curated set of skills:
 | `writing`          | remove-ai-writing, scientific-revision                                                                                                                                                       | Writing & docs                    |
 | `bms`              | bms (master), coding-guidelines-sql, coding-guidelines-python, coding-guidelines-typescript, sql-optimization, data-modeling-dimensional, fabricks-glossary                                  | All BMSuisse standards via `/bms` |
 | `caveman`          | caveman, caveman-review, caveman-commit, caveman-help *(from JuliusBrussee/caveman)*                                                                                                         | Token-efficient communication     |
+| `mattpocock-skills`| grill-me, grill-with-docs, to-spec, to-tickets, tdd, code-review, diagnosing-bugs, domain-modeling, handoff, ... *(from mattpocock/skills)* | Engineering workflows by Matt Pocock |
 | `azure-deploy`     | azure-deploy *(from microsoft/azure-skills)*                                                                                                                                                 | Azure deployments                 |
 | `azure-diagnostics`| azure-diagnostics *(from microsoft/azure-skills)*                                                                                                                                           | Azure production diagnostics      |
 
