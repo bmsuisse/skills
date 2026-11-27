@@ -53,6 +53,7 @@
         "./skills/ducklake",
         "./skills/playwright-python",
         "./skills/testing-strategy",
+        "./skills/consolidate-tests",
         "./skills/prek",
         "./skills/procrastinate",
         "./skills/aiochannel-python",
