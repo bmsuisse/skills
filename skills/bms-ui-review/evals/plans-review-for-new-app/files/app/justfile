@@ -1,0 +1,2 @@
+dev:
+    AUTH_MODE=dev bun run --cwd . dev

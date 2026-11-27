@@ -1,0 +1,8 @@
+{
+  "name": "shop-admin",
+  "private": true,
+  "dependencies": {
+    "@bmsuisse/ui": "^0.25.0",
+    "react": "^19.0.0"
+  }
+}

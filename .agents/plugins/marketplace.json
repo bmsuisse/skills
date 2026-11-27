@@ -50,7 +50,8 @@
       "skills": [
         "./skills/rich-data-tables",
         "./skills/inter-without-ai-slop",
-        "./skills/design-review"
+        "./skills/design-review",
+        "./skills/bms-ui-review"
       ]
     },
     {

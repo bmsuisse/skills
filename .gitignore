@@ -34,3 +34,4 @@ tmp_alperf
 .worktrees/
 .claude/worktrees/
 .codegraph/
+bms-ui-review-workspace/
